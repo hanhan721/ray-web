@@ -1,0 +1,174 @@
+// ============================================
+// 主题相关样式
+// ============================================
+
+// 深色模式全局样式
+[data-theme='dark'] {
+  color-scheme: dark;
+
+  // 基础文字颜色
+  body {
+    color: var(--text-color-primary);
+    background-color: var(--bg-color);
+  }
+
+  // 滚动条样式
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--bg-color-container);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+  }
+}
+
+// 亮色模式滚动条
+[data-theme='light'],
+:root:not([data-theme]) {
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #f1f1f1;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+
+    &:hover {
+      background: #a8a8a8;
+    }
+  }
+}
+
+// ============================================
+// 灰色模式（用于哀悼日等场景）
+// ============================================
+.gray-mode {
+  filter: grayscale(100%);
+}
+
+// ============================================
+// 色弱模式
+// ============================================
+.color-weak-mode {
+  filter: invert(80%);
+}
+
+// ============================================
+// 动画开关
+// ============================================
+.no-animation {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0s !important;
+    transition-duration: 0s !important;
+  }
+}
+
+// ============================================
+// 过渡动画
+// ============================================
+
+// 淡入淡出
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity var(--transition-duration) var(--transition-timing);
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+// 缩放淡入
+.fade-scale-enter-active,
+.fade-scale-leave-active {
+  transition:
+    opacity var(--transition-duration) var(--transition-timing),
+    transform var(--transition-duration) var(--transition-timing);
+}
+
+.fade-scale-enter-from,
+.fade-scale-leave-to {
+  opacity: 0;
+  transform: scale(0.95);
+}
+
+// 滑动淡入（从右）
+.slide-fade-enter-active,
+.slide-fade-leave-active {
+  transition:
+    opacity var(--transition-duration) var(--transition-timing),
+    transform var(--transition-duration) var(--transition-timing);
+}
+
+.slide-fade-enter-from {
+  opacity: 0;
+  transform: translateX(20px);
+}
+
+.slide-fade-leave-to {
+  opacity: 0;
+  transform: translateX(-20px);
+}
+
+// 滑动（从上）
+.slide-down-enter-active,
+.slide-down-leave-active {
+  transition:
+    opacity var(--transition-duration) var(--transition-timing),
+    transform var(--transition-duration) var(--transition-timing);
+}
+
+.slide-down-enter-from,
+.slide-down-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+// ============================================
+// 通用辅助类
+// ============================================
+
+// 主题色文字
+.text-primary {
+  color: var(--primary-color);
+}
+
+.text-success {
+  color: var(--success-color);
+}
+
+.text-warning {
+  color: var(--warning-color);
+}
+
+.text-error {
+  color: var(--error-color);
+}
+
+// 主题色背景
+.bg-primary {
+  background-color: var(--primary-color);
+  color: #fff;
+}
+
+.bg-primary-light {
+  background-color: var(--primary-color-suppl);
+  color: var(--primary-color);
+}
