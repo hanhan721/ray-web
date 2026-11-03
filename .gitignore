@@ -10,6 +10,8 @@ lerna-debug.log*
 # Dependencies
 node_modules
 .pnpm-store
+# 统一使用 pnpm，忽略 npm 生成的锁文件
+package-lock.json
 
 # Build output
 dist
