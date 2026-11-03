@@ -4,13 +4,13 @@
 
 ## 简介
 
-Ray Web 是采用 Vue 3.5、TypeScript 5.7、Vite 6 和 Naive UI 构建的后台管理系统前端模板。配套后端项目请参考 [Ray Boot](https://github.com/hanhan721/ray-boot)。
+Ray Web 是采用 Vue 3.5、TypeScript 5.9、Vite 8 和 Naive UI 构建的后台管理系统前端模板。配套后端项目请参考 [Ray Boot](https://github.com/hanhan721/ray-boot)。
 
 项目内置了完善的权限管理、动态路由、通用业务组件以及规范的开发流程，旨在提供一个稳定、高效的开发起点。
 
 ## 主要特性
 
-- **技术栈**: Vue 3.5 (Composition API) + Vite 6 + Pinia 2.3 + TypeScript 5.7
+- **技术栈**: Vue 3.5 (Composition API) + Vite 8 + Pinia 3.0 + TypeScript 5.9
 - **UI 框架**: 基于 Naive UI，提供完整的类型支持与主题定制能力
 - **开发效率**: 集成 `unplugin-auto-import` 和 `unplugin-vue-components` 实现 API 和组件的自动按需引入
 - **业务组件**: 内置 ProTable（封装搜索/表格/分页）、DictSelect（字典集成）、DeptTree（部门树）等常用组件
@@ -25,8 +25,8 @@ Ray Web 是采用 Vue 3.5、TypeScript 5.7、Vite 6 和 Naive UI 构建的后台
 
 ## 技术栈清单
 
-- **核心**: Vue 3.5, Vue Router 4.5, Pinia 2.3
-- **工具**: Vite 6, TypeScript 5.7, Axios, Sass
+- **核心**: Vue 3.5, Vue Router 4.6, Pinia 3.0
+- **工具**: Vite 8, TypeScript 5.9, Axios, Sass
 - **UI**: Naive UI 2.43
 - **扩展**: @tsparticles (动画效果), vue-draggable-plus (拖拽组件)
 
@@ -51,6 +51,8 @@ src/
 - Node.js >= 18.0.0
 - pnpm >= 8.0.0
 
+> 项目统一使用 pnpm 管理依赖，请勿混用 npm / yarn，避免产生额外的 lockfile。
+
 ## 快速开始
 
 ```bash
@@ -66,6 +68,9 @@ pnpm build
 # 代码检查与修复
 pnpm lint
 pnpm format
+
+# 类型检查
+pnpm type-check
 ```
 
 ## 开发指南
@@ -79,4 +84,4 @@ pnpm format
 
 ## 授权协议
 
-[MIT License](./LICENSE)
+MIT License
