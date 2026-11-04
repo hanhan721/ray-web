@@ -29,10 +29,15 @@
       </template>
 
       <!-- 参数值列：加密参数显示 **** -->
+      <!-- 非加密值使用纯文本渲染：NText 会显式设置文字颜色，该颜色会随内容一起出现在省略 tooltip 中，
+           导致深色气泡上的文字难以辨认 -->
       <template #cell-paramValue="{ row }">
-        <NText :type="(row as ParamRow).encrypted ? 'warning' : 'default'">
-          {{ (row as ParamRow).encrypted ? '****' : (row as ParamRow).paramValue }}
+        <NText v-if="(row as ParamRow).encrypted" type="warning">
+          ****
         </NText>
+        <template v-else>
+          {{ (row as ParamRow).paramValue }}
+        </template>
       </template>
 
       <!-- 参数类型列 -->

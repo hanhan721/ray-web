@@ -54,9 +54,29 @@ export function deepClone<T>(obj: T): T {
 
 /**
  * 格式化日期
+ *
+ * 兼容后端 LocalDateTime 序列化出的 ISO 字符串（如 2026-11-04T16:24:22.7854649）
+ * 以及带空格的 yyyy-MM-dd HH:mm:ss。空值或非法日期返回 '-'。
  */
-export function formatDate(date: Date | string | number, format = 'YYYY-MM-DD HH:mm:ss'): string {
-  const d = new Date(date)
+export function formatDate(
+  date: Date | string | number | null | undefined,
+  format = 'YYYY-MM-DD HH:mm:ss'
+): string {
+  if (date === null || date === undefined || date === '') return '-'
+
+  let value: Date | string | number = date
+  if (typeof date === 'string') {
+    value = date.replace(' ', 'T')
+    // 部分浏览器只支持最多 3 位小数秒
+    value = value.replace(/(\.\d{3})\d+/, '$1')
+    // 纯日期按本地时区解析，避免 new Date('YYYY-MM-DD') 被当作 UTC
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      value = `${value}T00:00:00`
+    }
+  }
+
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return '-'
   const year = d.getFullYear()
   const month = String(d.getMonth() + 1).padStart(2, '0')
   const day = String(d.getDate()).padStart(2, '0')
