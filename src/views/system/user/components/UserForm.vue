@@ -48,7 +48,7 @@
             <NFormItem label="性别" path="gender">
               <NSelect
                 v-model:value="formData.gender"
-                :options="GenderOptions"
+                :options="genderOptions"
                 placeholder="请选择性别"
               />
             </NFormItem>
@@ -155,6 +155,9 @@ const emit = defineEmits<{
 }>()
 
 const message = useMessage()
+
+// 枚举常量是只读元组，NSelect 需要可变选项数组
+const genderOptions = [...GenderOptions]
 
 // 弹窗可见性
 const visible = computed({

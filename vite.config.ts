@@ -61,10 +61,16 @@ export default defineConfig(({ mode }) => {
     build: {
       target: 'esnext',
       chunkSizeWarningLimit: 1000,
-      rollupOptions: {
+      // Vite 8 使用 Rolldown，manualChunks 对象写法已移除，改用 codeSplitting
+      rolldownOptions: {
         output: {
-          manualChunks: {
-            vue: ['vue', 'vue-router', 'pinia'],
+          codeSplitting: {
+            groups: [
+              {
+                name: 'vue',
+                test: /node_modules[\\/](?:@vue|vue|vue-router|pinia)[\\/]/,
+              },
+            ],
           },
         },
       },

@@ -65,7 +65,7 @@
         <NSelect
           v-model:value="formData.paramType"
           :disabled="isEdit"
-          :options="ParamTypeOptions"
+          :options="paramTypeOptions"
           placeholder="请选择参数类型"
         />
       </NFormItem>
@@ -148,6 +148,9 @@ const emit = defineEmits<{
 }>()
 
 const message = useMessage()
+
+// 枚举常量是只读元组，NSelect 需要可变选项数组
+const paramTypeOptions = [...ParamTypeOptions]
 
 const visible = computed({
   get: () => props.show,
@@ -279,7 +282,7 @@ async function handleSubmit() {
         paramKey: formData.paramKey,
         paramValue: formData.paramValue,
         paramType: formData.paramType,
-        bizType: Number(formData.bizType) ?? 0,
+        bizType: Number(formData.bizType),
         encrypted: formData.encrypted,
         description: formData.description || undefined,
       })

@@ -3,7 +3,8 @@
     <ProTable
       ref="tableRef"
       :columns="columns"
-      :request="requestOnlineList"
+      :request="requestOnlineSessions"
+      row-key="sessionId"
       show-index
     >
       <!-- 操作列 -->
@@ -13,7 +14,7 @@
             text
             type="error"
             confirm-text="确定要强制下线该会话吗？"
-            @confirm="handleKickToken(row as OnlineRow)"
+            @confirm="handleKickSession(row as OnlineRow)"
           >
             <template #icon>
               <NIcon><LogOutOutline /></NIcon>
@@ -46,7 +47,7 @@
 import { NIcon, NSpace, NTooltip } from 'naive-ui'
 import { LogOutOutline, BanOutline } from '@vicons/ionicons5'
 import type { ProTableColumn, ProTableExpose, ProTableRequestParams } from '@/components/common/ProTable/types'
-import { getOnlineList, kickByTokenId, kickByUserId, type OnlineUser } from '@/api/online'
+import { getOnlineSessionPage, kickBySessionId, kickByUserId, type OnlineUser } from '@/api/online'
 
 defineOptions({
   name: 'OnlinePage',
@@ -57,17 +58,27 @@ type OnlineRow = OnlineUser & Record<string, unknown>
 const message = useMessage()
 const tableRef = ref<ProTableExpose | null>(null)
 
-async function requestOnlineList(params: ProTableRequestParams) {
-  const list = await getOnlineList({
-    username: params.username as string | undefined,
-    loginIp: params.loginIp as string | undefined,
+/**
+ * 将日期范围的时间戳转为后端接受的 ISO 本地日期时间。
+ */
+function formatLocalDateTime(timestamp: number, endOfDay = false) {
+  const date = new Date(timestamp)
+  const pad = (value: number) => String(value).padStart(2, '0')
+  const day = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+  return endOfDay ? `${day}T23:59:59.999` : `${day}T00:00:00`
+}
+
+async function requestOnlineSessions(params: ProTableRequestParams) {
+  const range = params.loginTime as [number, number] | undefined
+  const result = await getOnlineSessionPage({
+    pageNum: params.pageNum,
+    pageSize: params.pageSize,
+    startTime: range?.[0] != null ? formatLocalDateTime(range[0]) : undefined,
+    endTime: range?.[1] != null ? formatLocalDateTime(range[1], true) : undefined,
   })
   return {
-    records: list as unknown as Record<string, unknown>[],
-    total: list.length,
-    current: 1,
-    size: list.length,
-    pages: 1,
+    ...result,
+    records: result.records as unknown as Record<string, unknown>[],
   }
 }
 
@@ -76,7 +87,6 @@ const columns: ProTableColumn[] = [
     key: 'username',
     title: '用户名',
     width: 140,
-    search: { component: 'input' },
   },
   {
     key: 'nickname',
@@ -87,7 +97,6 @@ const columns: ProTableColumn[] = [
     key: 'loginIp',
     title: '登录 IP',
     width: 160,
-    search: { component: 'input' },
   },
   {
     key: 'browser',
@@ -105,6 +114,7 @@ const columns: ProTableColumn[] = [
     key: 'loginTime',
     title: '登录时间',
     width: 180,
+    search: { component: 'date-range', label: '登录时间' },
   },
   {
     key: 'actions',
@@ -115,8 +125,8 @@ const columns: ProTableColumn[] = [
   },
 ]
 
-async function handleKickToken(row: OnlineRow) {
-  await kickByTokenId(row.tokenId)
+async function handleKickSession(row: OnlineRow) {
+  await kickBySessionId(row.sessionId)
   message.success('已强制下线该会话')
   tableRef.value?.refresh()
 }
