@@ -37,7 +37,9 @@ declare interface PageQuery {
 declare type WithChildren<T> = T & { children?: WithChildren<T>[] }
 
 /** 表单类型（去除只读字段） */
-declare type FormType<T> = Partial<Omit<T, 'id' | 'createTime' | 'updateTime' | 'createBy' | 'updateBy'>>
+declare type FormType<T> = Partial<
+  Omit<T, 'id' | 'createTime' | 'updateTime' | 'createBy' | 'updateBy'>
+>
 
 /** ID 集合（用于批量删除） */
 declare type IdSet = Set<number>

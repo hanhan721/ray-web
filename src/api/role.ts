@@ -75,4 +75,3 @@ export function deleteRoles(ids: number[]) {
 export function updateRoleStatus(id: number, enabled: boolean) {
   return put<void>(`/sys/role/${id}/status`, null, { params: { enabled } })
 }
-
