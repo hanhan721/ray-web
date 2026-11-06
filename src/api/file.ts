@@ -1,5 +1,5 @@
 import { get, post, del } from '@/utils/request'
-import type { RequestConfig } from '@/utils/request'
+import type { RequestConfig } from '@/types/request'
 
 /**
  * 获取文件访问 URL

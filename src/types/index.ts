@@ -12,5 +12,8 @@ export * from './enums'
 // 权限相关类型
 export * from './permission'
 
+export type { UserInfo } from './auth'
+export type { RequestConfig } from './request'
+
 // 全局类型已在 global.d.ts 中声明，无需导入即可使用：
 // R<T>, IPage<T>, PageQuery, WithChildren<T>, FormType<T>, IdSet

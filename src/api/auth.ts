@@ -1,5 +1,5 @@
 import { post, get } from '@/utils/request'
-import type { UserInfo } from '@/stores/user'
+import type { UserInfo } from '@/types/auth'
 
 // 登录参数
 export interface LoginParams {
