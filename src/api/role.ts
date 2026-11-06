@@ -26,13 +26,14 @@ export type RoleForm = Partial<Omit<Role, 'id' | 'createTime'>>
 export interface RoleQuery extends PageQuery {
   roleName?: string
   roleKey?: string
+  enabled?: boolean
 }
 
 /**
  * 分页查询角色
  */
-export function getRolePage(params: RoleQuery) {
-  return get<IPage<Role>>('/sys/role/page', params)
+export function getRolePage(params: RoleQuery, config?: RequestConfig) {
+  return get<IPage<Role>>('/sys/role/page', params, config)
 }
 
 /**
@@ -43,31 +44,31 @@ export function getRoleList(config?: RequestConfig) {
 }
 
 /**
- * 获取角色详情（含权限ID）
+ * 获取角色详情。权限 ID 由权限接口单独返回。
  */
-export function getRoleById(id: number) {
-  return get<Role>(`/sys/role/${id}`)
+export function getRoleById(id: number, config?: RequestConfig) {
+  return get<Role>(`/sys/role/${id}`, undefined, config)
 }
 
 /**
  * 新增角色
  */
-export function createRole(data: RoleForm) {
-  return post<void>('/sys/role', data)
+export function createRole(data: RoleForm, config?: RequestConfig) {
+  return post<void>('/sys/role', data, config)
 }
 
 /**
  * 修改角色
  */
-export function updateRole(data: Role) {
-  return put<void>('/sys/role', data)
+export function updateRole(data: Role, config?: RequestConfig) {
+  return put<void>('/sys/role', data, config)
 }
 
 /**
  * 删除角色
  */
-export function deleteRoles(ids: number[]) {
-  return del<void>('/sys/role', ids)
+export function deleteRoles(ids: number[], config?: RequestConfig) {
+  return del<void>('/sys/role', ids, config)
 }
 
 /**

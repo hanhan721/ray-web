@@ -1,4 +1,5 @@
 import { get, post, put, del } from '@/utils/request'
+import type { RequestConfig } from '@/types/request'
 import type { PermissionTree, PermissionForm } from '@/types/permission'
 
 // 权限树 session 级缓存，刷新页面自动失效
@@ -8,9 +9,9 @@ let _permissionTreeCache: PermissionTree[] | null = null
  * 获取权限树（含按钮，管理用）
  * 同一会话内只请求一次，权限变更后调用 clearPermissionTreeCache() 手动失效
  */
-export function getPermissionTree() {
+export function getPermissionTree(config?: RequestConfig) {
   if (_permissionTreeCache) return Promise.resolve(_permissionTreeCache)
-  return get<PermissionTree[]>('/sys/permission/tree').then((tree) => {
+  return get<PermissionTree[]>('/sys/permission/tree', undefined, config).then((tree) => {
     _permissionTreeCache = tree
     return tree
   })
@@ -63,15 +64,19 @@ export function deletePermission(id: number) {
 /**
  * 查询角色拥有的权限ID列表
  */
-export function getRolePermissions(roleId: number) {
-  return get<number[]>(`/sys/permission/role/${roleId}`)
+export function getRolePermissions(roleId: number, config?: RequestConfig) {
+  return get<number[]>(`/sys/permission/role/${roleId}`, undefined, config)
 }
 
 /**
  * 保存角色权限（覆盖原有权限）
  */
-export function saveRolePermissions(roleId: number, permissionIds: number[]) {
-  return post<void>(`/sys/permission/role/${roleId}`, permissionIds)
+export function saveRolePermissions(
+  roleId: number,
+  permissionIds: number[],
+  config?: RequestConfig,
+) {
+  return post<void>(`/sys/permission/role/${roleId}`, permissionIds, config)
 }
 
 /**
