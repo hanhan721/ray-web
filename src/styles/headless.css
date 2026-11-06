@@ -1,0 +1,99 @@
+@layer theme, base, components, utilities;
+@import 'tailwindcss/theme.css' layer(theme) prefix(tw);
+@import 'tailwindcss/utilities.css' layer(utilities) prefix(tw) source(none) important;
+
+@source '../components/ui';
+@source '../components/common/ProTableHeadless';
+@source '../views/system/user/headless';
+
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+@theme inline {
+  --spacing: 4px;
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-base: 16px;
+  --text-lg: 18px;
+  --text-xl: 20px;
+  --text-3xl: 30px;
+  --color-background: var(--ui-background);
+  --color-foreground: var(--ui-foreground);
+  --color-card: var(--ui-card);
+  --color-card-foreground: var(--ui-foreground);
+  --color-popover: var(--ui-card);
+  --color-popover-foreground: var(--ui-foreground);
+  --color-primary: var(--ui-primary);
+  --color-primary-foreground: var(--ui-primary-foreground);
+  --color-secondary: var(--ui-muted);
+  --color-secondary-foreground: var(--ui-foreground);
+  --color-muted: var(--ui-muted);
+  --color-muted-foreground: var(--ui-muted-foreground);
+  --color-accent: var(--ui-muted);
+  --color-accent-foreground: var(--ui-foreground);
+  --color-destructive: #dc2626;
+  --color-destructive-foreground: #fff;
+  --color-border: var(--ui-border);
+  --color-input: var(--ui-border);
+  --color-ring: var(--ui-primary);
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+}
+
+:root {
+  --ui-background: #f5f7fa;
+  --ui-foreground: #172033;
+  --ui-card: #fff;
+  --ui-primary: #2563eb;
+  --ui-primary-foreground: #fff;
+  --ui-muted: #f0f3f8;
+  --ui-muted-foreground: #64748b;
+  --ui-border: #e2e8f0;
+  --ui-success: #15803d;
+  --ui-success-bg: #ecfdf3;
+}
+
+[data-theme='dark'] {
+  --ui-background: #101722;
+  --ui-foreground: #e2e8f0;
+  --ui-card: #182231;
+  --ui-primary: #60a5fa;
+  --ui-primary-foreground: #101722;
+  --ui-muted: #243245;
+  --ui-muted-foreground: #a0aec0;
+  --ui-border: #334155;
+  --ui-success: #86efac;
+  --ui-success-bg: #143b2b;
+}
+
+/* Keep resets local: the existing Naive UI pages keep their current styles. */
+.headless-ui {
+  color: var(--ui-foreground);
+  font-family: inherit;
+  line-height: 1.5;
+}
+
+.headless-ui :where(*, *::before, *::after) {
+  border-color: var(--ui-border);
+  border-style: solid;
+  border-width: 0;
+}
+
+.headless-ui :where(input, textarea, select) {
+  background: transparent;
+}
+
+.headless-ui :where(button, input, textarea, select):focus-visible {
+  outline: 2px solid var(--ui-primary);
+  outline-offset: 3px;
+}
+
+.headless-ui :where(button):disabled {
+  cursor: not-allowed;
+}
+
+.headless-ui :where(svg) {
+  display: block;
+  flex-shrink: 0;
+}

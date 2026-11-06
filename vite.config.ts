@@ -4,6 +4,7 @@ import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
 import { NaiveUiResolver } from 'unplugin-vue-components/resolvers'
 import { fileURLToPath, URL } from 'node:url'
+import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
@@ -11,6 +12,7 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [
       vue(),
+      tailwindcss(),
       // 自动导入 Vue、Vue Router、Pinia 等 API
       AutoImport({
         imports: [
@@ -31,6 +33,7 @@ export default defineConfig(({ mode }) => {
       Components({
         dirs: ['src/components'],
         extensions: ['vue'],
+        exclude: [/[/\\]components[/\\]ui[/\\]/],
         dts: 'src/types/components.d.ts',
         resolvers: [NaiveUiResolver()],
       }),

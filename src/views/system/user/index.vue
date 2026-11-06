@@ -1,125 +1,131 @@
 <template>
-  <div class="user-page">
-    <ProTable
-      ref="tableRef"
-      :columns="columns"
-      :request="requestUser"
-      :page-key="PAGE_KEYS.SYS_USER"
-      show-index
-      show-selection
-      @selection-change="(keys) => selectedIds = keys as number[]"
-    >
-      <template #toolbar>
-        <NButton type="primary" @click="handleAdd">
-          <template #icon>
-            <NIcon><AddOutline /></NIcon>
-          </template>
-          新增
-        </NButton>
-        <ConfirmButton
-          :disabled="!selectedIds.length"
-          type="error"
-          confirm-text="确定要删除选中的用户吗？"
-          @confirm="handleBatchDelete"
-        >
-          <template #icon>
-            <NIcon><TrashOutline /></NIcon>
-          </template>
-          批量删除
-        </ConfirmButton>
-      </template>
-
-      <!-- 状态列 -->
-      <template #cell-enabled="{ row }">
-        <StatusSwitch
-          v-model="(row as UserRow).enabled"
-          :api="handleUpdateStatus"
-          :params="{ id: (row as UserRow).id }"
-          confirm-text="确定要修改该用户的状态吗？"
-          status-field="enabled"
-        />
-      </template>
-
-      <!-- 操作列 -->
-      <template #cell-actions="{ row }">
-        <NSpace :size="4">
-          <NButton text type="primary" @click="handleEdit(row as UserRow)">
-            <template #icon>
-              <NIcon><CreateOutline /></NIcon>
-            </template>
-            编辑
+  <div :class="route.query.ui === 'headless' ? 'user-comparison' : 'user-page'">
+    <UserHeadless v-if="route.query.ui === 'headless'" @compare="showOriginal" />
+    <template v-else>
+      <ProTable
+        ref="tableRef"
+        :columns="columns"
+        :request="requestUser"
+        :page-key="PAGE_KEYS.SYS_USER"
+        show-index
+        show-selection
+        @selection-change="(keys) => selectedIds = keys as number[]"
+      >
+        <template #toolbar>
+          <NButton secondary type="info" @click="showHeadless">
+            新版对照
           </NButton>
-          <NButton text type="info" @click="handleResetPassword(row as UserRow)">
+          <NButton type="primary" @click="handleAdd">
             <template #icon>
-              <NIcon><LockClosedOutline /></NIcon>
+              <NIcon><AddOutline /></NIcon>
             </template>
-            重置密码
+            新增
           </NButton>
           <ConfirmButton
-            text
+            :disabled="!selectedIds.length"
             type="error"
-            confirm-text="确定要删除该用户吗？"
-            @confirm="handleDelete(row as UserRow)"
+            confirm-text="确定要删除选中的用户吗？"
+            @confirm="handleBatchDelete"
           >
             <template #icon>
               <NIcon><TrashOutline /></NIcon>
             </template>
-            删除
+            批量删除
           </ConfirmButton>
-        </NSpace>
-      </template>
-    </ProTable>
+        </template>
 
-    <!-- 新增/编辑表单弹窗 -->
-    <UserForm
-      v-model:show="formVisible"
-      :data="currentRow"
-      @success="handleFormSuccess"
-    />
+        <!-- 状态列 -->
+        <template #cell-enabled="{ row }">
+          <StatusSwitch
+            v-model="(row as UserRow).enabled"
+            :api="handleUpdateStatus"
+            :params="{ id: (row as UserRow).id }"
+            confirm-text="确定要修改该用户的状态吗？"
+            status-field="enabled"
+          />
+        </template>
 
-    <!-- 重置密码弹窗 -->
-    <NModal
-      v-model:show="passwordVisible"
-      preset="card"
-      title="重置密码"
-      :style="{ width: '400px' }"
-      :mask-closable="false"
-    >
-      <NForm
-        ref="passwordFormRef"
-        :model="passwordForm"
-        :rules="passwordRules"
-        label-placement="left"
-        label-width="80"
+        <!-- 操作列 -->
+        <template #cell-actions="{ row }">
+          <NSpace :size="4">
+            <NButton text type="primary" @click="handleEdit(row as UserRow)">
+              <template #icon>
+                <NIcon><CreateOutline /></NIcon>
+              </template>
+              编辑
+            </NButton>
+            <NButton text type="info" @click="handleResetPassword(row as UserRow)">
+              <template #icon>
+                <NIcon><LockClosedOutline /></NIcon>
+              </template>
+              重置密码
+            </NButton>
+            <ConfirmButton
+              text
+              type="error"
+              confirm-text="确定要删除该用户吗？"
+              @confirm="handleDelete(row as UserRow)"
+            >
+              <template #icon>
+                <NIcon><TrashOutline /></NIcon>
+              </template>
+              删除
+            </ConfirmButton>
+          </NSpace>
+        </template>
+      </ProTable>
+
+      <!-- 新增/编辑表单弹窗 -->
+      <UserForm
+        v-model:show="formVisible"
+        :data="currentRow"
+        @success="handleFormSuccess"
+      />
+
+      <!-- 重置密码弹窗 -->
+      <NModal
+        v-model:show="passwordVisible"
+        preset="card"
+        title="重置密码"
+        :style="{ width: '400px' }"
+        :mask-closable="false"
       >
-        <NFormItem label="新密码" path="password">
-          <NInput
-            v-model:value="passwordForm.password"
-            type="password"
-            show-password-on="click"
-            placeholder="请输入新密码"
-          />
-        </NFormItem>
-        <NFormItem label="确认密码" path="confirmPassword">
-          <NInput
-            v-model:value="passwordForm.confirmPassword"
-            type="password"
-            show-password-on="click"
-            placeholder="请再次输入新密码"
-          />
-        </NFormItem>
-      </NForm>
-      <template #footer>
-        <NSpace justify="end">
-          <NButton @click="passwordVisible = false">
-            取消
-          </NButton>
-          <NButton type="primary" :loading="passwordLoading" @click="handlePasswordSubmit">
-            确定
-          </NButton>
-        </NSpace>
-      </template>
-    </NModal>
+        <NForm
+          ref="passwordFormRef"
+          :model="passwordForm"
+          :rules="passwordRules"
+          label-placement="left"
+          label-width="80"
+        >
+          <NFormItem label="新密码" path="password">
+            <NInput
+              v-model:value="passwordForm.password"
+              type="password"
+              show-password-on="click"
+              placeholder="请输入新密码"
+            />
+          </NFormItem>
+          <NFormItem label="确认密码" path="confirmPassword">
+            <NInput
+              v-model:value="passwordForm.confirmPassword"
+              type="password"
+              show-password-on="click"
+              placeholder="请再次输入新密码"
+            />
+          </NFormItem>
+        </NForm>
+        <template #footer>
+          <NSpace justify="end">
+            <NButton @click="passwordVisible = false">
+              取消
+            </NButton>
+            <NButton type="primary" :loading="passwordLoading" @click="handlePasswordSubmit">
+              确定
+            </NButton>
+          </NSpace>
+        </template>
+      </NModal>
+    </template>
   </div>
 </template>
 
@@ -142,6 +148,7 @@ import {
 } from '@/api/user'
 import { GenderLabel, PAGE_KEYS, type Gender } from '@/types/enums'
 import UserForm from './components/UserForm.vue'
+import UserHeadless from './headless/index.vue'
 
 defineOptions({
   name: 'UserPage',
@@ -151,6 +158,16 @@ defineOptions({
 type UserRow = SysUser & Record<string, unknown>
 
 const message = useMessage()
+const route = useRoute()
+const router = useRouter()
+
+function showHeadless() {
+  router.replace({ query: { ...route.query, ui: 'headless' } })
+}
+
+function showOriginal() {
+  router.replace({ query: { ...route.query, ui: undefined } })
+}
 
 // 表格引用
 const tableRef = ref<ProTableExpose | null>(null)
