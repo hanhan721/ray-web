@@ -9,7 +9,7 @@ export const viewLoaders: Record<string, ViewLoader> = {
   'system/user/index': () => import('@/views/system/user/index.vue'),
   'system/role/index': () => import('@/views/system/role/index.vue'),
   'system/dept/index': () => import('@/views/system/dept/index.vue'),
-  'system/menu/index': pending,
+  'system/menu/index': () => import('@/views/system/menu/index.vue'),
   'system/dict/index': pending,
   'system/param/index': pending,
   'system/online/index': pending,
