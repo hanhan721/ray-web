@@ -4,7 +4,7 @@
 
 ## 当前阶段
 
-`v2` 已完成阶段 0–4。Vite、TypeScript、ESLint、Prettier、源码别名、应用入口、开发代理、真实的 `src/utils/request.ts` 和最小视觉系统已落地。登录、路由、Pinia 会话和布局已接入；访问令牌仍只由请求层保存。菜单页在阶段 5 前使用占位页。登录相关 API 定义属于后端契约，请求层只负责传输、解包和 Bearer 注入。
+`v2` 已完成阶段 0–5。Vite、TypeScript、ESLint、Prettier、源码别名、应用入口、开发代理、真实的 `src/utils/request.ts` 和最小视觉系统已落地。登录、路由、Pinia 会话和布局已接入；访问令牌仍只由请求层保存。用户管理已接真实接口，其他菜单页仍是占位页。登录相关 API 定义属于后端契约，请求层只负责传输、解包和 Bearer 注入。
 
 ## 技术栈与版本基线
 
