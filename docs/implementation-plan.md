@@ -434,7 +434,7 @@ del<T>(url: string, data?: unknown, config?: RequestConfig): Promise<T>
 | 1 | DONE | L0-T | 2026-11-06 `npm view` 复核稳定版与 peer。未把 TypeScript 7.0.2 当作可用版本 | Context7 MCP 本会话不可用，依据 npm 与官方文档 |
 | 2 | DONE | L1 / L2 | `pnpm type-check`、`pnpm lint`、`pnpm build`、`pnpm format:check` 均退出码 0。`vitest run src/utils/test/request.test.ts`：17 通过（模拟 HTTP / Blob adapter）。真实链路：`RAY_LIVE_API=1`、`RAY_API_PROXY=http://127.0.0.1:5174/api`，`vitest run src/utils/test/request.live.test.ts` 1 通过；`expireIn=1800`，`username=admin`，随后 logout。浏览器打开 `http://127.0.0.1:5174/`，挂载文案正确且无控制台错误。未记录 accessToken | 自动刷新、登录页、路由与 Store 留在后续阶段 |
 | 3 | DONE | L1 / L2 | 2026-11-06。`pnpm type-check`、`pnpm lint` 退出码 0。浏览器打开 `http://127.0.0.1:5174/`（5173 仍被其他项目占用）：浅色、深色和 390px 窄屏无横向溢出；长备注换行；账号字段有关联标签；错误字段为红色边框和说明；Escape、关闭和取消都会把焦点还回触发按钮；Tab 留在弹窗内且焦点环可见；Toast 显示「已保存」。控制台无 error / warning。示例表格不是接口数据 | 登录、路由和 Store 仍在阶段 4。请求层的 `setErrorNotifier` 尚未接到 vue-sonner |
-| 4 | TODO | L1 / L2 | 鉴权、路由测试与浏览器验收，未执行 | Bearer 已确认，菜单与会话细节待核实 |
+| 4 | DONE | L1 / L2 | 2026-11-06。守卫与会话 `vitest` 14 通过；菜单测试在路由映射完成后通过，后续未改映射故未重跑。请求层 `vitest` 26 通过（模拟 HTTP）。`vue-tsc -b` 通过。浏览器使用真实后端：未登录跳转、错误密码、登录、刷新页面、无权限、未知地址、重复 401 只刷新一次、过期令牌打开登录页后进入用户管理、退出。390px 键盘选择菜单后焦点在主内容。独立审查：请求层 2 次第 2 次 PASS；登录与路由 3 次第 3 次 PASS。未记录令牌，未运行构建 | 菜单页仍是占位页。`file.ts` 见 Q04 |
 | 5 | TODO | L1 | 用户页聚焦验收，未执行 | 已提供开发测试环境，尚未联调 |
 | 6 | TODO | L1 / L2 | 公共契约与调用方验证，未执行 | 按真实需要提取 |
 | 7 | TODO | L1 / L2 | 各模块相关检查，未执行 | 以授权范围为准 |
@@ -453,8 +453,9 @@ del<T>(url: string, data?: unknown, config?: RequestConfig): Promise<T>
 | D05 | 初始化采用 2026-11-06 复核后的精确版本 | TypeScript 保持 6.0.3，因为 `typescript-eslint@8.72.1` 只支持 `<6.1.0`，不采用 7.0.2。pnpm 升到 12.18.0，`@lucide/vue` 升到 1.70.0。新增 vite 8.3.6、vitest 5.1.0、eslint-config-prettier 10.1.8、globals 17.14.0。TS 6 废弃 `baseUrl`，`paths` 改为相对 tsconfig。`@lucide/vue@1.70.0` 写入 `pnpm-workspace.yaml` 的 `minimumReleaseAgeExclude`，否则 pnpm 12 的发布龄门槛会拒绝安装 | 2026-11-06 |
 | D06 | 请求层自行持有 sessionStorage 令牌，不接 Store、Toast 或自动刷新 | 键名 `ray.accessToken`。`POST /auth/login` 不注入 Bearer。非登录 401 每轮只清理一次并调用可注册处理函数；登录失败返回的业务 401 不清理、不跳转。刷新仍依赖 HttpOnly Cookie `refresh_token`（Path `/api/auth`），本阶段不实现自动刷新，也不全局开启 `withCredentials`。FormData 去掉无 boundary 的 Content-Type。Blob 只在没有文件名 Content-Disposition、JSON 类型、不超过 1MB 且 `code !== 200` 时按业务错误处理。`null` 请求体不发送。`setErrorNotifier` 留给阶段 4 接 vue-sonner | 2026-11-06 |
 | D07 | 请求层聚焦测试使用 Vitest，默认不跑真实后端，测试目录不入库 | `pnpm test` 只执行 `src/utils/test/request.test.ts`。所有测试文件放在名为 `test` 的目录中，`.gitignore` 用 `**/test/` 排除。真实联调由 `RAY_LIVE_API=1` 单独开启。Axios 1.21 的 Node HTTP 适配器不会把 `responseType: 'blob'` 变成 Blob，Blob 用例用自定义 adapter 模拟浏览器 XHR 结果，报告中标为模拟 | 2026-11-06 |
-| D08 | 开发服务器配置端口保持 5173，验收时若被占用则改用 5174 | Tailwind 已在阶段 3 接入。配置中的 dev 端口仍是 5173，以匹配后端 CORS 白名单。本机 `0.0.0.0:5173` 仍有其他项目的 Vite，阶段 3 浏览器验收使用 `vite --port 5174 --strictPort --host 127.0.0.1` | 2026-11-06 |
+| D08 | 开发服务器配置端口保持 5173；代理转发时去掉 Origin | 配置端口仍是 5173。本机 5173 被其他项目占用。后端 CORS 只放行 5173 和 3000，浏览器在 5174 上发登录会得到 Spring 的 `Invalid CORS request`。Vite 代理已在转发前去掉 Origin，因为浏览器只与开发服务器同源通信。5174 去掉 Origin 后登录、刷新 Cookie 和退出可用。3000 因在白名单内，不去掉 Origin 也同样可用 | 2026-11-06 |
 | D09 | 视觉系统使用 Mira、mist 底色和 teal 主操作色 | CLI `shadcn-vue@2.9.0`，预设码 `a6OYtvIO`：`reka-mira`、`baseColor=mist`、`theme=teal`、`radius=small`（`--radius: 0.45rem`）、lucide、`pointer`。全局 CSS 为 `src/styles/globals.css`，Tailwind v4 不设 `tailwind.config`。`aliases.utils` 为 `@/lib/utils`，该文件再导出 `cn` 包的 `cn`；生成组件直接 `import { cn } from 'cn'`，与包导出一致。字体用 `@fontsource-variable/ibm-plex-sans@5.3.0`（OFL）自托管，中文回退系统字体，不请求 Google Fonts。`shadcn-vue@2.9.0` 留在依赖里，只因为 CSS 导入 `shadcn-vue/tailwind.css`，页面不从该包导入组件。另固定 `tw-animate-css@1.4.0`、`vue-sonner@2.0.9`。根 `tsconfig.json` 补了 `@/*`，否则 CLI 看不到 `tsconfig.app.json` 里的别名。Vue 会把布尔 `data-invalid` 渲染成空字符串，生成类原本只匹配 `=true`，已改为按属性存在匹配。Sonner 的 `--gray2` 从无效的 `hsl(var(--popover))` 改为 `color-mix`。弹窗关闭和加载状态的可读文案改为中文。`prefers-reduced-motion` 会缩短动画。`src/components/ui` 关闭 `vue/multi-word-component-names` 和 `vue/require-default-prop`，避免为了生成文件改组件名或给每个可选 `class` 补默认值 | 2026-11-06 |
+| D10 | 启用自动刷新，令牌仍由请求层保存 | 真实 `POST /api/auth/refresh`：Cookie `refresh_token`（Path `/api/auth`，HttpOnly，SameSite=Lax）足够换新 accessToken；无 Cookie 返回业务 401「Refresh Token 不存在」；无效 Bearer 加有效 Cookie 仍成功。只给 login、refresh、logout 设置 `withCredentials`。并发 401 共享一次刷新，刷新自身不递归，原请求最多重放一次。刷新失败或重放仍 401 时清理一次并通知一次。登录失败的 401 不清理。403 不刷新。`sessionEpoch` 在登录写入和清理时增加，刷新轮换不增加。换代会中止上一代已经发出的刷新，避免迟到的 `Set-Cookie` 覆盖新登录写入的 Refresh Cookie；后端成功刷新会轮换 Cookie，失败会把同名 Cookie 的 Max-Age 设为 0。直接 `refreshToken()` 和自动刷新共用同一次请求。浏览器已看到两条 userinfo 401 只对应一次 refresh 200，新令牌写回且页面保持登录；5174 去掉 Origin 后 Cookie 刷新同样成功。未记录令牌 | 2026-11-06 |
 
 后续记录影响开发的实际决定：问题、选择、证据、范围、兼容例外与验证结果。§3 默认方案被实际采用或调整时补充记录，无需为每个局部变量或布局选择写条目。
 
@@ -463,22 +464,30 @@ del<T>(url: string, data?: unknown, config?: RequestConfig): Promise<T>
 | 编号 | 事项 | 状态与下一步 | 影响范围 |
 | --- | --- | --- | --- |
 | Q01 | 真实 API 地址、代理目标与联调账号 | 已实测：后端无 context-path，控制器在 `/api` 下，代理不改写路径。登录、用户信息、退出经 Vite 代理成功 | 阶段 4 起可沿用该代理 |
-| Q02 | expireIn 单位、刷新前提与失效语义 | 已核实：`expireIn` 单位是秒，本次真实响应为 1800。刷新读取 Cookie `refresh_token`，不是 Access Token 正文；自动刷新仍不启用。非登录 401 已收敛为清理本地令牌 | 阶段 4 实现刷新与跳转时沿用，不再询问凭据头 |
-| Q03 | component / routeName 格式与按钮权限 code 含义 | 待核实：对照返回样例与本地映射，内部实现由 AI 决定 | 真实菜单、路由与权限联调 |
+| Q02 | expireIn 单位、刷新前提与失效语义 | 已核实并接入，见 D10。`expireIn` 单位是秒。失效跳转接到登录页，其他错误接到 vue-sonner。登录失败留在表单 | 不再询问凭据头 |
+| Q03 | component / routeName 格式与按钮权限 code 含义 | 已按 admin 的 userinfo 写入 `src/router/views.ts`。目录 `component`、`routeName` 为 null。菜单 `url` 为 `user` 或 `/job`，`component` 为 `system/user/index`、`schedule/job/index`。未知 component 不注册、不执行。按钮权限在 `permissions`，不在菜单树里。阶段 4 这些菜单页共用后续阶段占位页 | 不执行任意组件字符串 |
 | Q04 | 列表 orderBy，以及文件接口是否仍与 `file.ts` 一致 | 文件契约不一致，本阶段未改 `file.ts`。前端仍是 `/sys/file/upload`、`/upload/batch`、`/download?filePath`；当前后端是 `POST /api/sys/file`、`POST /api/sys/file/batch`，下载为 `GET /api/sys/file/{id}/download` 的 302。orderBy 仍未核实 | 阶段 7 做文件页前必须重对齐；不阻塞请求层 |
 | Q05 | style、baseColor、视觉细节与 aliases.utils | 已落地，见 D09。后续换风格前要评估已生成组件 | 工程选择，已记录 |
 | Q06 | 最小测试工具、表单库与复杂控件 | 测试工具已定为 Vitest 5.1.0。表单库与复杂控件仍不预装 | 阶段 3 之后按真实表单再选 |
-| Q07 | 用户信息头像字段 | 真实 `userinfo` 键为 `userId`、`username`、`nickname`、`avatarFileId`、`roles`、`menus`、`permissions`；本次 `avatarFileId` 为 null。前端类型仍是 `avatar?: StorageFile`，且序列化器字段是 `fileId/name/url/ext/size`，不是 `path/url/name` | 阶段 4 展示用户前对齐类型，本阶段不改契约 |
+| Q07 | 用户信息头像字段 | `UserInfo` 已改为 `avatarFileId?: number \| null`。本次真实值为 null。`SysUser.avatar` 和文件序列化器未改 | 文件页仍待阶段 7，见 Q04 |
 
 其他原有问题在 §3 给出默认方案，不再要求所有问题答完才能开工。真正需确认的问题按 §1 记录调查结果与局部影响。
 
 ### 8.4 当前未完成事项
 
-- 阶段 4 起尚未开始：登录页、路由、Pinia、布局和业务页。风格校验页目前由 `App.vue` 挂载。
-- 自动刷新和登录跳转尚未实现。401 仍只清理本地令牌并保留可注册处理函数。`vue-sonner` 已挂在根上，请求层的 `setErrorNotifier` 仍未接到 Toast。
-- `file.ts` 与当前文件控制器、`UserInfo.avatar` 与真实 `avatarFileId` 仍不一致。
+- `file.ts` 与当前文件控制器仍不一致。`SysUser.avatar` 未改；`UserInfo` 已使用 `avatarFileId`。
 - 本机 `0.0.0.0:5173` 被其他项目占用；日常 `pnpm dev` 仍配置为 5173，启动时若看到端口警告需要确认请求没有进到别的 Vite。
-- 本轮没有提交、推送或部署。未运行 `pnpm approve`，因此没有安装 `@tanstack/vue-table` 附带的 agent skills。
+- 阶段 4 已本地提交，未推送。未运行 `pnpm approve`，因此没有安装 `@tanstack/vue-table` 附带的 agent skills。
+
+### 阶段 4 恢复检查点
+
+- **已完成：** 登录、会话、路由守卫、本地菜单映射、布局、失效跳转、自动刷新和开发代理去掉 Origin。菜单页使用占位页。
+- **剩余：** 无。阶段 5 用户管理未开始，本轮未授权进入。
+- **关键决策：** D08、D10。令牌只在请求层。无“记住我”。登录错误留在表单。非 401 的资料加载失败进入工作台并保留令牌。刷新轮换只比较 `sessionEpoch`。`/denied` 用 `stage4:missing` 验收无权限页。风格校验页在 `/style-guide`。
+- **验证：** 守卫与会话 `vitest` 14 通过。请求层 26 通过（模拟，登录批次未改其实现）。`vue-tsc -b` 通过。浏览器见阶段 4 状态行。未记录令牌。
+- **审查：** 请求层 2 次，第 2 次 PASS。登录与路由 3 次，第 3 次 PASS。
+- **提交：** `07bf9ef` 请求层自动刷新；`2f6e88a` 登录、路由与布局。进度文档随后提交。未推送。
+- **下一步：** 审查阶段 1–3 的现有代码，再做阶段 5 用户管理。不要把占位页当成已经完成的业务页。
 
 ---
 
