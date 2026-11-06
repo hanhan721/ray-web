@@ -1,4 +1,5 @@
-import { get } from '@/utils/request'
+import { del, get, post, put } from '@/utils/request'
+import type { RequestConfig } from '@/types/request'
 
 /**
  * 字典数据项
@@ -63,4 +64,72 @@ function mapListClassToTagType(listClass?: string): DictItem['tagType'] {
 export async function getDictByType(dictType: string): Promise<DictItem[]> {
   const data = await get<DictData[]>(`/sys/dict/data/type/${dictType}`)
   return data.map(transformDictData)
+}
+
+export interface DictTypeRecord {
+  id: number
+  dictName: string
+  dictType: string
+  enabled: boolean
+  remark?: string
+}
+
+export interface DictDataRecord {
+  id: number
+  dictType: string
+  dictLabel: string
+  dictValue: string
+  sort: number
+  cssClass?: string
+  listClass?: string
+  isDefault?: boolean
+  enabled?: boolean
+  remark?: string
+}
+
+export interface DictTypeQuery extends PageQuery {
+  dictName?: string
+  dictType?: string
+  enabled?: boolean
+}
+
+export interface DictDataQuery extends PageQuery {
+  dictType?: string
+  dictLabel?: string
+  enabled?: boolean
+}
+
+export function getDictTypePage(query: DictTypeQuery, config?: RequestConfig) {
+  return get<IPage<DictTypeRecord>>('/sys/dict/type/page', query, config)
+}
+
+export function createDictType(
+  data: Omit<DictTypeRecord, 'id'> & { id?: number },
+  config?: RequestConfig,
+) {
+  return post<void>('/sys/dict/type', data, config)
+}
+
+export function updateDictType(data: DictTypeRecord, config?: RequestConfig) {
+  return put<void>('/sys/dict/type', data, config)
+}
+
+export function deleteDictTypes(ids: number[], config?: RequestConfig) {
+  return del<void>('/sys/dict/type', ids, config)
+}
+
+export function getDictDataPage(query: DictDataQuery, config?: RequestConfig) {
+  return get<IPage<DictDataRecord>>('/sys/dict/data/page', query, config)
+}
+
+export function createDictData(data: Omit<DictDataRecord, 'id'>, config?: RequestConfig) {
+  return post<void>('/sys/dict/data', data, config)
+}
+
+export function updateDictData(data: DictDataRecord, config?: RequestConfig) {
+  return put<void>('/sys/dict/data', data, config)
+}
+
+export function deleteDictData(ids: number[], config?: RequestConfig) {
+  return del<void>('/sys/dict/data', ids, config)
 }
