@@ -436,7 +436,7 @@ del<T>(url: string, data?: unknown, config?: RequestConfig): Promise<T>
 | 3 | DONE | L1 / L2 | 2026-11-06。`pnpm type-check`、`pnpm lint` 退出码 0。浏览器打开 `http://127.0.0.1:5174/`（5173 仍被其他项目占用）：浅色、深色和 390px 窄屏无横向溢出；长备注换行；账号字段有关联标签；错误字段为红色边框和说明；Escape、关闭和取消都会把焦点还回触发按钮；Tab 留在弹窗内且焦点环可见；Toast 显示「已保存」。控制台无 error / warning。示例表格不是接口数据 | 登录、路由和 Store 仍在阶段 4。请求层的 `setErrorNotifier` 尚未接到 vue-sonner |
 | 4 | DONE | L1 / L2 | 2026-11-06。守卫与会话 `vitest` 14 通过；菜单测试在路由映射完成后通过，后续未改映射故未重跑。请求层 `vitest` 26 通过（模拟 HTTP）。`vue-tsc -b` 通过。浏览器使用真实后端：未登录跳转、错误密码、登录、刷新页面、无权限、未知地址、重复 401 只刷新一次、过期令牌打开登录页后进入用户管理、退出。390px 键盘选择菜单后焦点在主内容。独立审查：请求层 2 次第 2 次 PASS；登录与路由 3 次第 3 次 PASS。未记录令牌，未运行构建 | 菜单页仍是占位页。`file.ts` 见 Q04 |
 | 5 | DONE | L1 | 2026-11-06。`vue-tsc -b` 与相关 eslint 通过。`vitest run src/views/system/user/test/user-list.test.ts` 5 通过（模拟，测试目录不入库）。真实后端：空筛选、新增、校验错误留在表单、回填、只改资料不重复分配、角色保存、密码、停用、列隐藏与刷新后恢复、删除测试用户后 admin 仍在。旧详情不会覆盖后打开的用户。清空昵称会保存。已有性别不能清空时对话框保持。列配置失败显示在对话框内。390px 无横向溢出。独立审查 2 次，第 2 次 PASS。未记录令牌，未运行构建 | 其他菜单页仍是占位页。`file.ts` 见 Q04。性别不能通过更新接口清空 |
-| 6 | TODO | L1 / L2 | 公共契约与调用方验证，未执行 | 按真实需要提取 |
+| 6 | DONE | L1 | 2026-11-06。只抽出列配置合并。`vue-tsc -b`、相关 eslint 通过。列配置与用户列表 vitest 共 6 通过（模拟，测试不入库）。真实页面隐藏「手机」后表头消失，恢复默认后回来。独立审查 1 次 PASS。未运行构建 | 未提取 ProTable、SearchForm、确认框或页面容器 |
 | 7 | TODO | L1 / L2 | 各模块相关检查，未执行 | 以授权范围为准 |
 | 8 | TODO | 按实际改动 | 交付证据与遗留核对，未执行 | — |
 
@@ -457,6 +457,7 @@ del<T>(url: string, data?: unknown, config?: RequestConfig): Promise<T>
 | D09 | 视觉系统使用 Mira、mist 底色和 teal 主操作色 | CLI `shadcn-vue@2.9.0`，预设码 `a6OYtvIO`：`reka-mira`、`baseColor=mist`、`theme=teal`、`radius=small`（`--radius: 0.45rem`）、lucide、`pointer`。全局 CSS 为 `src/styles/globals.css`，Tailwind v4 不设 `tailwind.config`。`aliases.utils` 为 `@/lib/utils`，该文件再导出 `cn` 包的 `cn`；生成组件直接 `import { cn } from 'cn'`，与包导出一致。字体用 `@fontsource-variable/ibm-plex-sans@5.3.0`（OFL）自托管，中文回退系统字体，不请求 Google Fonts。`shadcn-vue@2.9.0` 留在依赖里，只因为 CSS 导入 `shadcn-vue/tailwind.css`，页面不从该包导入组件。另固定 `tw-animate-css@1.4.0`、`vue-sonner@2.0.9`。根 `tsconfig.json` 补了 `@/*`，否则 CLI 看不到 `tsconfig.app.json` 里的别名。Vue 会把布尔 `data-invalid` 渲染成空字符串，生成类原本只匹配 `=true`，已改为按属性存在匹配。Sonner 的 `--gray2` 从无效的 `hsl(var(--popover))` 改为 `color-mix`。弹窗关闭和加载状态的可读文案改为中文。`prefers-reduced-motion` 会缩短动画。`src/components/ui` 关闭 `vue/multi-word-component-names` 和 `vue/require-default-prop`，避免为了生成文件改组件名或给每个可选 `class` 补默认值 | 2026-11-06 |
 | D10 | 启用自动刷新，令牌仍由请求层保存 | 真实 `POST /api/auth/refresh`：Cookie `refresh_token`（Path `/api/auth`，HttpOnly，SameSite=Lax）足够换新 accessToken；无 Cookie 返回业务 401「Refresh Token 不存在」；无效 Bearer 加有效 Cookie 仍成功。只给 login、refresh、logout 设置 `withCredentials`。并发 401 共享一次刷新，刷新自身不递归，原请求最多重放一次。刷新失败或重放仍 401 时清理一次并通知一次。登录失败的 401 不清理。403 不刷新。`sessionEpoch` 在登录写入和清理时增加，刷新轮换不增加。换代会中止上一代已经发出的刷新，避免迟到的 `Set-Cookie` 覆盖新登录写入的 Refresh Cookie；后端成功刷新会轮换 Cookie，失败会把同名 Cookie 的 Max-Age 设为 0。直接 `refreshToken()` 和自动刷新共用同一次请求。浏览器已看到两条 userinfo 401 只对应一次 refresh 200，新令牌写回且页面保持登录；5174 去掉 Origin 后 Cookie 刷新同样成功。未记录令牌 | 2026-11-06 |
 | D11 | 用户页按服务端分页，不提前做通用表格 | `UserPageQuery` 不绑定 orderBy，列表不发送排序。每页 10/20/50/100。选择只保留当前页，筛选、翻页和改每页条数都清空。编辑和密码用会话序号隔离迟到响应，提交使用打开时的快照。可选文本清空时提交空字符串。已有性别不能清空，因为 `updateById` 不写 null。表单内已展示的错误关闭全局 toast。不上传头像 | 2026-11-06 |
+| D12 | 阶段 6 只共享列配置合并规则 | 用户页的列表、筛选、确认和页面结构仍留在页面内。`src/utils/column-preference.ts` 负责 null 默认、丢弃未知列、追加缺失列，并保存隐藏列。`width` 和 `fixed` 仍写 null | 2026-11-06 |
 
 后续记录影响开发的实际决定：问题、选择、证据、范围、兼容例外与验证结果。§3 默认方案被实际采用或调整时补充记录，无需为每个局部变量或布局选择写条目。
 
@@ -481,16 +482,16 @@ del<T>(url: string, data?: unknown, config?: RequestConfig): Promise<T>
 - 本机 `0.0.0.0:5173` 被其他项目占用；日常 `pnpm dev` 仍配置为 5173，启动时若看到端口警告需要确认请求没有进到别的 Vite。
 - 阶段 5 已本地提交 `43c7048`，未推送。未运行 `pnpm approve`，因此没有安装 `@tanstack/vue-table` 附带的 agent skills。
 
-### 阶段 5 恢复检查点
+### 阶段 6 恢复检查点
 
-- **当前阶段：** 5 已完成。阶段 1–3 复审没有发现需要修改的问题。
-- **已完成：** 用户管理的分页、筛选、启停、删除、新增、编辑、密码、角色、部门和列配置。
-- **剩余：** 阶段 6 只提取用户页已经证明必要的公共行为。阶段 7 做其余模块。`file.ts` 仍不对齐。
-- **关键决定：** D11。不发送 orderBy。每页最大 100。只保留当前页选择。编辑使用会话快照。空文本提交空字符串。
-- **验证：** `vue-tsc -b` 通过。用户列表 vitest 5 通过（模拟）。浏览器联调见阶段 5 状态行。未记录令牌，未跑全量测试和构建。
-- **审查：** 阶段 1–3 一次 PASS。用户页 2 次，第 2 次 PASS。
-- **提交：** `43c7048`。未推送。
-- **下一步：** 从用户页提取必要公共能力，不先做 ProTable 或 SearchForm。
+- **当前阶段：** 6 已完成。用户管理仍是唯一业务页。
+- **已完成：** 阶段 1–3 复审无修改。用户管理纵切。列配置合并规则抽到 `src/utils/column-preference.ts`。
+- **剩余：** 阶段 7：角色、部门、菜单、字典、参数、在线用户、任务和文件。`file.ts` 仍不对齐。已有性别不能清空。
+- **关键决定：** D11、D12。不先做 ProTable 或 SearchForm。
+- **验证：** 阶段 5、6 的类型检查和对应 vitest 已通过。列隐藏在真实页面复验。未记录令牌，未跑全量测试和构建。
+- **审查：** 阶段 1–3 一次 PASS。用户页 2 次第 2 次 PASS。列配置提取 1 次 PASS。
+- **提交：** `43c7048` 用户管理，`f0ff8d3` 阶段 5 进度，`adadd6a` 列配置提取。未推送。
+- **下一步：** 按角色、部门、菜单、字典、参数、在线用户、任务、文件的顺序扩展。角色查询不发送 orderBy，服务端按 sort 升序。
 
 ---
 
