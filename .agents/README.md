@@ -20,9 +20,28 @@ Skills 放在 `.agents/skills/<id>/SKILL.md`，这是单一副本：
 | `vue-router-best-practices` | 同上 | 项目已依赖 `vue-router`，补充路由与守卫实践 |
 | `vue-pinia-best-practices` | 同上 | 项目已依赖 `pinia`，补充 Store 与状态实践 |
 | `frontend-design` | `anthropics/skills` `main` 分支 `skills/frontend-design/` | UI 视觉设计、布局与交互质感（含 `LICENSE.txt`） |
+| `dev-review-loop` | 本项目维护 | 手动触发，按功能批次开发、独立 Review、修复与复审 |
 
-快照日期：**2026-11-06**。以上文件均为上游原样副本；升级时按上表重新拉取并核对文件清单，
-不要手改 `SKILL.md` 的 frontmatter。
+上游快照日期：**2026-11-06**。上表注明上游来源的技能保留原样；升级时按来源核对文件清单，
+不要手改上游 `SKILL.md` 的 frontmatter。`dev-review-loop` 为项目自维护技能，可按实际使用反馈调整。
+
+## 手动开发与审查闭环
+
+`dev-review-loop` 为项目维护的轻量流程，正文见 [SKILL.md](skills/dev-review-loop/SKILL.md)。
+它与其他技能共用 `.agents/skills`，通过 `disable-model-invocation: true` 关闭 Cursor 与 OpenCode V2 的自动匹配，只有手动调用才启用。
+
+| 客户端 | 调用入口 |
+| --- | --- |
+| Cursor | `/dev-review-loop <任务目标或阶段范围>`，原生技能入口，无需重复复制到 `.cursor/skills` |
+| OpenCode V2 | `/dev-review-loop <任务目标或阶段范围>`，由 `.opencode/commands/dev-review-loop.md` 在主会话加载共享技能 |
+| OpenCode V2 直接调用 | `@dev-review-loop <任务目标或阶段范围>`，显式加载技能 |
+
+例如：`/dev-review-loop 完成阶段 4 的登录、路由和状态管理`。调用范围以本次目标为准；创建技能本身不启动开发。
+主 Agent 持续开发，功能批次完成后调用一个独立 Reviewer；L0 轻改沿用项目检查策略，每批默认最多 3 次 Review，不强制 TDD、不自行运行全量测试。
+Reviewer 的只读要求通过任务指令传达，本技能不新增 Agent 权限配置或常驻进程。未暴露原生子 Agent 工具时明确记录独立审查未完成，不能用角色扮演代替。
+若客户端列表尚未更新，刷新技能列表或重新打开会话；未在客户端实测前，不把文件配置完成描述为运行验证通过。
+
+格式依据：[Cursor Skills](https://cursor.com/docs/skills)、[OpenCode V2 Skills](https://opencode.ai/v2/docs/skills)、[OpenCode V2 Commands](https://opencode.ai/v2/docs/commands)。
 
 ## MCP
 
@@ -49,6 +68,6 @@ Cursor 由编辑器进程启动 MCP，Codex CLI 从用户 shell 启动，两者�
 
 - Codex 需要把本仓库标记为**受信任项目**，否则忽略 `.codex/config.toml`。
 - shadcn-vue Skill 与 MCP 在存在 `components.json` 后才能读取项目配置并安装组件。
-  当前项目尚未初始化 UI，因此本次未创建 `components.json`。
+  当前 `components.json` 已存在；以实际配置、`AGENTS.md` 和实现计划中的当前阶段为准。
 - Playwright MCP 首次运行会下载浏览器到用户级缓存 `%LOCALAPPDATA%\ms-playwright`，
   与 Node 版本无关。
