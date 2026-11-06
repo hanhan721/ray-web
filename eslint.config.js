@@ -35,6 +35,13 @@ export default typescriptEslint.config(
   },
   eslintConfigPrettier,
   {
+    files: ['src/views/**/index.vue'],
+    rules: {
+      // 页面入口按目录使用 index.vue，名称由目录表达。
+      'vue/multi-word-component-names': 'off',
+    },
+  },
+  {
     files: ['src/components/ui/**/*.vue'],
     rules: {
       // 组件名和可选 class 来自 shadcn-vue 生成结果，改名或补默认值会在下次生成时被覆盖。

@@ -14,11 +14,11 @@ export interface Permission {
   name: string
   type: PermissionType
   url: string
-  component: string
-  routeName?: string
-  redirect?: string
-  code?: string
-  icon?: string
+  component?: string | null
+  routeName?: string | null
+  redirect?: string | null
+  code?: string | null
+  icon?: string | null
   sort: number
   hidden: boolean
   keepAlive: boolean
