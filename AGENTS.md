@@ -4,16 +4,16 @@
 
 ## 当前阶段
 
-`v2` 当前仅保留开发准则、业务 API、必要类型与依赖清单，尚未初始化可运行应用。请求层、登录机制、路由、Store、UI 和工具配置后续实现；API 中的 `@/utils/request` 路径是待实现依赖，不添加虚假占位模块来使编译通过。本阶段不安装依赖、不生成锁文件、不编译或启动应用；正式初始化时复核版本，生成新锁文件及所需配置，不复用本地残留的旧依赖和生成类型。登录相关 API 定义属于后端契约，不包含登录机制实现。
+`v2` 已完成阶段 0–3。Vite、TypeScript、ESLint、Prettier、源码别名、应用入口、开发代理、真实的 `src/utils/request.ts` 和最小视觉系统已落地。登录页、路由、Pinia 与会话生命周期仍在后续阶段。登录相关 API 定义属于后端契约，请求层只负责传输、解包和 Bearer 注入。
 
 ## 技术栈与版本基线
 
-查询日期：**2026-11-05**。下表依据 npm 注册表的稳定 `latest` 版本；Node.js 采用最新 LTS，TypeScript 因兼容要求单独选版。这是元数据选型基线，尚未验证整套新版本的安装与运行。
+查询日期：**2026-11-06**。下表依据 npm 注册表的稳定 `latest` 版本；Node.js 采用最新 LTS，TypeScript 因兼容要求单独选版。初始化按本次查询结果安装，实际安装版本以 `package.json` 与 `pnpm-lock.yaml` 为准。
 
 | 用途 | 包 / 工具及版本 |
 | --- | --- |
 | 运行环境 | Node.js **26.13.0 LTS**；`@types/node` **26.6.6** |
-| 包管理 | `pnpm` **12.16.1** |
+| 包管理 | `pnpm` **12.18.0** |
 | Vue | `vue` **3.5.45** |
 | 路由 | `vue-router` **5.4.0** |
 | 状态管理 | `pinia` **4.1.0**；必需 peer `@vue/devtools-api` **8.2.1** |
@@ -22,19 +22,23 @@
 | 构建 | `vite` **8.3.6**；`@vitejs/plugin-vue` **6.0.10** |
 | 组件源码生成 | `shadcn-vue` CLI **2.9.0** |
 | 交互基础 | `reka-ui` **2.11.0** |
-| 样式 | `tailwindcss`、`@tailwindcss/vite` 均为 **4.3.4** |
+| 样式 | `tailwindcss`、`@tailwindcss/vite` 均为 **4.3.4**；`tw-animate-css` **1.4.0** |
+| 字体 | `@fontsource-variable/ibm-plex-sans` **5.3.0**（OFL，自托管拉丁文；中文使用系统字体） |
+| 反馈 | `vue-sonner` **2.0.9** |
 | 表格 | `@tanstack/vue-table` **9.3.1** |
 | UI 配套 | `@vueuse/core` **15.0.0**；`cn` **0.5.2**；`class-variance-authority` **0.7.1** |
-| 图标 | `@lucide/vue` **1.69.0** |
+| 图标 | `@lucide/vue` **1.70.0** |
 | Vue 类型检查 | `vue-tsc` **3.3.14** |
 | ESLint | `eslint` **10.14.0**；`@eslint/js` **10.0.1** |
 | Vue / TS 检查 | `eslint-plugin-vue` **10.12.0**；`vue-eslint-parser` **10.4.1**；`typescript-eslint` **8.72.1** |
-| 格式化 | `prettier` **3.9.10** |
+| 格式化 | `prettier` **3.9.10**；`eslint-config-prettier` **10.1.8** |
+| 测试 | `vitest` **5.1.0** |
+| ESLint 运行环境 | `globals` **17.14.0** |
 
 - **优先最新稳定且相互兼容的版本**，不使用 alpha、beta、rc、canary 或 nightly。初始化、增库或升级前重新查询，不能将本表视为永久最新；普通功能开发不顺带升级依赖。
 - `typescript-eslint@8.72.1` 声明支持 `typescript >=4.8.4 <6.1.0`，因此当前选用范围内最新稳定版 **6.0.3**；待工具链正式支持 TypeScript 7 后再评估升级。依据：[官方兼容说明](https://typescript-eslint.io/users/dependency-versions/)。
 - 使用 pnpm，直接依赖固定确切版本并提交锁文件，`packageManager` 固定 pnpm 版本；Node.js 与类型包保持主版本一致。Node 版本依据：[官方 LTS 列表](https://nodejs.org/en/about/previous-releases)、[26.x 发布清单](https://nodejs.org/dist/latest-v26.x/SHASUMS256.txt)。
-- UI 配套按组件实际导入安装；shadcn-vue 是源码生成工具，不作为运行时组件库。满足必需 peers，可选 peers 按需求引入；直接依赖 `@vue/compiler-sfc` 时与 Vue 保持同版。
+- UI 配套按组件实际导入安装。shadcn-vue 生成的组件放在 `src/components/ui/`，页面不从 `shadcn-vue` 包导入组件。该包仍是直接依赖，因为 `src/styles/globals.css` 要导入 `shadcn-vue/tailwind.css`。满足必需 peers，可选 peers 按需求引入；直接依赖 `@vue/compiler-sfc` 时与 Vue 保持同版。
 
 ## 组件与代码边界
 
