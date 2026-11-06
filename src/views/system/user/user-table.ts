@@ -1,5 +1,6 @@
 import type { UserQuery, UserWrite } from '@/api/user'
 import type { Gender } from '@/types/enums'
+import { applyColumnPreference, toColumnPreference } from '@/utils/column-preference'
 
 export const USER_PAGE_SIZES = [10, 20, 50, 100] as const
 
@@ -54,43 +55,21 @@ export interface AppliedColumns {
 }
 
 export function applyColumnConfig(saved: ColumnConfigItem[] | null): AppliedColumns {
-  const defaults = USER_DATA_COLUMNS.map((column) => column.key)
-  if (!saved) {
-    return {
-      order: defaults,
-      visibility: Object.fromEntries(defaults.map((key) => [key, true])),
-    }
-  }
-  const known = new Set(defaults)
-  const sorted = saved
-    .filter((item) => known.has(item.key))
-    .slice()
-    .sort((left, right) => left.sort - right.sort)
-  const seen = new Set(sorted.map((item) => item.key))
-  const order = [...sorted.map((item) => item.key), ...defaults.filter((key) => !seen.has(key))]
-  const visibility: Record<string, boolean> = {}
-  for (const key of defaults) {
-    const found = saved.find((item) => item.key === key)
-    visibility[key] = found ? found.visible : true
-  }
-  return { order, visibility }
+  return applyColumnPreference(
+    USER_DATA_COLUMNS.map((column) => column.key),
+    saved,
+  )
 }
 
 export function toColumnConfig(
   order: string[],
   visibility: Record<string, boolean>,
 ): ColumnConfigItem[] {
-  const keys = order.filter((key) => USER_DATA_COLUMNS.some((column) => column.key === key))
-  for (const column of USER_DATA_COLUMNS) {
-    if (!keys.includes(column.key)) keys.push(column.key)
-  }
-  return keys.map((key, index) => ({
-    key,
-    visible: visibility[key] !== false,
-    sort: index,
-    width: null,
-    fixed: null,
-  }))
+  return toColumnPreference(
+    USER_DATA_COLUMNS.map((column) => column.key),
+    order,
+    visibility,
+  )
 }
 
 export function toUserWrite(input: {
