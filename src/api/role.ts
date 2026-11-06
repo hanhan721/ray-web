@@ -1,3 +1,4 @@
+import type { RequestConfig } from '@/types/request'
 import { get, post, put, del } from '@/utils/request'
 
 /**
@@ -37,8 +38,8 @@ export function getRolePage(params: RoleQuery) {
 /**
  * 获取全部角色列表
  */
-export function getRoleList() {
-  return get<Role[]>('/sys/role/list')
+export function getRoleList(config?: RequestConfig) {
+  return get<Role[]>('/sys/role/list', undefined, config)
 }
 
 /**

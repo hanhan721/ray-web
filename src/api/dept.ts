@@ -1,3 +1,4 @@
+import type { RequestConfig } from '@/types/request'
 import { get, post, put, del } from '@/utils/request'
 
 /**
@@ -31,8 +32,8 @@ export type DeptForm = Partial<Omit<Dept, 'id' | 'createTime'>> & {
 /**
  * 获取部门树
  */
-export function getDeptTree() {
-  return get<DeptTree[]>('/sys/dept/tree')
+export function getDeptTree(config?: RequestConfig) {
+  return get<DeptTree[]>('/sys/dept/tree', undefined, config)
 }
 
 /**

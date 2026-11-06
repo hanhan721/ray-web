@@ -1,44 +1,62 @@
-import { get, post, put, del } from '@/utils/request'
 import type { Gender } from '@/types/enums'
-import type { StorageFile } from '@/api/file'
+import type { RequestConfig } from '@/types/request'
+import { get, post, put, del } from '@/utils/request'
+
+/** `@StorageFile` 在响应里把文件 ID 序列化成的对象。 */
+export interface UserFileView {
+  fileId: number
+  name: string
+  url: string
+  ext: string
+  size: number
+}
 
 /**
- * 用户实体
+ * 用户实体。列表里的 `avatarFileId` 是文件视图，不是数字。
  */
 export interface SysUser {
   id: number
   username: string
+  nickname?: string | null
+  email?: string | null
+  phone?: string | null
+  avatarFileId?: UserFileView | null
+  gender?: Gender | null
+  enabled?: boolean | null
+  remark?: string | null
+  lastLoginTime?: string | null
+  lastLoginIp?: string | null
+  createTime?: string | null
+}
+
+/** 新增和修改提交给后端的字段。头像只传文件 ID，避免把文件视图写回去。 */
+export interface UserWrite {
+  id?: number
+  username: string
+  password?: string
   nickname?: string
   email?: string
   phone?: string
-  avatar?: StorageFile | null
-  gender: Gender
-  enabled: boolean
+  avatarFileId?: number | null
+  gender?: Gender
+  enabled?: boolean
   remark?: string
-  lastLoginTime?: string
-  createTime?: string
-  roleIds?: number[]
-  deptIds?: number[]
 }
 
 /**
- * 用户表单类型
- */
-export type UserForm = Partial<Omit<SysUser, 'id' | 'createTime' | 'lastLoginTime'>>
-
-/**
- * 用户查询参数
+ * 用户查询参数。后端不接收 orderBy，默认按 id 倒序。
  */
 export interface UserQuery extends PageQuery {
   username?: string
+  nickname?: string
   enabled?: boolean
 }
 
 /**
  * 分页查询用户
  */
-export function getUserPage(params: UserQuery) {
-  return get<IPage<SysUser>>('/sys/user/page', params)
+export function getUserPage(params: UserQuery, config?: RequestConfig) {
+  return get<IPage<SysUser>>('/sys/user/page', params, config)
 }
 
 /**
@@ -53,50 +71,50 @@ export interface UserDetail {
 /**
  * 获取用户详情（含角色、部门）
  */
-export function getUserById(id: number) {
-  return get<UserDetail>(`/sys/user/${id}`)
+export function getUserById(id: number, config?: RequestConfig) {
+  return get<UserDetail>(`/sys/user/${id}`, undefined, config)
 }
 
 /**
  * 新增用户
  */
-export function createUser(data: UserForm & { password: string }) {
-  return post<void>('/sys/user', data)
+export function createUser(data: UserWrite & { password: string }, config?: RequestConfig) {
+  return post<void>('/sys/user', data, config)
 }
 
 /**
  * 修改用户
  */
-export function updateUser(data: SysUser) {
-  return put<void>('/sys/user', data)
+export function updateUser(data: UserWrite & { id: number }, config?: RequestConfig) {
+  return put<void>('/sys/user', data, config)
 }
 
 /**
  * 删除用户
  */
-export function deleteUsers(ids: number[]) {
-  return del<void>('/sys/user', ids)
+export function deleteUsers(ids: number[], config?: RequestConfig) {
+  return del<void>('/sys/user', ids, config)
 }
 
 /**
  * 重置用户密码
  */
-export function resetUserPassword(id: number, password: string) {
-  return put<void>(`/sys/user/${id}/password`, { password })
+export function resetUserPassword(id: number, password: string, config?: RequestConfig) {
+  return put<void>(`/sys/user/${id}/password`, { password }, config)
 }
 
 /**
  * 分配角色
  */
-export function assignUserRoles(id: number, roleIds: number[]) {
-  return put<void>(`/sys/user/${id}/roles`, roleIds)
+export function assignUserRoles(id: number, roleIds: number[], config?: RequestConfig) {
+  return put<void>(`/sys/user/${id}/roles`, roleIds, config)
 }
 
 /**
  * 分配部门
  */
-export function assignUserDepts(id: number, deptIds: number[]) {
-  return put<void>(`/sys/user/${id}/depts`, deptIds)
+export function assignUserDepts(id: number, deptIds: number[], config?: RequestConfig) {
+  return put<void>(`/sys/user/${id}/depts`, deptIds, config)
 }
 
 /**
