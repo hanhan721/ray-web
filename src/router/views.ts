@@ -8,7 +8,7 @@ const pending = () => import('@/views/module-pending/ModulePending.vue')
 export const viewLoaders: Record<string, ViewLoader> = {
   'system/user/index': () => import('@/views/system/user/index.vue'),
   'system/role/index': () => import('@/views/system/role/index.vue'),
-  'system/dept/index': pending,
+  'system/dept/index': () => import('@/views/system/dept/index.vue'),
   'system/menu/index': pending,
   'system/dict/index': pending,
   'system/param/index': pending,

@@ -13,6 +13,7 @@ export interface Dept {
   phone?: string
   email?: string
   enabled: boolean
+  remark?: string
   createTime?: string
 }
 
@@ -46,27 +47,27 @@ export function getDeptList() {
 /**
  * 获取部门详情
  */
-export function getDeptById(id: number) {
-  return get<Dept>(`/sys/dept/${id}`)
+export function getDeptById(id: number, config?: RequestConfig) {
+  return get<Dept>(`/sys/dept/${id}`, undefined, config)
 }
 
 /**
  * 新增部门
  */
-export function createDept(data: DeptForm) {
-  return post<void>('/sys/dept', data)
+export function createDept(data: DeptForm, config?: RequestConfig) {
+  return post<void>('/sys/dept', data, config)
 }
 
 /**
  * 修改部门
  */
-export function updateDept(data: DeptForm & { id: number }) {
-  return put<void>('/sys/dept', data)
+export function updateDept(data: DeptForm & { id: number }, config?: RequestConfig) {
+  return put<void>('/sys/dept', data, config)
 }
 
 /**
  * 删除部门
  */
-export function deleteDept(id: number) {
-  return del<void>(`/sys/dept/${id}`)
+export function deleteDepts(ids: number[], config?: RequestConfig) {
+  return del<void>('/sys/dept', ids, config)
 }
