@@ -1,10 +1,17 @@
 import axios, { isCancel } from 'axios'
-import type { AxiosError, AxiosResponse, InternalAxiosRequestConfig } from 'axios'
+import type { AxiosError, AxiosResponse } from 'axios'
 import { ResponseCode } from '@/types/enums'
 import type { RequestConfig } from '@/types/request'
 
 const ACCESS_TOKEN_KEY = 'ray.accessToken'
 const LOGIN_PATHS = new Set(['/auth/login', '/api/auth/login'])
+const REFRESH_PATHS = new Set(['/auth/refresh', '/api/auth/refresh'])
+const CREDENTIAL_PATHS = new Set([
+  ...LOGIN_PATHS,
+  ...REFRESH_PATHS,
+  '/auth/logout',
+  '/api/auth/logout',
+])
 const MAX_ERROR_JSON_BYTES = 1024 * 1024
 
 const STATUS_MESSAGE: Record<number, string> = {
@@ -50,6 +57,21 @@ let notifier: ErrorNotifier | null = null
 let unauthorizedHandler: UnauthorizedHandler | null = null
 let accessWave = 0
 let handledWave = -1
+let sessionEpoch = 0
+
+type RefreshResult = { accessToken: string; expireIn: number }
+type RefreshFlight = {
+  epoch: number
+  promise: Promise<RefreshResult>
+  abort: () => void
+}
+let refreshFlight: RefreshFlight | null = null
+
+function cancelRefresh(): void {
+  const flight = refreshFlight
+  refreshFlight = null
+  flight?.abort()
+}
 
 function defaultBaseUrl(): string {
   const configured = import.meta.env.VITE_API_BASE_URL
@@ -86,17 +108,28 @@ export function getAccessToken(): string | null {
   return value && value.length > 0 ? value : null
 }
 
-export function setAccessToken(token: string): void {
+export function getSessionEpoch(): number {
+  return sessionEpoch
+}
+
+export function setAccessToken(token: string, options?: { rotate?: boolean }): void {
   accessWave += 1
+  if (!options?.rotate) {
+    sessionEpoch += 1
+    // 取消上一代已发出的刷新，避免浏览器收下旧响应里的 Set-Cookie。
+    cancelRefresh()
+  }
   session().setItem(ACCESS_TOKEN_KEY, token)
 }
 
 export function clearAccessToken(): void {
+  sessionEpoch += 1
+  cancelRefresh()
   if (typeof sessionStorage === 'undefined') return
   sessionStorage.removeItem(ACCESS_TOKEN_KEY)
 }
 
-function pathnameOf(config: InternalAxiosRequestConfig): string {
+function pathnameOf(config: { url?: string; baseURL?: string }): string {
   const url = config.url ?? ''
   const pathOnly = (value: string) => value.split('?')[0]?.replace(/\/+$/, '') || '/'
   if (/^https?:\/\//i.test(url)) return pathOnly(new URL(url).pathname)
@@ -109,35 +142,56 @@ function pathnameOf(config: InternalAxiosRequestConfig): string {
   return pathOnly(relative.startsWith('/') ? relative : `/${relative}`)
 }
 
-function isLoginRequest(config: InternalAxiosRequestConfig | undefined): boolean {
+function isAuthPost(
+  config: { url?: string; baseURL?: string; method?: string } | undefined,
+  paths: Set<string>,
+): boolean {
   if (!config || (config.method ?? 'get').toLowerCase() !== 'post') return false
-  return LOGIN_PATHS.has(pathnameOf(config))
+  return paths.has(pathnameOf(config))
+}
+
+function isLoginRequest(
+  config: { url?: string; baseURL?: string; method?: string } | undefined,
+): boolean {
+  return isAuthPost(config, LOGIN_PATHS)
+}
+
+function isRefreshRequest(
+  config: { url?: string; baseURL?: string; method?: string } | undefined,
+): boolean {
+  return isAuthPost(config, REFRESH_PATHS)
+}
+
+function sendsCredentials(
+  config: { url?: string; baseURL?: string; method?: string } | undefined,
+): boolean {
+  return isAuthPost(config, CREDENTIAL_PATHS)
 }
 
 function isUnauthorized(error: RequestError): boolean {
   return error.code === ResponseCode.UNAUTHORIZED || error.status === ResponseCode.UNAUTHORIZED
 }
 
+function endSession(error: RequestError, config: { showErrorMessage?: boolean } | undefined): void {
+  const first = handledWave !== accessWave
+  if (!first) return
+  handledWave = accessWave
+  clearAccessToken()
+  unauthorizedHandler?.()
+  if (config?.showErrorMessage !== false) notifier?.(error)
+}
+
 function present(
   error: RequestError,
-  config: InternalAxiosRequestConfig | undefined,
+  config:
+    { url?: string; baseURL?: string; method?: string; showErrorMessage?: boolean } | undefined,
 ): RequestError {
-  let shouldNotify = config?.showErrorMessage !== false
-  if (isUnauthorized(error) && !isLoginRequest(config)) {
-    const first = handledWave !== accessWave
-    if (first) {
-      handledWave = accessWave
-      clearAccessToken()
-      unauthorizedHandler?.()
-    } else {
-      shouldNotify = false
-    }
-  }
-  if (shouldNotify) notifier?.(error)
+  if (isUnauthorized(error) && !isLoginRequest(config)) endSession(error, config)
+  else if (config?.showErrorMessage !== false) notifier?.(error)
   return error
 }
 
-function fail(error: RequestError, config: InternalAxiosRequestConfig | undefined): never {
+function fail(error: RequestError, config: RequestConfig | undefined): never {
   throw present(error, config)
 }
 
@@ -223,6 +277,7 @@ client.interceptors.request.use((config) => {
   if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
     config.headers.delete('Content-Type')
   }
+  if (sendsCredentials(config)) config.withCredentials = true
   if (!isLoginRequest(config)) {
     const token = getAccessToken()
     if (token) config.headers.set('Authorization', `Bearer ${token}`)
@@ -239,16 +294,14 @@ client.interceptors.response.use(
       return Promise.reject(fallback)
     }
     const body = await readErrorBody(error.response?.data, error.response?.headers)
-    const requestError = new RequestError(
-      body.msg ?? statusMessage(error.response?.status) ?? networkMessage(error),
-      {
+    return Promise.reject(
+      new RequestError(body.msg ?? statusMessage(error.response?.status) ?? networkMessage(error), {
         code: body.code,
         status: error.response?.status,
         payload: body.payload,
         cause: error,
-      },
+      }),
     )
-    return Promise.reject(present(requestError, error.config))
   },
 )
 
@@ -258,14 +311,11 @@ async function unwrapResponse(response: AxiosResponse<unknown>): Promise<unknown
     if (response.data instanceof Blob) {
       const businessError = await readBlobEnvelope(response.data, response.headers)
       if (businessError) {
-        fail(
-          new RequestError(businessError.msg, {
-            code: businessError.code,
-            status: response.status,
-            payload: businessError.payload,
-          }),
-          response.config,
-        )
+        throw new RequestError(businessError.msg, {
+          code: businessError.code,
+          status: response.status,
+          payload: businessError.payload,
+        })
       }
     }
     return response.data
@@ -273,28 +323,151 @@ async function unwrapResponse(response: AxiosResponse<unknown>): Promise<unknown
 
   const envelope = readEnvelope(response.data)
   if (!envelope) {
-    fail(
-      new RequestError('响应格式无法识别', { status: response.status, payload: response.data }),
-      response.config,
-    )
+    throw new RequestError('响应格式无法识别', { status: response.status, payload: response.data })
   }
   if (envelope.code !== ResponseCode.SUCCESS) {
-    fail(
-      new RequestError(envelope.msg, {
-        code: envelope.code,
-        status: response.status,
-        payload: response.data,
-      }),
-      response.config,
-    )
+    throw new RequestError(envelope.msg, {
+      code: envelope.code,
+      status: response.status,
+      payload: response.data,
+    })
   }
   return envelope.data
 }
 
-async function send<T>(config: RequestConfig): Promise<T> {
+function shouldRefresh(error: unknown, config: RequestConfig): error is RequestError {
+  return (
+    error instanceof RequestError &&
+    isUnauthorized(error) &&
+    config.authRetry !== true &&
+    !isLoginRequest(config) &&
+    !isRefreshRequest(config) &&
+    getAccessToken() !== null
+  )
+}
+
+function readRefreshResult(data: unknown): RefreshResult | null {
+  if (!isRecord(data)) return null
+  const accessToken = data.accessToken
+  const expireIn = data.expireIn
+  if (typeof accessToken !== 'string' || accessToken.length === 0) return null
+  if (typeof expireIn !== 'number' || !Number.isFinite(expireIn)) return null
+  return { accessToken, expireIn }
+}
+
+function sessionChanged(): RequestError {
+  return new RequestError('会话已变更', { code: 401, status: 401 })
+}
+
+async function refreshOnce(config: RequestConfig): Promise<RefreshResult> {
+  const epoch = sessionEpoch
+  if (refreshFlight?.epoch === epoch) return refreshFlight.promise
+  cancelRefresh()
+  const previous = getAccessToken()
+  const controller = new AbortController()
+  const promise = (async () => {
+    if (!previous) throw new RequestError('未登录或登录已过期', { code: 401, status: 401 })
+    let response: AxiosResponse<unknown>
+    try {
+      response = await client.request<unknown>({
+        method: 'post',
+        url: '/auth/refresh',
+        baseURL: config.baseURL,
+        adapter: config.adapter,
+        showErrorMessage: false,
+        signal: controller.signal,
+      })
+    } catch (error) {
+      if (sessionEpoch !== epoch || getAccessToken() !== previous) throw sessionChanged()
+      throw error
+    }
+    if (sessionEpoch !== epoch || getAccessToken() !== previous) throw sessionChanged()
+    const data = await unwrapResponse(response)
+    if (sessionEpoch !== epoch || getAccessToken() !== previous) throw sessionChanged()
+    const next = readRefreshResult(data)
+    if (!next) throw new RequestError('刷新登录状态失败', { code: 401, status: 401 })
+    setAccessToken(next.accessToken, { rotate: true })
+    return next
+  })()
+  const flight: RefreshFlight = { epoch, promise, abort: () => controller.abort() }
+  promise.then(
+    () => {
+      if (refreshFlight === flight) refreshFlight = null
+    },
+    () => {
+      if (refreshFlight === flight) refreshFlight = null
+    },
+  )
+  refreshFlight = flight
+  return promise
+}
+
+async function refreshThrough<T>(config: RequestConfig): Promise<T> {
+  const epoch = sessionEpoch
+  try {
+    return (await refreshOnce(config)) as T
+  } catch (error) {
+    if (sessionEpoch !== epoch) {
+      if (error instanceof RequestError) throw error
+      throw error
+    }
+    if (isCancel(error)) throw error
+    if (error instanceof RequestError) {
+      if (isUnauthorized(error)) fail(error, config)
+      endSession(error, config)
+      throw error
+    }
+    throw error
+  }
+}
+
+function refreshFailure(original: RequestError, caught: unknown): RequestError {
+  if (!(caught instanceof RequestError)) return original
+  if (caught.status === undefined && caught.code === undefined) return caught
+  return original
+}
+
+async function dispatch<T>(config: RequestConfig): Promise<T> {
   const response = await client.request<unknown>(config)
   // 运行时已按 R<T> 解包，或按 Blob 原样返回；Axios 无法从拦截器表达这个结果。
   return (await unwrapResponse(response)) as T
+}
+
+async function send<T>(config: RequestConfig): Promise<T> {
+  if (isRefreshRequest(config)) return refreshThrough(config)
+  const epoch = sessionEpoch
+  try {
+    return await dispatch(config)
+  } catch (error) {
+    if (isCancel(error) || !(error instanceof RequestError)) throw error
+    // 会话已经切换时，这是上一个身份的结果，不能刷新或清理新会话。
+    if (sessionEpoch !== epoch) throw error
+    // 401 表示鉴权阶段拒绝了请求，原请求最多重放一次。超时和写操作的未知结果不重放。
+    if (!shouldRefresh(error, config)) fail(error, config)
+    try {
+      await refreshOnce(config)
+    } catch (caught) {
+      if (sessionEpoch !== epoch) {
+        if (caught instanceof RequestError) throw caught
+        throw error
+      }
+      const terminal = refreshFailure(error, caught)
+      if (isUnauthorized(terminal)) fail(terminal, config)
+      endSession(terminal, config)
+      throw terminal
+    }
+    try {
+      return await dispatch({ ...config, authRetry: true })
+    } catch (retryError) {
+      if (isCancel(retryError)) throw retryError
+      if (sessionEpoch !== epoch) {
+        if (retryError instanceof RequestError) throw retryError
+        throw error
+      }
+      if (retryError instanceof RequestError) fail(retryError, { ...config, authRetry: true })
+      throw retryError
+    }
+  }
 }
 
 function withoutNullBody(data: unknown): unknown {
