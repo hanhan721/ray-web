@@ -1,3 +1,6 @@
+# Local tests. Every test file lives in a directory named test.
+**/test/
+
 # Dependencies and build output
 node_modules/
 .pnpm-store/
