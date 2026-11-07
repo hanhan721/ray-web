@@ -12,6 +12,6 @@ export const viewLoaders: Record<string, ViewLoader> = {
   'system/menu/index': () => import('@/views/system/menu/index.vue'),
   'system/dict/index': () => import('@/views/system/dict/index.vue'),
   'system/param/index': () => import('@/views/system/param/index.vue'),
-  'system/online/index': pending,
+  'system/online/index': () => import('@/views/system/online/index.vue'),
   'schedule/job/index': pending,
 }
