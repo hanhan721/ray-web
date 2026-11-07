@@ -31,6 +31,12 @@ export function createAppRouter(history: RouterHistory = createWebHistory()) {
             meta: { title: '工作台' },
           },
           {
+            path: 'file',
+            name: 'file-page',
+            component: () => import('@/views/system/file/index.vue'),
+            meta: { title: '文件' },
+          },
+          {
             path: 'forbidden',
             name: 'forbidden',
             component: () => import('@/views/forbidden/index.vue'),

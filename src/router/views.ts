@@ -11,5 +11,6 @@ export const viewLoaders: Record<string, ViewLoader> = {
   'system/dict/index': () => import('@/views/system/dict/index.vue'),
   'system/param/index': () => import('@/views/system/param/index.vue'),
   'system/online/index': () => import('@/views/system/online/index.vue'),
+  'system/file/index': () => import('@/views/system/file/index.vue'),
   'schedule/job/index': () => import('@/views/schedule/job/index.vue'),
 }

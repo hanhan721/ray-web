@@ -1,88 +1,54 @@
 import { get, post, del } from '@/utils/request'
 import type { RequestConfig } from '@/types/request'
 
-/**
- * 获取文件访问 URL
- */
-export function getFileUrl(filePath: string) {
-  const baseURL = import.meta.env.VITE_API_BASE_URL || '/api'
-  return `${baseURL}/sys/file/download?filePath=${encodeURIComponent(filePath)}`
-}
-
-/**
- * 存储文件信息（@StorageFile 序列化结构）
- */
-export interface StorageFile {
-  path: string
-  url: string
-  name?: string | null
-}
-
-/**
- * 文件实体
- */
-export interface SysFile {
-  id: number
-  originalName: string
+/** 上传和详情返回的逻辑文件。`url` 是浏览用的签名地址，不包含存储位置。 */
+export interface FileUpload {
+  fileId: number
   fileName: string
-  filePath: string
-  fileUrl: StorageFile
-  fileExt: string
-  fileSize: number
+  ext: string
+  size: number
   contentType: string
-  storageType: string
-  bucket: string
-  bizType?: string
-  bizId?: number
-  createTime: string
-  updateTime: string
+  url: string
+}
+
+/** 批量上传的单项结果。某一项失败时，其他成功项仍然保留。 */
+export interface FileBatchItem {
+  index: number
+  originalName?: string | null
+  ok: boolean
+  data?: FileUpload | null
+  errorCode?: string | null
+  reason?: string | null
 }
 
 /**
- * 单文件上传
+ * 上传一个未绑定文件。
+ * 归属只能由业务接口建立，这里不提交业务类型。
  */
-export function uploadFile(file: File, bizType?: string, bizId?: number) {
+export function uploadFile(file: File, config?: RequestConfig) {
   const formData = new FormData()
   formData.append('file', file)
-  if (bizType) formData.append('bizType', bizType)
-  if (bizId != null) formData.append('bizId', String(bizId))
-  return post<SysFile>('/sys/file/upload', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  } as RequestConfig)
+  return post<FileUpload>('/sys/file', formData, config)
 }
 
-/**
- * 批量上传
- */
-export function uploadFiles(files: File[], bizType?: string, bizId?: number) {
+/** 按选择顺序批量上传。空列表由服务端拒绝。 */
+export function uploadFiles(files: File[], config?: RequestConfig) {
   const formData = new FormData()
-  files.forEach((file) => formData.append('files', file))
-  if (bizType) formData.append('bizType', bizType)
-  if (bizId != null) formData.append('bizId', String(bizId))
-  return post<SysFile[]>('/sys/file/upload/batch', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  } as RequestConfig)
+  files.forEach((item) => formData.append('files', item))
+  return post<FileBatchItem[]>('/sys/file/batch', formData, config)
 }
 
-/**
- * 文件下载
- */
-export function downloadFile(filePath: string, bucket?: string) {
-  return get<Blob>('/sys/file/download', { filePath, bucket }, {
-    responseType: 'blob',
-  } as RequestConfig)
+/** 查询当前调用者可以访问的文件详情。 */
+export function getFileById(id: number, config?: RequestConfig) {
+  return get<FileUpload>(`/sys/file/${id}`, undefined, config)
 }
 
-/**
- * 获取文件详情
- */
-export function getFileById(id: number) {
-  return get<SysFile>(`/sys/file/${id}`)
+/** 重新签发浏览地址。下载用途只有 302，浏览器不能读取跳转目标。 */
+export function getFileUrl(id: number, config?: RequestConfig) {
+  return get<string>(`/sys/file/${id}/url`, undefined, config)
 }
 
-/**
- * 删除文件
- */
-export function deleteFiles(ids: number[]) {
-  return del<void>('/sys/file', ids)
+/** 整批逻辑删除。任一文件仍有业务引用时，服务端拒绝整批。 */
+export function deleteFiles(ids: number[], config?: RequestConfig) {
+  return del<void>('/sys/file', ids, config)
 }

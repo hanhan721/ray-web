@@ -272,7 +272,7 @@ function parseJson(value: string): unknown {
 }
 
 client.interceptors.request.use((config) => {
-  // file.ts 传入的 multipart Content-Type 没有 boundary。Axios 1.21 的 XHR 适配器不会改写该头，
+  // FormData 上若带了没有 boundary 的 multipart Content-Type，Axios 1.21 的 XHR 适配器不会改写该头。
   // 浏览器只在未设置 Content-Type 时生成 boundary；Node 的 formDataToStream 会自行补上。
   if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
     config.headers.delete('Content-Type')
