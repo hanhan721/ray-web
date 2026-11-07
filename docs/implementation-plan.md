@@ -437,7 +437,7 @@ del<T>(url: string, data?: unknown, config?: RequestConfig): Promise<T>
 | 4 | DONE | L1 / L2 | 2026-11-06。守卫与会话 `vitest` 14 通过；菜单测试在路由映射完成后通过，后续未改映射故未重跑。请求层 `vitest` 26 通过（模拟 HTTP）。`vue-tsc -b` 通过。浏览器使用真实后端：未登录跳转、错误密码、登录、刷新页面、无权限、未知地址、重复 401 只刷新一次、过期令牌打开登录页后进入用户管理、退出。390px 键盘选择菜单后焦点在主内容。独立审查：请求层 2 次第 2 次 PASS；登录与路由 3 次第 3 次 PASS。未记录令牌，未运行构建 | 菜单页仍是占位页。`file.ts` 见 Q04 |
 | 5 | DONE | L1 | 2026-11-06。`vue-tsc -b` 与相关 eslint 通过。`vitest run src/views/system/user/test/user-list.test.ts` 5 通过（模拟，测试目录不入库）。真实后端：空筛选、新增、校验错误留在表单、回填、只改资料不重复分配、角色保存、密码、停用、列隐藏与刷新后恢复、删除测试用户后 admin 仍在。旧详情不会覆盖后打开的用户。清空昵称会保存。已有性别不能清空时对话框保持。列配置失败显示在对话框内。390px 无横向溢出。独立审查 2 次，第 2 次 PASS。未记录令牌，未运行构建 | 其他菜单页仍是占位页。`file.ts` 见 Q04。性别不能通过更新接口清空 |
 | 6 | DONE | L1 | 2026-11-06。只抽出列配置合并。`vue-tsc -b`、相关 eslint 通过。列配置与用户列表 vitest 共 6 通过（模拟，测试不入库）。真实页面隐藏「手机」后表头消失，恢复默认后回来。独立审查 1 次 PASS。未运行构建 | 未提取 ProTable、SearchForm、确认框或页面容器 |
-| 7 | IN_PROGRESS | L1 / L2 | 角色、部门、菜单、字典、参数和在线用户已完成，见检查点。任务和文件未做 | `file.ts` 仍待文件页 |
+| 7 | IN_PROGRESS | L1 / L2 | 角色、部门、菜单、字典、参数、在线用户和定时任务已完成，见检查点。文件未做 | `file.ts` 仍待文件页 |
 | 8 | TODO | 按实际改动 | 交付证据与遗留核对，未执行 | — |
 
 状态：TODO / IN_PROGRESS / PARTIAL / BLOCKED / DONE。只有整个阶段没有可继续的必要工作时才标 BLOCKED；可推进独立工作时保持 IN_PROGRESS 或 PARTIAL，注明受阻子任务。DONE 要求约定验收满足，包含明确要求的真实联调，模拟验证不能代替它。
@@ -462,6 +462,7 @@ del<T>(url: string, data?: unknown, config?: RequestConfig): Promise<T>
 | D14 | 菜单页提交标识时接受超管重新登录 | 按钮更新必须带 `code`，否则后端认为标识为空。因此编辑按钮，或请求里出现 `code`、`enabled`，提交后超管需要重新登录。目录和菜单在这两项没变时不提交它们。空标识不提交，避免唯一索引只允许一个空字符串。权限树缓存用序号丢掉重叠的旧响应 | 2026-11-06 |
 | D15 | 参数页按单表分页，编辑读取未脱敏详情 | `ParamPageQuery` 只有分类和类型，列表不发送 orderBy，分类 0 会提交。键、类型和分类创建后不可改。列表里的加密值是 `****`，编辑必须等详情成功才允许保存。已有描述不能清空，因为空描述不会写入。字符串和字符串列表保留原文字。加载失败清空勾选。保存用会话序号隔离，迟到结果不关闭后打开的对话框 | 2026-11-07 |
 | D16 | 在线用户只按登录时间范围分页 | 查询不发送 orderBy。时间在点击查询后生效，同一分钟展开为该分钟的 00 到 59 秒。没有批量下线接口，按行确认下线单个会话或该用户全部会话。下线当前账号后需要重新登录。加载失败清空列表 | 2026-11-07 |
+| D17 | 定时任务分页管理，执行日志留在同一页 | 名称、分组、Bean 和状态在点击查询后生效，不发送 orderBy，默认 id DESC。暂停和恢复只切换启用。Cron、Bean 和方法在保存前校验；没有校验权限时不拦截保存。日志按当前任务分页。清空会删除全部任务的日志。确认进行中不能再次打开；用户关闭后，迟到的失败显示在页面上，迟到的成功不关闭新确认框。已有「文件生命周期清理」保持启用 | 2026-11-07 |
 
 后续记录影响开发的实际决定：问题、选择、证据、范围、兼容例外与验证结果。§3 默认方案被实际采用或调整时补充记录，无需为每个局部变量或布局选择写条目。
 
@@ -472,7 +473,7 @@ del<T>(url: string, data?: unknown, config?: RequestConfig): Promise<T>
 | Q01 | 真实 API 地址、代理目标与联调账号 | 已实测：后端无 context-path，控制器在 `/api` 下，代理不改写路径。登录、用户信息、退出经 Vite 代理成功 | 阶段 4 起可沿用该代理 |
 | Q02 | expireIn 单位、刷新前提与失效语义 | 已核实并接入，见 D10。`expireIn` 单位是秒。失效跳转接到登录页，其他错误接到 vue-sonner。登录失败留在表单 | 不再询问凭据头 |
 | Q03 | component / routeName 格式与按钮权限 code 含义 | 已按 admin 的 userinfo 写入 `src/router/views.ts`。目录 `component`、`routeName` 为 null。菜单 `url` 为 `user` 或 `/job`，`component` 为 `system/user/index`、`schedule/job/index`。未知 component 不注册、不执行。按钮权限在 `permissions`，不在菜单树里。阶段 4 这些菜单页共用后续阶段占位页 | 不执行任意组件字符串 |
-| Q04 | 列表 orderBy，以及文件接口是否仍与 `file.ts` 一致 | 用户列表已核实：`UserPageQuery` 不接收 orderBy，前端不发送，默认 id DESC。其他模块仍按各自查询类型再核实。文件契约不一致，本阶段未改 `file.ts`。前端仍是 `/sys/file/upload`、`/upload/batch`、`/download?filePath`；当前后端是 `POST /api/sys/file`、`POST /api/sys/file/batch`，下载为 `GET /api/sys/file/{id}/download` 的 302 | 阶段 7 做文件页前必须重对齐；用户页不排序 |
+| Q04 | 列表 orderBy，以及文件接口是否仍与 `file.ts` 一致 | 用户列表已核实：`UserPageQuery` 不接收 orderBy，前端不发送，默认 id DESC。定时任务 `JobPageQuery` 可排序，页面同样不发送，默认 id DESC。文件契约不一致，本阶段未改 `file.ts`。前端仍是 `/sys/file/upload`、`/upload/batch`、`/download?filePath`；当前后端是 `POST /api/sys/file`、`POST /api/sys/file/batch`，下载为 `GET /api/sys/file/{id}/download` 的 302 | 阶段 7 做文件页前必须重对齐；用户页和定时任务页不排序 |
 | Q05 | style、baseColor、视觉细节与 aliases.utils | 已落地，见 D09。后续换风格前要评估已生成组件 | 工程选择，已记录 |
 | Q06 | 最小测试工具、表单库与复杂控件 | 测试工具已定为 Vitest 5.1.0。表单库与复杂控件仍不预装 | 阶段 3 之后按真实表单再选 |
 | Q07 | 用户信息头像字段 | `UserInfo.avatarFileId` 是 `number \| null`。用户接口读到的 `avatarFileId` 是 `{fileId,name,url,ext,size}` 或 null，写入只传数字或 null。本阶段不上传头像 | 文件页仍待阶段 7，见 Q04 |
@@ -484,18 +485,18 @@ del<T>(url: string, data?: unknown, config?: RequestConfig): Promise<T>
 - `file.ts` 与当前文件控制器仍不一致。用户读写已按文件视图和数字 ID 区分，文件页仍待阶段 7。
 - 已有性别不能通过用户更新接口清空，`updateById` 不写 null。
 - 本机 `0.0.0.0:5173` 被其他项目占用；日常 `pnpm dev` 仍配置为 5173，启动时若看到端口警告需要确认请求没有进到别的 Vite。
-- 阶段 7 在线用户已本地提交 `24e6b12`，未推送。未运行 `pnpm approve`，因此没有安装 `@tanstack/vue-table` 附带的 agent skills。
+- 阶段 7 定时任务已本地提交 `3ab7da7`，未推送。未运行 `pnpm approve`，因此没有安装 `@tanstack/vue-table` 附带的 agent skills。
 
 ### 阶段 7 恢复检查点
 
-- **当前阶段：** 7 进行中。在线用户已完成。
-- **已完成：** 阶段 1–3 复审无修改。用户、角色、部门树、菜单树、字典、系统参数、在线用户。
-- **剩余：** 定时任务、文件。`file.ts` 仍不对齐。已有性别不能清空。
-- **关键决定：** D16。在线用户按登录时间倒序分页，只提交起止时间。下线当前账号后需要重新登录。加载失败清空列表。
-- **验证：** 在线用户页 eslint、`vue-tsc -b` 和 online-query vitest 2 项通过。真实页面完成非法时间不请求、同一分钟展开、空结果、取消不下线、当前账号提示、390px、失败加载后下线按钮消失。没有下线 admin，原会话仍在。未记录令牌，未跑全量测试和构建。
-- **审查：** 阶段 1–3 一次 PASS。用户页 2 次第 2 次 PASS。列配置 1 次 PASS。角色页 1 次 PASS。部门页 2 次第 2 次 PASS。菜单页 2 次第 2 次 PASS。字典页 2 次第 2 次 PASS。参数页 1 次 PASS。在线用户页 1 次 PASS。
-- **提交：** `568e0e2` 系统参数，`24e6b12` 在线用户。未推送。
-- **下一步：** 做定时任务。先读任务分页、Cron 和执行契约，不沿用在线用户的下线确认。
+- **当前阶段：** 7 进行中。定时任务已完成。
+- **已完成：** 阶段 1–3 复审无修改。用户、角色、部门树、菜单树、字典、系统参数、在线用户、定时任务。
+- **剩余：** 文件。`file.ts` 仍不对齐。已有性别不能清空。
+- **关键决定：** D17。定时任务按名称、分组、Bean 和状态分页，不发送 orderBy。暂停和恢复只改启用。日志在同一页查看，清空会删除全部任务的记录。确认进行中不能再次打开。
+- **验证：** 定时任务页 eslint、`vue-tsc -b` 和 job-form vitest 2 项通过。真实页面完成名称与 Cron 校验、停用任务的创建和删除、状态开关、分组筛选、日志空结果、取消不执行、重复名称提示、390px、加载失败后不能删除。Esc 复核拦截了删除和执行，没有真正操作「文件生命周期清理」，该任务仍启用。未记录令牌，未跑全量测试和构建。
+- **审查：** 阶段 1–3 一次 PASS。用户页 2 次第 2 次 PASS。列配置 1 次 PASS。角色页 1 次 PASS。部门页 2 次第 2 次 PASS。菜单页 2 次第 2 次 PASS。字典页 2 次第 2 次 PASS。参数页 1 次 PASS。在线用户页 1 次 PASS。定时任务页 3 次第 3 次 PASS。
+- **提交：** `24e6b12` 在线用户，`3ab7da7` 定时任务。未推送。
+- **下一步：** 做文件。先把 `file.ts` 对齐为 `POST /api/sys/file`、`POST /api/sys/file/batch` 和 `GET /api/sys/file/{id}/download`，再做页面。
 
 ---
 
