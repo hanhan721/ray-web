@@ -1,4 +1,6 @@
 import { get, post, put, del } from '@/utils/request'
+import type { RequestConfig } from '@/types/request'
+import type { ParamType } from '@/types/enums'
 
 /**
  * 系统参数实体
@@ -7,7 +9,7 @@ export interface SystemParam {
   id: number
   paramKey: string
   paramValue: string
-  paramType: string
+  paramType: ParamType
   bizType: number
   encrypted: boolean
   description?: string
@@ -23,7 +25,7 @@ export interface SystemParam {
 export interface ParamCreateForm {
   paramKey: string
   paramValue: string
-  paramType: string
+  paramType: ParamType
   bizType: number
   encrypted?: boolean
   description?: string
@@ -44,21 +46,21 @@ export interface ParamUpdateForm {
  */
 export interface ParamQuery extends PageQuery {
   bizType?: number
-  paramType?: string
+  paramType?: ParamType
 }
 
 /**
  * 分页查询系统参数
  */
-export function getParamPage(params: ParamQuery) {
-  return get<IPage<SystemParam>>('/sys/param/page', params)
+export function getParamPage(params: ParamQuery, config?: RequestConfig) {
+  return get<IPage<SystemParam>>('/sys/param/page', params, config)
 }
 
 /**
  * 查询参数详情
  */
-export function getParamById(id: number) {
-  return get<SystemParam>(`/sys/param/${id}`)
+export function getParamById(id: number, config?: RequestConfig) {
+  return get<SystemParam>(`/sys/param/${id}`, undefined, config)
 }
 
 /**
@@ -99,20 +101,20 @@ export function getParamBoolean(paramKey: string) {
 /**
  * 创建参数
  */
-export function createParam(data: ParamCreateForm) {
-  return post<number>('/sys/param', data)
+export function createParam(data: ParamCreateForm, config?: RequestConfig) {
+  return post<number>('/sys/param', data, config)
 }
 
 /**
- * 更新参数（只能改 paramValue 和 description）
+ * 更新参数值、加密状态和描述。键、类型和业务分类不能改。
  */
-export function updateParam(data: ParamUpdateForm) {
-  return put<void>('/sys/param', data)
+export function updateParam(data: ParamUpdateForm, config?: RequestConfig) {
+  return put<void>('/sys/param', data, config)
 }
 
 /**
  * 删除参数
  */
-export function deleteParams(ids: number[]) {
-  return del<void>('/sys/param', ids)
+export function deleteParams(ids: number[], config?: RequestConfig) {
+  return del<void>('/sys/param', ids, config)
 }

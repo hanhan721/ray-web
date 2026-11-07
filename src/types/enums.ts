@@ -44,13 +44,14 @@ export const PermissionTypeLabel: Record<PermissionType, string> = {
 // ===== 系统参数相关 =====
 
 /** 参数类型 */
-export type ParamType = 'STRING' | 'INTEGER' | 'BOOLEAN' | 'STRING_LIST'
+export type ParamType = 'STRING' | 'INTEGER' | 'BOOLEAN' | 'JSON' | 'STRING_LIST'
 
 /** 参数类型选项 */
 export const ParamTypeOptions = [
   { label: '字符串', value: 'STRING' },
   { label: '整数', value: 'INTEGER' },
   { label: '布尔值', value: 'BOOLEAN' },
+  { label: 'JSON', value: 'JSON' },
   { label: '字符串列表', value: 'STRING_LIST' },
 ] as const
 
