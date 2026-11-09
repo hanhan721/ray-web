@@ -5,39 +5,29 @@
   "mcp": {
     // `npx -y <pkg>@latest` downloads the package on first launch; give it room to finish.
     "timeout": {
-      "startup": 120000,
+      "startup": 120000
     },
     "servers": {
       "shadcn": {
         "type": "local",
         // shadcn-vue MCP: browse/search/install registry items.
-        "command": ["npx", "-y", "shadcn-vue@latest", "mcp"],
+        "command": ["mise", "exec", "node@26", "--", "npx", "-y", "shadcn-vue@latest", "mcp"],
         // Resolve from the project root so mise picks up mise.toml (Node 26.13.0).
         "cwd": ".",
-        // The OpenCode host injects HTTP(S)_PROXY without a URL scheme (e.g. 127.0.0.1:8800).
-        // npm rejects it with ERR_INVALID_URL while resolving `@latest`, so clear it for this
-        // local server; the npm registry is reachable directly. Remove these four lines once
-        // the host supplies a scheme-prefixed proxy, or if this machine truly needs a proxy.
         "environment": {
-          "HTTP_PROXY": "",
-          "HTTPS_PROXY": "",
-          "http_proxy": "",
-          "https_proxy": "",
-        },
+          "HTTP_PROXY": "http://127.0.0.1:8800",
+          "HTTPS_PROXY": "http://127.0.0.1:8800"
+        }
       },
       "playwright": {
         "type": "local",
-        // Browser automation, interaction testing, screenshots and UI verification.
-        "command": ["npx", "-y", "@playwright/mcp@latest"],
-        "cwd": ".",
-        // Same host proxy workaround; harmless when no proxy env is set.
+        "command": ["mise", "exec", "node@26", "--", "npx", "-y", "@playwright/mcp@latest"],
         "environment": {
-          "HTTP_PROXY": "",
-          "HTTPS_PROXY": "",
-          "http_proxy": "",
-          "https_proxy": "",
-        },
-      },
-    },
-  },
+          "PLAYWRIGHT_MCP_PROXY_SERVER": "http://127.0.0.1:8800",
+          "PLAYWRIGHT_MCP_PROXY_BYPASS": "localhost,127.0.0.1,[::1]",
+          "PLAYWRIGHT_BROWSERS_PATH": "D:\\cache\\playwright\\ray"
+        }
+      }
+    }
+  }
 }

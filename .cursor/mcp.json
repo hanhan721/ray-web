@@ -5,8 +5,8 @@
       "args": ["-y", "shadcn-vue@latest", "mcp"]
     },
     "playwright": {
-      "command": "npx",
-      "args": ["-y", "@playwright/mcp@latest"]
+      "command": "mise",
+      "args": [ "exec", "node@26", "--", "npx", "-y", "@playwright/mcp@latest"]
     }
   }
 }
