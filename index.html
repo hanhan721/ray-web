@@ -9,8 +9,17 @@
     />
     <title>ray-web</title>
     <script>
-      if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        document.documentElement.classList.add('dark')
+      try {
+        var storedTheme = localStorage.getItem('ray.theme')
+        var darkTheme =
+          storedTheme === 'dark' ||
+          (storedTheme !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+        if (darkTheme) document.documentElement.classList.add('dark')
+        document.documentElement.style.colorScheme = darkTheme ? 'dark' : 'light'
+      } catch (error) {
+        if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+          document.documentElement.classList.add('dark')
+        }
       }
     </script>
   </head>

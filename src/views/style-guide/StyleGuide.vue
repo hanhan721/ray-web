@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { MoonIcon, OctagonXIcon, SunIcon, UsersIcon } from '@lucide/vue'
-import { onMounted, shallowRef } from 'vue'
+import { computed, shallowRef } from 'vue'
+import { storeToRefs } from 'pinia'
 import { toast } from 'vue-sonner'
+import { useThemeStore } from '@/stores/theme'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
   AlertDialog,
@@ -57,7 +59,9 @@ import {
   TableRow,
 } from '@/components/ui/table'
 
-const dark = shallowRef(window.matchMedia('(prefers-color-scheme: dark)').matches)
+const theme = useThemeStore()
+const { mode } = storeToRefs(theme)
+const dark = computed(() => mode.value === 'dark')
 const account = shallowRef('admin')
 const password = shallowRef('')
 const passwordAgain = shallowRef('不一致')
@@ -69,13 +73,8 @@ const nickname = shallowRef('夜间巡检')
 const longRemark =
   '夜间巡检账号，负责字典维护、任务失败重试和权限复核。备注需要完整显示，不能被表格裁成一行省略号。'
 
-onMounted(() => {
-  dark.value = document.documentElement.classList.contains('dark')
-})
-
 function toggleTheme() {
-  dark.value = !dark.value
-  document.documentElement.classList.toggle('dark', dark.value)
+  theme.toggle()
 }
 
 function showSaved() {

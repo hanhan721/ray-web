@@ -3,6 +3,7 @@ import { onMounted, shallowRef, useTemplateRef } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
+import ThemeToggle from '@/components/ThemeToggle.vue'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
@@ -63,7 +64,10 @@ async function onSubmit() {
       </div>
       <p class="text-muted-foreground text-sm">管理后台</p>
     </section>
-    <section class="flex items-center px-6 py-12">
+    <section class="relative flex items-center px-6 py-12">
+      <div class="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
       <form class="w-full max-w-sm" novalidate @submit.prevent="onSubmit">
         <h1 class="text-xl font-medium">登录</h1>
         <p class="text-muted-foreground mt-2 text-sm md:hidden">

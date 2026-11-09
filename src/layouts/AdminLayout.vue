@@ -5,6 +5,7 @@ import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { Calendar, FileText, LayoutGrid, List, Settings, Shield, Users } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
+import ThemeToggle from '@/components/ThemeToggle.vue'
 import { removeRouteNames } from '@/router/menu-install'
 import { useSessionStore } from '@/stores/session'
 
@@ -121,8 +122,9 @@ async function onLogout() {
         class="border-border bg-background sticky top-0 z-10 flex h-12 items-center justify-between gap-3 border-b px-4"
       >
         <p class="truncate text-sm font-medium">{{ sectionTitle }}</p>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-1">
           <p class="text-muted-foreground max-w-40 truncate text-sm">{{ displayName }}</p>
+          <ThemeToggle />
           <Button type="button" variant="outline" size="sm" @click="onLogout">退出</Button>
         </div>
       </header>

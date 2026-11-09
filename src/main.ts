@@ -5,8 +5,11 @@ import App from './App.vue'
 import { handleUnauthorized } from './router/guard'
 import { createAppRouter } from './router'
 import { setErrorNotifier, setUnauthorizedHandler } from './utils/request'
+import { initThemeMode } from './utils/theme'
 import './styles/globals.css'
 import 'vue-sonner/style.css'
+
+initThemeMode()
 
 const router = createAppRouter()
 
