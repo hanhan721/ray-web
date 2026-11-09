@@ -1,28 +1,23 @@
 <script setup lang="ts">
+import { OctagonX, TriangleAlert, XIcon } from '@lucide/vue'
 import { computed, nextTick, shallowRef, useTemplateRef, watch } from 'vue'
 import { getDeptTree, type DeptTree } from '@/api/dept'
 import { getRoleList, type Role } from '@/api/role'
 import { assignUserDepts, assignUserRoles, createUser, getUserById, updateUser } from '@/api/user'
 import { GenderOptions, type Gender } from '@/types/enums'
 import { RequestError } from '@/utils/request'
+import MultiSelect from '@/components/common/MultiSelect.vue'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import {
-  Field,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-  FieldLegend,
-  FieldSet,
-} from '@/components/ui/field'
+import { Field, FieldError, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import {
   Select,
@@ -34,6 +29,7 @@ import {
 } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
+import { Textarea } from '@/components/ui/textarea'
 import { sameEditorSession, toUserWrite } from './user-table'
 
 const props = defineProps<{
@@ -65,7 +61,7 @@ const avatarFileId = shallowRef<number | null>(null)
 const roleIds = shallowRef<number[]>([])
 const deptIds = shallowRef<number[]>([])
 const roles = shallowRef<Role[]>([])
-const depts = shallowRef<Array<{ id: number; label: string }>>([])
+const depts = shallowRef<Array<{ id: number; label: string; depth: number }>>([])
 const formError = shallowRef('')
 const stepNote = shallowRef('')
 const loading = shallowRef(false)
@@ -76,6 +72,23 @@ const rolesSavedKey = shallowRef('')
 const deptsSavedKey = shallowRef('')
 const originalGender = shallowRef<Gender | ''>('')
 const usernameInput = useTemplateRef<{ $el?: unknown }>('usernameInput')
+const showPermissionSection = computed(
+  () => !creating.value && (props.canAssignRoles || props.canAssignDepts),
+)
+const roleOptions = computed(() =>
+  roles.value.map((role) => ({
+    value: role.id,
+    label: role.roleName,
+    disabled: role.enabled === false,
+  })),
+)
+const deptOptions = computed(() =>
+  depts.value.map((dept) => ({
+    value: dept.id,
+    label: dept.label,
+    depth: dept.depth,
+  })),
+)
 let session = 0
 
 function idKey(ids: number[]): string {
@@ -107,31 +120,16 @@ function failureMessage(error: unknown): string {
   return '保存失败，请稍后重试'
 }
 
-function flattenDepts(nodes: DeptTree[], depth = 0): Array<{ id: number; label: string }> {
-  const result: Array<{ id: number; label: string }> = []
+function flattenDepts(
+  nodes: DeptTree[],
+  depth = 0,
+): Array<{ id: number; label: string; depth: number }> {
+  const result: Array<{ id: number; label: string; depth: number }> = []
   for (const node of nodes) {
-    result.push({
-      id: node.id,
-      label: `${depth > 0 ? `${'· '.repeat(depth)}` : ''}${node.deptName}`,
-    })
+    result.push({ id: node.id, label: node.deptName, depth })
     if (node.children?.length) result.push(...flattenDepts(node.children, depth + 1))
   }
   return result
-}
-
-function toggleId(list: number[], id: number, checked: boolean): number[] {
-  const next = new Set(list)
-  if (checked) next.add(id)
-  else next.delete(id)
-  return [...next]
-}
-
-function setRole(id: number, checked: boolean) {
-  roleIds.value = toggleId(roleIds.value, id, checked)
-}
-
-function setDept(id: number, checked: boolean) {
-  deptIds.value = toggleId(deptIds.value, id, checked)
 }
 
 async function loadOptions(sessionId: number, userId: number | null) {
@@ -232,6 +230,11 @@ function close() {
   emit('update:open', false)
 }
 
+function onOpenChange(open: boolean) {
+  if (!open && saving.value) return
+  emit('update:open', open)
+}
+
 async function onSubmit() {
   const sessionId = session
   const userId = props.userId
@@ -319,137 +322,221 @@ async function onSubmit() {
 </script>
 
 <template>
-  <Dialog :open="open" @update:open="emit('update:open', $event)">
-    <DialogContent class="sm:max-w-md">
-      <DialogHeader>
-        <DialogTitle>{{ creating ? '新增用户' : '编辑用户' }}</DialogTitle>
-        <DialogDescription>
-          {{ creating ? '创建后可以再分配角色和部门。' : '资料、角色和部门分开保存。' }}
-        </DialogDescription>
+  <Dialog :open="open" @update:open="onOpenChange">
+    <DialogContent
+      :show-close-button="false"
+      class="grid max-h-[calc(100svh-2rem)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 sm:max-w-3xl"
+    >
+      <DialogHeader class="border-b px-6 pt-6 pr-12 pb-4">
+        <DialogTitle class="text-lg font-semibold">
+          {{ creating ? '新增用户' : '编辑用户' }}
+        </DialogTitle>
+        <DialogDescription class="sr-only">用户资料编辑</DialogDescription>
       </DialogHeader>
-      <form novalidate @submit.prevent="onSubmit">
-        <div class="flex max-h-[60vh] flex-col gap-4 overflow-y-auto pr-1">
-          <p v-if="loading" class="text-muted-foreground text-sm">正在读取用户资料。</p>
-          <FieldGroup v-else-if="detailReady">
-            <Field :data-invalid="formError && !username.trim() ? true : undefined">
-              <FieldLabel for="user-username">账号</FieldLabel>
-              <Input
-                id="user-username"
-                ref="usernameInput"
-                v-model="username"
-                name="username"
-                autocomplete="off"
-                :disabled="saving"
-                :aria-invalid="formError && !username.trim() ? true : undefined"
-              />
-            </Field>
-            <Field v-if="creating" :data-invalid="formError && !password ? true : undefined">
-              <FieldLabel for="user-password">密码</FieldLabel>
-              <Input
-                id="user-password"
-                v-model="password"
-                name="password"
-                type="password"
-                autocomplete="new-password"
-                :disabled="saving"
-                :aria-invalid="formError && !password ? true : undefined"
-              />
-            </Field>
-            <Field>
-              <FieldLabel for="user-nickname">昵称</FieldLabel>
-              <Input id="user-nickname" v-model="nickname" :disabled="saving" />
-            </Field>
-            <Field>
-              <FieldLabel for="user-email">邮箱</FieldLabel>
-              <Input
-                id="user-email"
-                v-model="email"
-                type="email"
-                autocomplete="off"
-                :disabled="saving"
-              />
-            </Field>
-            <Field>
-              <FieldLabel for="user-phone">手机</FieldLabel>
-              <Input id="user-phone" v-model="phone" autocomplete="off" :disabled="saving" />
-            </Field>
-            <Field>
-              <FieldLabel for="user-gender">性别</FieldLabel>
-              <Select
-                :model-value="gender === '' ? 'none' : gender"
-                :disabled="saving"
-                @update:model-value="setGender"
-              >
-                <SelectTrigger id="user-gender" class="w-full">
-                  <SelectValue placeholder="未填写" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    <SelectItem value="none">未填写</SelectItem>
-                    <SelectItem
-                      v-for="option in GenderOptions"
-                      :key="option.value"
-                      :value="option.value"
-                    >
-                      {{ option.label }}
-                    </SelectItem>
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </Field>
-            <Field orientation="horizontal">
-              <FieldLabel for="user-enabled">启用</FieldLabel>
-              <Switch id="user-enabled" v-model="enabled" :disabled="saving" />
-            </Field>
-            <Field>
-              <FieldLabel for="user-remark">备注</FieldLabel>
-              <Input id="user-remark" v-model="remark" :disabled="saving" />
-            </Field>
-            <FieldSet v-if="!creating && canAssignRoles">
-              <FieldLegend>角色</FieldLegend>
-              <FieldGroup class="gap-1">
-                <Field v-for="role in roles" :key="role.id" orientation="horizontal">
-                  <Checkbox
-                    :id="`user-role-${role.id}`"
-                    :model-value="roleIds.includes(role.id)"
-                    :disabled="saving || role.enabled === false"
-                    @update:model-value="setRole(role.id, Boolean($event))"
-                  />
-                  <FieldLabel :for="`user-role-${role.id}`">{{ role.roleName }}</FieldLabel>
-                </Field>
-                <p v-if="roles.length === 0" class="text-muted-foreground text-sm">
-                  没有可分配的角色。
-                </p>
-              </FieldGroup>
-            </FieldSet>
-            <FieldSet v-if="!creating && canAssignDepts">
-              <FieldLegend>部门</FieldLegend>
-              <FieldGroup class="gap-1">
-                <Field v-for="dept in depts" :key="dept.id" orientation="horizontal">
-                  <Checkbox
-                    :id="`user-dept-${dept.id}`"
-                    :model-value="deptIds.includes(dept.id)"
+
+      <DialogClose as-child>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          class="absolute top-4 right-4"
+          :disabled="saving"
+          aria-label="关闭"
+        >
+          <XIcon />
+        </Button>
+      </DialogClose>
+
+      <form class="contents" novalidate @submit.prevent="onSubmit">
+        <div class="min-h-0 overflow-y-auto px-6 py-5">
+          <div
+            v-if="loading"
+            class="flex min-h-48 flex-col items-center justify-center gap-3 text-center"
+          >
+            <Spinner class="size-5" />
+            <p class="text-muted-foreground text-sm">正在读取用户资料…</p>
+          </div>
+
+          <div
+            v-else-if="!detailReady"
+            class="flex min-h-48 flex-col items-center justify-center gap-2 text-center"
+          >
+            <p class="text-sm font-medium">没有读取到用户资料</p>
+            <p class="text-muted-foreground text-xs">检查网络后重试，或关闭窗口稍后再试。</p>
+            <Button type="button" variant="outline" size="sm" @click="resetForm">重试</Button>
+          </div>
+
+          <div v-else class="flex flex-col gap-6">
+            <FieldSet class="gap-3">
+              <FieldLegend class="mb-0">基本资料</FieldLegend>
+              <div class="grid gap-4 sm:grid-cols-2">
+                <Field :data-invalid="formError && !username.trim() ? true : undefined">
+                  <FieldLabel for="user-username">账号</FieldLabel>
+                  <Input
+                    id="user-username"
+                    ref="usernameInput"
+                    v-model="username"
+                    name="username"
+                    autocomplete="off"
+                    class="h-9"
                     :disabled="saving"
-                    @update:model-value="setDept(dept.id, Boolean($event))"
+                    :aria-invalid="formError && !username.trim() ? true : undefined"
                   />
-                  <FieldLabel :for="`user-dept-${dept.id}`">{{ dept.label }}</FieldLabel>
+                  <FieldError v-if="formError && !username.trim()">请填写账号</FieldError>
                 </Field>
-                <p v-if="depts.length === 0" class="text-muted-foreground text-sm">
-                  没有可分配的部门。
-                </p>
-              </FieldGroup>
+                <Field>
+                  <FieldLabel for="user-nickname">昵称</FieldLabel>
+                  <Input id="user-nickname" v-model="nickname" class="h-9" :disabled="saving" />
+                </Field>
+                <Field
+                  v-if="creating"
+                  class="sm:col-span-2"
+                  :data-invalid="formError && !password ? true : undefined"
+                >
+                  <FieldLabel for="user-password">密码</FieldLabel>
+                  <Input
+                    id="user-password"
+                    v-model="password"
+                    name="password"
+                    type="password"
+                    autocomplete="new-password"
+                    class="h-9"
+                    :disabled="saving"
+                    :aria-invalid="formError && !password ? true : undefined"
+                  />
+                  <FieldError v-if="formError && !password">请填写密码</FieldError>
+                </Field>
+                <Field>
+                  <FieldLabel for="user-gender">性别</FieldLabel>
+                  <Select
+                    :model-value="gender === '' ? 'none' : gender"
+                    :disabled="saving"
+                    @update:model-value="setGender"
+                  >
+                    <SelectTrigger id="user-gender" size="lg" class="w-full text-sm">
+                      <SelectValue placeholder="未填写" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectItem value="none">未填写</SelectItem>
+                        <SelectItem
+                          v-for="option in GenderOptions"
+                          :key="option.value"
+                          :value="option.value"
+                        >
+                          {{ option.label }}
+                        </SelectItem>
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field>
+                  <FieldLabel for="user-phone">手机</FieldLabel>
+                  <Input
+                    id="user-phone"
+                    v-model="phone"
+                    autocomplete="off"
+                    class="h-9"
+                    :disabled="saving"
+                  />
+                </Field>
+                <Field class="sm:col-span-2">
+                  <FieldLabel for="user-email">邮箱</FieldLabel>
+                  <Input
+                    id="user-email"
+                    v-model="email"
+                    type="email"
+                    autocomplete="off"
+                    class="h-9"
+                    :disabled="saving"
+                  />
+                </Field>
+                <Field
+                  orientation="horizontal"
+                  class="rounded-lg border bg-muted/20 px-3 py-2 sm:col-span-2"
+                >
+                  <FieldLabel for="user-enabled">启用账号</FieldLabel>
+                  <Switch id="user-enabled" v-model="enabled" :disabled="saving" />
+                </Field>
+                <Field class="sm:col-span-2">
+                  <FieldLabel for="user-remark">备注</FieldLabel>
+                  <Textarea
+                    id="user-remark"
+                    v-model="remark"
+                    placeholder="补充说明（可选）"
+                    :disabled="saving"
+                  />
+                </Field>
+              </div>
             </FieldSet>
-          </FieldGroup>
-          <FieldError v-if="formError">{{ formError }}</FieldError>
-          <p v-if="stepNote" class="text-muted-foreground text-sm">{{ stepNote }}</p>
+
+            <FieldSet v-if="showPermissionSection" class="gap-3">
+              <FieldLegend class="mb-0">权限与归属</FieldLegend>
+              <div
+                :class="
+                  canAssignRoles && canAssignDepts
+                    ? 'grid gap-4 md:grid-cols-2'
+                    : 'flex flex-col gap-4'
+                "
+              >
+                <FieldSet v-if="canAssignRoles" class="gap-2">
+                  <FieldLegend variant="label" class="mb-0">角色</FieldLegend>
+                  <MultiSelect
+                    v-model="roleIds"
+                    :options="roleOptions"
+                    placeholder="选择角色"
+                    empty-text="没有可分配的角色"
+                    no-results-text="没有匹配的角色"
+                    :disabled="saving"
+                  />
+                </FieldSet>
+
+                <FieldSet v-if="canAssignDepts" class="gap-2">
+                  <FieldLegend variant="label" class="mb-0">部门</FieldLegend>
+                  <MultiSelect
+                    v-model="deptIds"
+                    :options="deptOptions"
+                    placeholder="选择部门"
+                    empty-text="没有可分配的部门"
+                    no-results-text="没有匹配的部门"
+                    :disabled="saving"
+                  />
+                </FieldSet>
+              </div>
+            </FieldSet>
+          </div>
         </div>
-        <DialogFooter class="bg-dialog sticky bottom-0 pt-3">
-          <Button type="button" variant="outline" :disabled="saving" @click="close">取消</Button>
-          <Button type="submit" :disabled="saving || loading || !detailReady">
-            <Spinner v-if="saving" />
-            {{ saving ? '正在保存' : '保存' }}
-          </Button>
-        </DialogFooter>
+
+        <div class="flex flex-col gap-3 border-t px-6 py-4">
+          <Alert v-if="formError" :variant="stepNote ? 'default' : 'destructive'">
+            <TriangleAlert v-if="stepNote" />
+            <OctagonX v-else />
+            <AlertTitle>{{ stepNote ? '部分内容未保存' : '没有保存成功' }}</AlertTitle>
+            <AlertDescription>
+              {{ formError }}
+              <span v-if="stepNote" class="mt-1 block">{{ stepNote }}</span>
+            </AlertDescription>
+          </Alert>
+          <div class="flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              class="w-full sm:w-auto"
+              :disabled="saving"
+              @click="close"
+            >
+              取消
+            </Button>
+            <Button
+              type="submit"
+              class="w-full sm:w-auto"
+              :disabled="saving || loading || !detailReady"
+            >
+              <Spinner v-if="saving" />
+              {{ saving ? '正在提交' : '提交' }}
+            </Button>
+          </div>
+        </div>
       </form>
     </DialogContent>
   </Dialog>

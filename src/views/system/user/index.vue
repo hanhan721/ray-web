@@ -179,11 +179,11 @@ function genderText(value: Gender | null | undefined): string {
 }
 
 const CELL_MIN_WIDTH: Record<string, string> = {
-  username: 'min-w-28',
-  nickname: 'min-w-28',
-  email: 'min-w-48',
-  phone: 'min-w-28',
-  createTime: 'min-w-40',
+  username: 'min-w-24',
+  nickname: 'min-w-24',
+  email: 'min-w-36',
+  phone: 'min-w-24',
+  createTime: 'min-w-36',
 }
 
 function cellClass(columnId: string): string {
@@ -316,7 +316,7 @@ onMounted(() => {
 <template>
   <section class="flex w-full min-w-0 flex-col gap-4 md:h-[calc(100svh-5rem)]">
     <Card class="shrink-0">
-      <CardContent class="pt-4">
+      <CardContent>
         <form class="flex flex-wrap items-center gap-x-4 gap-y-3" @submit.prevent="search()">
           <Field orientation="horizontal" class="w-auto">
             <FieldLabel for="filter-username" class="w-8 shrink-0 whitespace-nowrap"
@@ -327,7 +327,7 @@ onMounted(() => {
               v-model="username"
               name="username"
               placeholder="输入账号关键字"
-              class="w-44"
+              class="h-9 w-44"
             />
           </Field>
           <Field orientation="horizontal" class="w-auto">
@@ -339,7 +339,7 @@ onMounted(() => {
               v-model="nickname"
               name="nickname"
               placeholder="输入昵称关键字"
-              class="w-44"
+              class="h-9 w-44"
             />
           </Field>
           <Field orientation="horizontal" class="w-auto">
@@ -350,7 +350,7 @@ onMounted(() => {
               :model-value="enabled === '' ? 'all' : enabled"
               @update:model-value="setEnabledFilter"
             >
-              <SelectTrigger id="filter-enabled" class="w-36">
+              <SelectTrigger id="filter-enabled" size="lg" class="w-36">
                 <SelectValue placeholder="全部" />
               </SelectTrigger>
               <SelectContent>
@@ -487,7 +487,11 @@ onMounted(() => {
                 </Empty>
               </TableEmpty>
               <template v-else>
-                <TableRow v-for="row in table.getRowModel().rows" :key="row.id">
+                <TableRow
+                  v-for="row in table.getRowModel().rows"
+                  :key="row.id"
+                  :data-state="selectedIds.includes(row.original.id) ? 'selected' : undefined"
+                >
                   <TableCell v-for="cell in row.getVisibleCells()" :key="cell.id">
                     <Checkbox
                       v-if="cell.column.id === 'select'"
@@ -511,7 +515,10 @@ onMounted(() => {
                     <span v-else-if="cell.column.id === 'gender'">{{
                       genderText(row.original.gender)
                     }}</span>
-                    <div v-else-if="cell.column.id === 'actions'" class="flex flex-wrap gap-1">
+                    <div
+                      v-else-if="cell.column.id === 'actions'"
+                      class="flex min-w-32 flex-nowrap gap-1"
+                    >
                       <Button
                         v-if="can('system:user:query')"
                         type="button"
@@ -536,7 +543,16 @@ onMounted(() => {
                       :class="cellClass(cell.column.id)"
                       :title="String(cell.getValue() ?? '')"
                     >
-                      <FlexRender :cell="cell" />
+                      <span
+                        v-if="
+                          cell.getValue() === null ||
+                          cell.getValue() === undefined ||
+                          cell.getValue() === ''
+                        "
+                        class="text-muted-foreground"
+                        >—</span
+                      >
+                      <FlexRender v-else :cell="cell" />
                     </span>
                   </TableCell>
                 </TableRow>
