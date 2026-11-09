@@ -89,25 +89,37 @@ async function onLogout() {
             <RouterLink
               v-if="node.kind === 'item'"
               :to="node.to"
-              class="text-sidebar-foreground focus-visible:ring-ring flex items-center gap-2 rounded-md px-2 py-1.5 text-sm outline-none focus-visible:ring-2"
+              class="text-sidebar-foreground focus-visible:ring-ring flex items-center gap-2 rounded-md px-2 py-1.5 text-xs outline-none focus-visible:ring-2"
               exact-active-class="bg-sidebar-accent text-sidebar-accent-foreground"
             >
-              <component :is="iconFor(node.icon)" v-if="iconFor(node.icon)" />
+              <component
+                :is="iconFor(node.icon)"
+                v-if="iconFor(node.icon)"
+                class="size-4 shrink-0"
+              />
               <span class="truncate">{{ node.title }}</span>
             </RouterLink>
             <div v-else class="pt-2">
-              <p class="text-muted-foreground flex items-center gap-2 px-2 py-1 text-xs">
-                <component :is="iconFor(node.icon)" v-if="iconFor(node.icon)" />
+              <p class="text-muted-foreground flex items-center gap-2 px-2 py-1 text-[0.75rem]">
+                <component
+                  :is="iconFor(node.icon)"
+                  v-if="iconFor(node.icon)"
+                  class="size-3.5 shrink-0"
+                />
                 <span class="truncate">{{ node.title }}</span>
               </p>
               <ul class="flex flex-col gap-0.5">
                 <li v-for="item in node.items" :key="item.id">
                   <RouterLink
                     :to="item.to"
-                    class="text-sidebar-foreground focus-visible:ring-ring flex items-center gap-2 rounded-md px-2 py-1.5 text-sm outline-none focus-visible:ring-2"
+                    class="text-sidebar-foreground focus-visible:ring-ring flex items-center gap-2 rounded-md px-2 py-1.5 text-xs outline-none focus-visible:ring-2"
                     exact-active-class="bg-sidebar-accent text-sidebar-accent-foreground"
                   >
-                    <component :is="iconFor(item.icon)" v-if="iconFor(item.icon)" />
+                    <component
+                      :is="iconFor(item.icon)"
+                      v-if="iconFor(item.icon)"
+                      class="size-4 shrink-0"
+                    />
                     <span class="truncate">{{ item.title }}</span>
                   </RouterLink>
                 </li>

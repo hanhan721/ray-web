@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Columns3, RotateCcw, Search, Trash2, UserRoundPlus, UsersRound } from '@lucide/vue'
 import { computed, onMounted, shallowRef } from 'vue'
 import {
   columnOrderingFeature,
@@ -14,7 +15,11 @@ import { deleteUsers, updateUserStatus, type SysUser } from '@/api/user'
 import { GenderLabel, PAGE_KEYS, type Gender } from '@/types/enums'
 import { RequestError } from '@/utils/request'
 import { useSessionStore } from '@/stores/session'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Card, CardAction, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -32,8 +37,33 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from '@/components/ui/empty'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination'
 import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
 import {
@@ -115,6 +145,8 @@ const pageCount = computed(() => Math.max(1, Math.ceil(total.value / pageSize.va
 const allPageSelected = computed(
   () => rows.value.length > 0 && rows.value.every((row) => selectedIds.value.includes(row.id)),
 )
+const showSkeleton = computed(() => loading.value && rows.value.length === 0)
+const refreshing = computed(() => loading.value && rows.value.length > 0)
 
 const table = useTable({
   features,
@@ -146,6 +178,19 @@ function genderText(value: Gender | null | undefined): string {
   return GenderLabel[value] ?? value
 }
 
+const CELL_MIN_WIDTH: Record<string, string> = {
+  username: 'min-w-28',
+  nickname: 'min-w-28',
+  email: 'min-w-48',
+  phone: 'min-w-28',
+  createTime: 'min-w-40',
+}
+
+function cellClass(columnId: string): string {
+  const minWidth = CELL_MIN_WIDTH[columnId] ?? 'min-w-16'
+  return `block truncate ${minWidth}`
+}
+
 function failureMessage(error: unknown): string {
   if (error instanceof RequestError && error.message) return error.message
   return '操作失败，请稍后重试'
@@ -167,6 +212,17 @@ async function loadColumns() {
 function openCreate() {
   editorId.value = null
   editorOpen.value = true
+}
+
+function resetFilters() {
+  username.value = ''
+  nickname.value = ''
+  enabled.value = ''
+  return search()
+}
+
+function setEnabledFilter(value: unknown) {
+  enabled.value = value === 'true' ? 'true' : value === 'false' ? 'false' : ''
 }
 
 function openEdit(row: SysUser) {
@@ -258,169 +314,300 @@ onMounted(() => {
 </script>
 
 <template>
-  <section class="flex flex-col gap-4">
-    <header class="flex flex-wrap items-end justify-between gap-3">
-      <div>
-        <h1 class="text-lg font-medium">用户管理</h1>
-        <p class="text-muted-foreground mt-1 text-sm">
-          按账号或昵称查找。列表按编号倒序，翻页后重新选择。
+  <section class="flex w-full min-w-0 flex-col gap-4 md:h-[calc(100svh-5rem)]">
+    <Card class="shrink-0">
+      <CardContent class="pt-4">
+        <form class="flex flex-wrap items-center gap-x-4 gap-y-3" @submit.prevent="search()">
+          <Field orientation="horizontal" class="w-auto">
+            <FieldLabel for="filter-username" class="w-8 shrink-0 whitespace-nowrap"
+              >账号</FieldLabel
+            >
+            <Input
+              id="filter-username"
+              v-model="username"
+              name="username"
+              placeholder="输入账号关键字"
+              class="w-44"
+            />
+          </Field>
+          <Field orientation="horizontal" class="w-auto">
+            <FieldLabel for="filter-nickname" class="w-8 shrink-0 whitespace-nowrap"
+              >昵称</FieldLabel
+            >
+            <Input
+              id="filter-nickname"
+              v-model="nickname"
+              name="nickname"
+              placeholder="输入昵称关键字"
+              class="w-44"
+            />
+          </Field>
+          <Field orientation="horizontal" class="w-auto">
+            <FieldLabel for="filter-enabled" class="w-8 shrink-0 whitespace-nowrap"
+              >状态</FieldLabel
+            >
+            <Select
+              :model-value="enabled === '' ? 'all' : enabled"
+              @update:model-value="setEnabledFilter"
+            >
+              <SelectTrigger id="filter-enabled" class="w-36">
+                <SelectValue placeholder="全部" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value="all">全部</SelectItem>
+                  <SelectItem value="true">启用</SelectItem>
+                  <SelectItem value="false">停用</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </Field>
+          <div class="flex items-center gap-2">
+            <Button type="submit" :disabled="loading">
+              <Search data-icon="inline-start" />
+              查询
+            </Button>
+            <Button type="button" variant="ghost" :disabled="loading" @click="resetFilters()">
+              <RotateCcw data-icon="inline-start" />
+              重置
+            </Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
+
+    <Card class="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <CardHeader class="shrink-0 flex-row items-center justify-between gap-3">
+        <div class="flex flex-wrap items-center gap-2">
+          <Button v-if="can('user:add')" type="button" @click="openCreate">
+            <UserRoundPlus data-icon="inline-start" />
+            新增用户
+          </Button>
+          <Button
+            v-if="can('system:user:remove')"
+            type="button"
+            variant="outline"
+            :disabled="selectedIds.length === 0 || deleting"
+            @click="deleteOpen = true"
+          >
+            <Trash2 data-icon="inline-start" />
+            删除所选
+            <span v-if="selectedIds.length > 0" class="text-muted-foreground">
+              {{ selectedIds.length }}
+            </span>
+          </Button>
+        </div>
+        <CardAction>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            aria-label="列设置"
+            @click="setColumnDialog(true)"
+          >
+            <Columns3 data-icon="inline-start" />
+            列
+          </Button>
+        </CardAction>
+      </CardHeader>
+      <CardContent class="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden">
+        <Alert v-if="errorMessage" variant="destructive">
+          <AlertDescription class="flex flex-wrap items-center gap-2">
+            {{ errorMessage }}
+            <Button type="button" variant="outline" size="sm" @click="load()">重试</Button>
+          </AlertDescription>
+        </Alert>
+
+        <div
+          class="min-h-[180px] min-h-0 flex-1 overflow-hidden [&_[data-slot=table-container]]:h-full [&_[data-slot=table-container]]:max-h-full [&_[data-slot=table-container]]:min-h-[180px] [&_[data-slot=table-container]]:overflow-y-auto"
+        >
+          <Table>
+            <TableHeader class="bg-card sticky top-0 z-10">
+              <TableRow v-for="headerGroup in table.getHeaderGroups()" :key="headerGroup.id">
+                <TableHead v-for="header in headerGroup.headers" :key="header.id" scope="col">
+                  <Checkbox
+                    v-if="header.column.id === 'select'"
+                    aria-label="选择当前页"
+                    :model-value="allPageSelected"
+                    :disabled="rows.length === 0"
+                    @update:model-value="togglePage(Boolean($event))"
+                  />
+                  <FlexRender v-else :header="header" />
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody
+              :aria-busy="loading"
+              :class="refreshing ? 'opacity-60 transition-opacity' : 'transition-opacity'"
+            >
+              <template v-if="showSkeleton">
+                <TableRow v-for="index in pageSize" :key="`loading-${index}`">
+                  <TableCell
+                    v-for="header in table.getVisibleLeafColumns()"
+                    :key="`${header.id}-loading-${index}`"
+                  >
+                    <Skeleton v-if="header.id === 'select'" class="size-4" />
+                    <Skeleton v-else-if="header.id === 'actions'" class="h-6 w-20" />
+                    <Skeleton v-else-if="header.id === 'enabled'" class="h-5 w-12 rounded-full" />
+                    <Skeleton v-else class="h-4 w-full" />
+                  </TableCell>
+                </TableRow>
+              </template>
+              <TableEmpty
+                v-else-if="rows.length === 0"
+                :colspan="table.getVisibleLeafColumns().length"
+              >
+                <Empty>
+                  <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                      <UsersRound />
+                    </EmptyMedia>
+                    <EmptyTitle>
+                      {{ errorMessage ? '这次没有加载到用户' : '没有符合条件的用户' }}
+                    </EmptyTitle>
+                    <EmptyDescription>
+                      {{
+                        errorMessage
+                          ? '稍后重试，或调整筛选条件后再查询。'
+                          : '换个关键字试试，或新增一个用户。'
+                      }}
+                    </EmptyDescription>
+                  </EmptyHeader>
+                  <EmptyContent>
+                    <Button
+                      v-if="can('user:add') && !errorMessage"
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      @click="openCreate"
+                    >
+                      新增用户
+                    </Button>
+                  </EmptyContent>
+                </Empty>
+              </TableEmpty>
+              <template v-else>
+                <TableRow v-for="row in table.getRowModel().rows" :key="row.id">
+                  <TableCell v-for="cell in row.getVisibleCells()" :key="cell.id">
+                    <Checkbox
+                      v-if="cell.column.id === 'select'"
+                      :aria-label="`选择 ${row.original.username}`"
+                      :model-value="selectedIds.includes(row.original.id)"
+                      @update:model-value="toggleSelected(row.original.id, Boolean($event))"
+                    />
+                    <Switch
+                      v-else-if="cell.column.id === 'enabled' && can('system:user:status')"
+                      :model-value="row.original.enabled !== false"
+                      :disabled="statusPendingId === row.original.id"
+                      :aria-label="`${row.original.username} 的状态`"
+                      @update:model-value="changeStatus(row.original, Boolean($event))"
+                    />
+                    <Badge
+                      v-else-if="cell.column.id === 'enabled'"
+                      :variant="row.original.enabled === false ? 'secondary' : 'default'"
+                    >
+                      {{ row.original.enabled === false ? '停用' : '启用' }}
+                    </Badge>
+                    <span v-else-if="cell.column.id === 'gender'">{{
+                      genderText(row.original.gender)
+                    }}</span>
+                    <div v-else-if="cell.column.id === 'actions'" class="flex flex-wrap gap-1">
+                      <Button
+                        v-if="can('system:user:query')"
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        @click="openEdit(row.original)"
+                      >
+                        编辑
+                      </Button>
+                      <Button
+                        v-if="can('system:user:password')"
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        @click="openPassword(row.original)"
+                      >
+                        密码
+                      </Button>
+                    </div>
+                    <span
+                      v-else
+                      :class="cellClass(cell.column.id)"
+                      :title="String(cell.getValue() ?? '')"
+                    >
+                      <FlexRender :cell="cell" />
+                    </span>
+                  </TableCell>
+                </TableRow>
+              </template>
+            </TableBody>
+          </Table>
+        </div>
+      </CardContent>
+      <CardFooter class="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t pt-4">
+        <p class="flex min-h-5 items-center gap-1.5 text-muted-foreground text-sm">
+          <Spinner v-if="refreshing" class="size-3.5" aria-hidden="true" />
+          <span aria-live="polite">
+            {{
+              refreshing ? '加载中…' : selectedIds.length > 0 ? `已选 ${selectedIds.length} 人` : ''
+            }}
+          </span>
         </p>
-      </div>
-      <div class="flex flex-wrap gap-2">
-        <Button type="button" variant="outline" @click="setColumnDialog(true)">列</Button>
-        <Button v-if="can('user:add')" type="button" @click="openCreate">新增用户</Button>
-      </div>
-    </header>
-
-    <form class="flex flex-wrap items-end gap-3" @submit.prevent="search()">
-      <Field class="w-40">
-        <FieldLabel for="filter-username">账号</FieldLabel>
-        <Input id="filter-username" v-model="username" name="username" />
-      </Field>
-      <Field class="w-40">
-        <FieldLabel for="filter-nickname">昵称</FieldLabel>
-        <Input id="filter-nickname" v-model="nickname" name="nickname" />
-      </Field>
-      <Field class="w-32">
-        <FieldLabel for="filter-enabled">状态</FieldLabel>
-        <select
-          id="filter-enabled"
-          v-model="enabled"
-          class="border-input bg-input/20 h-7 w-full rounded-md border px-2 text-sm outline-none focus-visible:ring-2"
-        >
-          <option value="">全部</option>
-          <option value="true">启用</option>
-          <option value="false">停用</option>
-        </select>
-      </Field>
-      <Button type="submit" :disabled="loading">查询</Button>
-    </form>
-
-    <div class="flex flex-wrap items-center justify-between gap-2">
-      <p class="text-muted-foreground text-sm">
-        {{ loading ? '正在加载' : `共 ${total} 人` }}
-      </p>
-      <Button
-        v-if="can('system:user:remove')"
-        type="button"
-        variant="destructive"
-        :disabled="selectedIds.length === 0 || deleting"
-        @click="deleteOpen = true"
-      >
-        删除所选
-      </Button>
-    </div>
-
-    <p v-if="errorMessage" role="alert" class="text-destructive text-sm">
-      {{ errorMessage }}
-      <Button type="button" variant="outline" size="sm" class="ml-2" @click="load()">重试</Button>
-    </p>
-
-    <Table>
-      <TableHeader>
-        <TableRow v-for="headerGroup in table.getHeaderGroups()" :key="headerGroup.id">
-          <TableHead v-for="header in headerGroup.headers" :key="header.id" scope="col">
-            <input
-              v-if="header.column.id === 'select'"
-              type="checkbox"
-              aria-label="选择当前页"
-              :checked="allPageSelected"
-              :disabled="rows.length === 0"
-              @change="togglePage(($event.target as HTMLInputElement).checked)"
-            />
-            <FlexRender v-else :header="header" />
-          </TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        <TableEmpty
-          v-if="!loading && rows.length === 0"
-          :colspan="table.getVisibleLeafColumns().length"
-        >
-          {{ errorMessage ? '这次没有加载到用户。' : '没有符合条件的用户。' }}
-        </TableEmpty>
-        <TableRow v-for="row in table.getRowModel().rows" :key="row.id">
-          <TableCell v-for="cell in row.getVisibleCells()" :key="cell.id">
-            <input
-              v-if="cell.column.id === 'select'"
-              type="checkbox"
-              :aria-label="`选择 ${row.original.username}`"
-              :checked="selectedIds.includes(row.original.id)"
-              @change="toggleSelected(row.original.id, ($event.target as HTMLInputElement).checked)"
-            />
-            <Switch
-              v-else-if="cell.column.id === 'enabled' && can('system:user:status')"
-              :model-value="row.original.enabled !== false"
-              :disabled="statusPendingId === row.original.id"
-              :aria-label="`${row.original.username} 的状态`"
-              @update:model-value="changeStatus(row.original, Boolean($event))"
-            />
-            <span v-else-if="cell.column.id === 'enabled'">
-              {{ row.original.enabled === false ? '停用' : '启用' }}
-            </span>
-            <span v-else-if="cell.column.id === 'gender'">{{
-              genderText(row.original.gender)
-            }}</span>
-            <div v-else-if="cell.column.id === 'actions'" class="flex flex-wrap gap-1">
-              <Button
-                v-if="can('system:user:query')"
-                type="button"
-                variant="outline"
-                size="sm"
-                @click="openEdit(row.original)"
-              >
-                编辑
-              </Button>
-              <Button
-                v-if="can('system:user:password')"
-                type="button"
-                variant="outline"
-                size="sm"
-                @click="openPassword(row.original)"
-              >
-                密码
-              </Button>
-            </div>
-            <span v-else class="block max-w-56 truncate" :title="String(cell.getValue() ?? '')">
-              <FlexRender :cell="cell" />
-            </span>
-          </TableCell>
-        </TableRow>
-      </TableBody>
-    </Table>
-
-    <div class="flex flex-wrap items-center justify-between gap-2">
-      <Field orientation="horizontal" class="w-auto">
-        <FieldLabel for="page-size">每页</FieldLabel>
-        <select
-          id="page-size"
-          class="border-input bg-input/20 h-7 rounded-md border px-2 text-sm outline-none focus-visible:ring-2"
-          :value="pageSize"
-          @change="changePageSize(Number(($event.target as HTMLSelectElement).value))"
-        >
-          <option v-for="size in USER_PAGE_SIZES" :key="size" :value="size">{{ size }}</option>
-        </select>
-      </Field>
-      <div class="flex items-center gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          :disabled="pageIndex <= 0 || loading"
-          @click="changePage(pageIndex - 1)"
-        >
-          上一页
-        </Button>
-        <span class="text-sm">{{ pageIndex + 1 }} / {{ pageCount }}</span>
-        <Button
-          type="button"
-          variant="outline"
-          :disabled="pageIndex + 1 >= pageCount || loading"
-          @click="changePage(pageIndex + 1)"
-        >
-          下一页
-        </Button>
-      </div>
-    </div>
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <span class="text-muted-foreground text-sm" aria-live="polite">共 {{ total }} 条</span>
+          <Field orientation="horizontal" class="w-auto">
+            <FieldLabel for="page-size">每页</FieldLabel>
+            <Select
+              :model-value="String(pageSize)"
+              :disabled="loading"
+              @update:model-value="changePageSize(Number($event))"
+            >
+              <SelectTrigger id="page-size" size="sm" class="w-20">
+                <SelectValue>{{ pageSize }}</SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem v-for="size in USER_PAGE_SIZES" :key="size" :value="String(size)">
+                    {{ size }}
+                  </SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </Field>
+          <Pagination
+            :page="pageIndex + 1"
+            :items-per-page="pageSize"
+            :total="total"
+            :sibling-count="1"
+            :disabled="loading"
+            :show-edges="pageCount > 7"
+            class="mx-0 w-auto justify-end"
+            @update:page="changePage($event - 1)"
+          >
+            <PaginationContent v-slot="{ items }" class="gap-1">
+              <PaginationPrevious size="sm">
+                <span class="hidden sm:block">上一页</span>
+              </PaginationPrevious>
+              <template v-for="(item, index) in items" :key="index">
+                <PaginationItem
+                  v-if="item.type === 'page'"
+                  :value="item.value"
+                  :is-active="item.value === pageIndex + 1"
+                  size="sm"
+                >
+                  {{ item.value }}
+                </PaginationItem>
+                <PaginationEllipsis v-else :index="index" />
+              </template>
+              <PaginationNext size="sm">
+                <span class="hidden sm:block">下一页</span>
+              </PaginationNext>
+            </PaginationContent>
+          </Pagination>
+        </div>
+      </CardFooter>
+    </Card>
 
     <UserEditor
       :open="editorOpen"
@@ -462,13 +649,12 @@ onMounted(() => {
           <DialogTitle>显示列</DialogTitle>
           <DialogDescription>隐藏的列也会保存。恢复默认会删除这份个人配置。</DialogDescription>
         </DialogHeader>
-        <FieldGroup>
+        <FieldGroup class="gap-1">
           <Field v-for="column in USER_DATA_COLUMNS" :key="column.key" orientation="horizontal">
-            <input
+            <Checkbox
               :id="`column-${column.key}`"
-              type="checkbox"
-              :checked="columnVisibility[column.key] !== false"
-              @change="setColumnVisible(column.key, ($event.target as HTMLInputElement).checked)"
+              :model-value="columnVisibility[column.key] !== false"
+              @update:model-value="setColumnVisible(column.key, Boolean($event))"
             />
             <FieldLabel :for="`column-${column.key}`">{{ column.label }}</FieldLabel>
           </Field>

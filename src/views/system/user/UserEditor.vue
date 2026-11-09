@@ -6,6 +6,7 @@ import { assignUserDepts, assignUserRoles, createUser, getUserById, updateUser }
 import { GenderOptions, type Gender } from '@/types/enums'
 import { RequestError } from '@/utils/request'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog,
   DialogContent,
@@ -23,6 +24,14 @@ import {
   FieldSet,
 } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
 import { sameEditorSession, toUserWrite } from './user-table'
@@ -46,6 +55,10 @@ const nickname = shallowRef('')
 const email = shallowRef('')
 const phone = shallowRef('')
 const gender = shallowRef<Gender | ''>('')
+
+function setGender(value: unknown) {
+  gender.value = value === 'MALE' || value === 'FEMALE' || value === 'SECRET' ? value : ''
+}
 const enabled = shallowRef(true)
 const remark = shallowRef('')
 const avatarFileId = shallowRef<number | null>(null)
@@ -314,117 +327,123 @@ async function onSubmit() {
           {{ creating ? '创建后可以再分配角色和部门。' : '资料、角色和部门分开保存。' }}
         </DialogDescription>
       </DialogHeader>
-      <form
-        class="flex max-h-[70vh] flex-col gap-4 overflow-y-auto pr-1"
-        novalidate
-        @submit.prevent="onSubmit"
-      >
-        <p v-if="loading" class="text-muted-foreground text-sm">正在读取用户资料。</p>
-        <FieldGroup v-else-if="detailReady">
-          <Field :data-invalid="formError && !username.trim() ? true : undefined">
-            <FieldLabel for="user-username">账号</FieldLabel>
-            <Input
-              id="user-username"
-              ref="usernameInput"
-              v-model="username"
-              name="username"
-              autocomplete="off"
-              :disabled="saving"
-              :aria-invalid="formError && !username.trim() ? true : undefined"
-            />
-          </Field>
-          <Field v-if="creating" :data-invalid="formError && !password ? true : undefined">
-            <FieldLabel for="user-password">密码</FieldLabel>
-            <Input
-              id="user-password"
-              v-model="password"
-              name="password"
-              type="password"
-              autocomplete="new-password"
-              :disabled="saving"
-              :aria-invalid="formError && !password ? true : undefined"
-            />
-          </Field>
-          <Field>
-            <FieldLabel for="user-nickname">昵称</FieldLabel>
-            <Input id="user-nickname" v-model="nickname" :disabled="saving" />
-          </Field>
-          <Field>
-            <FieldLabel for="user-email">邮箱</FieldLabel>
-            <Input
-              id="user-email"
-              v-model="email"
-              type="email"
-              autocomplete="off"
-              :disabled="saving"
-            />
-          </Field>
-          <Field>
-            <FieldLabel for="user-phone">手机</FieldLabel>
-            <Input id="user-phone" v-model="phone" autocomplete="off" :disabled="saving" />
-          </Field>
-          <Field>
-            <FieldLabel for="user-gender">性别</FieldLabel>
-            <select
-              id="user-gender"
-              v-model="gender"
-              class="border-input bg-input/20 h-7 w-full rounded-md border px-2 text-sm outline-none focus-visible:ring-2"
-              :disabled="saving"
-            >
-              <option value="">未填写</option>
-              <option v-for="option in GenderOptions" :key="option.value" :value="option.value">
-                {{ option.label }}
-              </option>
-            </select>
-          </Field>
-          <Field orientation="horizontal">
-            <FieldLabel for="user-enabled">启用</FieldLabel>
-            <Switch id="user-enabled" v-model="enabled" :disabled="saving" />
-          </Field>
-          <Field>
-            <FieldLabel for="user-remark">备注</FieldLabel>
-            <Input id="user-remark" v-model="remark" :disabled="saving" />
-          </Field>
-          <FieldSet v-if="!creating && canAssignRoles">
-            <FieldLegend>角色</FieldLegend>
-            <FieldGroup>
-              <Field v-for="role in roles" :key="role.id" orientation="horizontal">
-                <input
-                  :id="`user-role-${role.id}`"
-                  type="checkbox"
-                  :checked="roleIds.includes(role.id)"
-                  :disabled="saving || role.enabled === false"
-                  @change="setRole(role.id, ($event.target as HTMLInputElement).checked)"
-                />
-                <FieldLabel :for="`user-role-${role.id}`">{{ role.roleName }}</FieldLabel>
-              </Field>
-              <p v-if="roles.length === 0" class="text-muted-foreground text-sm">
-                没有可分配的角色。
-              </p>
-            </FieldGroup>
-          </FieldSet>
-          <FieldSet v-if="!creating && canAssignDepts">
-            <FieldLegend>部门</FieldLegend>
-            <FieldGroup>
-              <Field v-for="dept in depts" :key="dept.id" orientation="horizontal">
-                <input
-                  :id="`user-dept-${dept.id}`"
-                  type="checkbox"
-                  :checked="deptIds.includes(dept.id)"
-                  :disabled="saving"
-                  @change="setDept(dept.id, ($event.target as HTMLInputElement).checked)"
-                />
-                <FieldLabel :for="`user-dept-${dept.id}`">{{ dept.label }}</FieldLabel>
-              </Field>
-              <p v-if="depts.length === 0" class="text-muted-foreground text-sm">
-                没有可分配的部门。
-              </p>
-            </FieldGroup>
-          </FieldSet>
-        </FieldGroup>
-        <FieldError v-if="formError">{{ formError }}</FieldError>
-        <p v-if="stepNote" class="text-muted-foreground text-sm">{{ stepNote }}</p>
-        <DialogFooter>
+      <form novalidate @submit.prevent="onSubmit">
+        <div class="flex max-h-[60vh] flex-col gap-4 overflow-y-auto pr-1">
+          <p v-if="loading" class="text-muted-foreground text-sm">正在读取用户资料。</p>
+          <FieldGroup v-else-if="detailReady">
+            <Field :data-invalid="formError && !username.trim() ? true : undefined">
+              <FieldLabel for="user-username">账号</FieldLabel>
+              <Input
+                id="user-username"
+                ref="usernameInput"
+                v-model="username"
+                name="username"
+                autocomplete="off"
+                :disabled="saving"
+                :aria-invalid="formError && !username.trim() ? true : undefined"
+              />
+            </Field>
+            <Field v-if="creating" :data-invalid="formError && !password ? true : undefined">
+              <FieldLabel for="user-password">密码</FieldLabel>
+              <Input
+                id="user-password"
+                v-model="password"
+                name="password"
+                type="password"
+                autocomplete="new-password"
+                :disabled="saving"
+                :aria-invalid="formError && !password ? true : undefined"
+              />
+            </Field>
+            <Field>
+              <FieldLabel for="user-nickname">昵称</FieldLabel>
+              <Input id="user-nickname" v-model="nickname" :disabled="saving" />
+            </Field>
+            <Field>
+              <FieldLabel for="user-email">邮箱</FieldLabel>
+              <Input
+                id="user-email"
+                v-model="email"
+                type="email"
+                autocomplete="off"
+                :disabled="saving"
+              />
+            </Field>
+            <Field>
+              <FieldLabel for="user-phone">手机</FieldLabel>
+              <Input id="user-phone" v-model="phone" autocomplete="off" :disabled="saving" />
+            </Field>
+            <Field>
+              <FieldLabel for="user-gender">性别</FieldLabel>
+              <Select
+                :model-value="gender === '' ? 'none' : gender"
+                :disabled="saving"
+                @update:model-value="setGender"
+              >
+                <SelectTrigger id="user-gender" class="w-full">
+                  <SelectValue placeholder="未填写" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem value="none">未填写</SelectItem>
+                    <SelectItem
+                      v-for="option in GenderOptions"
+                      :key="option.value"
+                      :value="option.value"
+                    >
+                      {{ option.label }}
+                    </SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field orientation="horizontal">
+              <FieldLabel for="user-enabled">启用</FieldLabel>
+              <Switch id="user-enabled" v-model="enabled" :disabled="saving" />
+            </Field>
+            <Field>
+              <FieldLabel for="user-remark">备注</FieldLabel>
+              <Input id="user-remark" v-model="remark" :disabled="saving" />
+            </Field>
+            <FieldSet v-if="!creating && canAssignRoles">
+              <FieldLegend>角色</FieldLegend>
+              <FieldGroup class="gap-1">
+                <Field v-for="role in roles" :key="role.id" orientation="horizontal">
+                  <Checkbox
+                    :id="`user-role-${role.id}`"
+                    :model-value="roleIds.includes(role.id)"
+                    :disabled="saving || role.enabled === false"
+                    @update:model-value="setRole(role.id, Boolean($event))"
+                  />
+                  <FieldLabel :for="`user-role-${role.id}`">{{ role.roleName }}</FieldLabel>
+                </Field>
+                <p v-if="roles.length === 0" class="text-muted-foreground text-sm">
+                  没有可分配的角色。
+                </p>
+              </FieldGroup>
+            </FieldSet>
+            <FieldSet v-if="!creating && canAssignDepts">
+              <FieldLegend>部门</FieldLegend>
+              <FieldGroup class="gap-1">
+                <Field v-for="dept in depts" :key="dept.id" orientation="horizontal">
+                  <Checkbox
+                    :id="`user-dept-${dept.id}`"
+                    :model-value="deptIds.includes(dept.id)"
+                    :disabled="saving"
+                    @update:model-value="setDept(dept.id, Boolean($event))"
+                  />
+                  <FieldLabel :for="`user-dept-${dept.id}`">{{ dept.label }}</FieldLabel>
+                </Field>
+                <p v-if="depts.length === 0" class="text-muted-foreground text-sm">
+                  没有可分配的部门。
+                </p>
+              </FieldGroup>
+            </FieldSet>
+          </FieldGroup>
+          <FieldError v-if="formError">{{ formError }}</FieldError>
+          <p v-if="stepNote" class="text-muted-foreground text-sm">{{ stepNote }}</p>
+        </div>
+        <DialogFooter class="bg-dialog sticky bottom-0 pt-3">
           <Button type="button" variant="outline" :disabled="saving" @click="close">取消</Button>
           <Button type="submit" :disabled="saving || loading || !detailReady">
             <Spinner v-if="saving" />
