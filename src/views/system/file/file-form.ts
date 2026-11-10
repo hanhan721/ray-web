@@ -1,3 +1,26 @@
+import type { ColumnSettingItem } from '@/components/common/column-settings'
+
+export const FILE_DATA_COLUMNS: ColumnSettingItem[] = [
+  { key: 'fileName', label: '名称' },
+  { key: 'contentType', label: '类型' },
+  { key: 'size', label: '大小' },
+]
+
+const CELL_MIN_WIDTH: Record<string, string> = {
+  fileName: 'min-w-48',
+  contentType: 'min-w-32',
+  size: 'min-w-20',
+}
+
+/** 单元格文本样式：文件名加重，类型弱化，大小用等宽数字。 */
+export function fileCellClass(columnId: string): string {
+  const minWidth = CELL_MIN_WIDTH[columnId] ?? 'min-w-16'
+  if (columnId === 'fileName') return `block truncate font-medium text-foreground ${minWidth}`
+  if (columnId === 'contentType') return `block truncate text-muted-foreground ${minWidth}`
+  if (columnId === 'size') return `block truncate tabular-nums ${minWidth}`
+  return `block truncate ${minWidth}`
+}
+
 export const MAX_FILE_BYTES = 50 * 1024 * 1024
 
 export interface UploadRejection {
