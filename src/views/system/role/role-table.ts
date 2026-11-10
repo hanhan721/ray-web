@@ -9,11 +9,6 @@ export const ROLE_DATA_COLUMNS: ColumnSettingItem[] = [
   { key: 'createTime', label: '创建时间' },
 ]
 
-export const ROLE_ENABLED_OPTIONS = [
-  { value: 'true', label: '启用' },
-  { value: 'false', label: '停用' },
-] as const
-
 const CELL_MIN_WIDTH: Record<string, string> = {
   roleName: 'min-w-24',
   roleKey: 'min-w-28',

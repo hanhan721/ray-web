@@ -12,11 +12,6 @@ export const USER_DATA_COLUMNS: ColumnSettingItem[] = [
   { key: 'createTime', label: '创建时间' },
 ]
 
-export const USER_ENABLED_OPTIONS = [
-  { value: 'true', label: '启用' },
-  { value: 'false', label: '停用' },
-] as const
-
 const CELL_MIN_WIDTH: Record<string, string> = {
   username: 'min-w-24',
   nickname: 'min-w-24',

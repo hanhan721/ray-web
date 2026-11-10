@@ -2,7 +2,7 @@
 import { RotateCcw, Search, Trash2, UserRoundPlus, UsersRound } from '@lucide/vue'
 import { onMounted, shallowRef } from 'vue'
 import { deleteUsers, updateUserStatus, type SysUser } from '@/api/user'
-import { PAGE_KEYS } from '@/types/enums'
+import { EnabledFilterOptions, PAGE_KEYS } from '@/types/enums'
 import { useSessionStore } from '@/stores/session'
 import { useDeleteMany } from '@/composables/useDeleteMany'
 import { useRowStatus } from '@/composables/useRowStatus'
@@ -35,7 +35,7 @@ import { Spinner } from '@/components/ui/spinner'
 import UserEditor from './UserEditor.vue'
 import UserPasswordDialog from './UserPasswordDialog.vue'
 import { useUserList } from './use-user-list'
-import { cellClass, genderText, USER_DATA_COLUMNS, USER_ENABLED_OPTIONS } from './user-table'
+import { cellClass, genderText, USER_DATA_COLUMNS } from './user-table'
 
 const session = useSessionStore()
 const {
@@ -177,7 +177,7 @@ onMounted(() => {
           <SingleSelect
             id="filter-enabled"
             :model-value="enabled"
-            :options="USER_ENABLED_OPTIONS"
+            :options="EnabledFilterOptions"
             placeholder="全部"
             size="lg"
             searchable

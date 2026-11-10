@@ -2,7 +2,7 @@
 import { RotateCcw, Search, ShieldCheck, ShieldPlus, Trash2 } from '@lucide/vue'
 import { onMounted, shallowRef } from 'vue'
 import { deleteRoles, updateRoleStatus, type Role } from '@/api/role'
-import { PAGE_KEYS } from '@/types/enums'
+import { EnabledFilterOptions, PAGE_KEYS } from '@/types/enums'
 import { useSessionStore } from '@/stores/session'
 import { useDeleteMany } from '@/composables/useDeleteMany'
 import { useRowStatus } from '@/composables/useRowStatus'
@@ -34,7 +34,7 @@ import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import RoleEditor from './RoleEditor.vue'
 import { useRoleList } from './use-role-list'
-import { ROLE_DATA_COLUMNS, ROLE_ENABLED_OPTIONS, roleCellClass } from './role-table'
+import { ROLE_DATA_COLUMNS, roleCellClass } from './role-table'
 
 const session = useSessionStore()
 const {
@@ -169,7 +169,7 @@ onMounted(() => {
           <SingleSelect
             id="filter-role-enabled"
             :model-value="enabled"
-            :options="ROLE_ENABLED_OPTIONS"
+            :options="EnabledFilterOptions"
             placeholder="全部"
             size="lg"
             searchable

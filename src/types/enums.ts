@@ -63,6 +63,12 @@ export const EnabledOptions = [
   { label: '禁用', value: false },
 ] as const
 
+/** 启用状态筛选（查询参数使用字符串值） */
+export const EnabledFilterOptions = [
+  { value: 'true', label: '启用' },
+  { value: 'false', label: '停用' },
+] as const
+
 /** 是否选项 */
 export const BooleanOptions = [
   { label: '是', value: true },
