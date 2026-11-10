@@ -1,8 +1,12 @@
 <script setup lang="ts">
+import { MonitorSmartphone, RotateCcw, Search } from '@lucide/vue'
 import { computed, onMounted, shallowRef } from 'vue'
 import { getOnlineSessionPage, kickBySessionId, kickByUserId, type OnlineUser } from '@/api/online'
-import { RequestError } from '@/utils/request'
 import { useSessionStore } from '@/stores/session'
+import { usePagedList } from '@/composables/usePagedList'
+import { QUIET, failureMessage } from '@/utils/failure'
+import ProTable from '@/components/common/ProTable.vue'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   AlertDialog,
@@ -13,22 +17,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Field, FieldLabel } from '@/components/ui/field'
+import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableEmpty,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import {
-  ONLINE_PAGE_SIZES,
+  ONLINE_DATA_COLUMNS,
   formatLoginTime,
+  onlineCellClass,
   onlineQueryError,
-  pageIndexFromResponse,
   toOnlineQuery,
 } from './online-query'
 
@@ -42,65 +39,47 @@ interface KickTarget {
 const session = useSessionStore()
 const can = (code: string) => session.can(code)
 
-const rows = shallowRef<OnlineUser[]>([])
-const total = shallowRef(0)
-const pageIndex = shallowRef(0)
-const pageSize = shallowRef<(typeof ONLINE_PAGE_SIZES)[number]>(10)
 const draftStart = shallowRef('')
 const draftEnd = shallowRef('')
 const appliedStart = shallowRef('')
 const appliedEnd = shallowRef('')
-const loading = shallowRef(false)
-const loadError = shallowRef('')
 const filterError = shallowRef('')
 const kickOpen = shallowRef(false)
 const kickTarget = shallowRef<KickTarget | null>(null)
 const kickError = shallowRef('')
 const kicking = shallowRef(false)
-let generation = 0
 let kickToken = 0
 let closingKick = false
 
-const pageCount = computed(() => Math.max(1, Math.ceil(total.value / pageSize.value)))
-const currentUserId = computed(() => session.profile?.userId ?? null)
-
-function failureMessage(error: unknown, fallback: string): string {
-  if (error instanceof RequestError && error.message) return error.message
-  return fallback
-}
-
-async function load() {
-  const requestId = ++generation
-  loading.value = true
-  loadError.value = ''
-  try {
-    const page = await getOnlineSessionPage(
+const {
+  rows,
+  total,
+  pageIndex,
+  pageSize,
+  loading,
+  errorMessage,
+  load,
+  search,
+  changePage,
+  changePageSize,
+} = usePagedList<OnlineUser>({
+  fetchPage: (input) =>
+    getOnlineSessionPage(
       toOnlineQuery({
-        pageIndex: pageIndex.value,
-        pageSize: pageSize.value,
+        pageIndex: input.pageIndex,
+        pageSize: input.pageSize,
         startTime: appliedStart.value,
         endTime: appliedEnd.value,
       }),
-      { showErrorMessage: false },
-    )
-    if (requestId !== generation) return
-    rows.value = page.records ?? []
-    total.value = page.total ?? 0
-    if (typeof page.current === 'number') pageIndex.value = pageIndexFromResponse(page.current)
-    if ((ONLINE_PAGE_SIZES as readonly number[]).includes(page.size)) {
-      pageSize.value = page.size as (typeof ONLINE_PAGE_SIZES)[number]
-    }
-  } catch (error) {
-    if (requestId !== generation) return
-    rows.value = []
-    total.value = 0
-    loadError.value = failureMessage(error, '在线用户加载失败')
-  } finally {
-    if (requestId === generation) loading.value = false
-  }
-}
+      QUIET,
+    ),
+  fallbackMessage: '在线用户加载失败',
+})
 
-function search() {
+const currentUserId = computed(() => session.profile?.userId ?? null)
+const rowKey = (row: OnlineUser) => row.sessionId
+
+function applySearch() {
   const message = onlineQueryError(draftStart.value, draftEnd.value)
   if (message) {
     filterError.value = message
@@ -109,24 +88,16 @@ function search() {
   filterError.value = ''
   appliedStart.value = draftStart.value
   appliedEnd.value = draftEnd.value
-  pageIndex.value = 0
-  void load()
+  void search()
 }
 
-function changePageSize(event: Event) {
-  const value = Number(
-    event.target instanceof HTMLSelectElement ? event.target.value : pageSize.value,
-  )
-  if ((ONLINE_PAGE_SIZES as readonly number[]).includes(value)) {
-    pageSize.value = value as (typeof ONLINE_PAGE_SIZES)[number]
-  }
-  pageIndex.value = 0
-  void load()
-}
-
-function changePage(next: number) {
-  pageIndex.value = next
-  void load()
+function resetFilters() {
+  draftStart.value = ''
+  draftEnd.value = ''
+  filterError.value = ''
+  appliedStart.value = ''
+  appliedEnd.value = ''
+  void search()
 }
 
 function openKick(row: OnlineUser, mode: KickTarget['mode']) {
@@ -160,9 +131,9 @@ async function confirmKick() {
   kickError.value = ''
   try {
     if (target.mode === 'session') {
-      await kickBySessionId(target.sessionId, { showErrorMessage: false })
+      await kickBySessionId(target.sessionId, QUIET)
     } else {
-      await kickByUserId(target.userId, { showErrorMessage: false })
+      await kickByUserId(target.userId, QUIET)
     }
     if (token !== kickToken) {
       await load()
@@ -172,8 +143,7 @@ async function confirmKick() {
     kickOpen.value = false
     await load()
     if (rows.value.length === 0 && pageIndex.value > 0) {
-      pageIndex.value -= 1
-      await load()
+      await changePage(pageIndex.value - 1)
     }
   } catch (error) {
     if (token === kickToken) kickError.value = failureMessage(error, '下线失败，请稍后重试')
@@ -200,158 +170,130 @@ onMounted(() => {
 </script>
 
 <template>
-  <section class="flex flex-col gap-4">
-    <header>
-      <h1 class="text-lg font-medium">在线用户</h1>
-      <p class="text-muted-foreground mt-1 text-sm">
-        按登录时间从新到旧显示。下线当前登录后需要重新登录。
-      </p>
-    </header>
+  <ProTable
+    fill
+    :selectable="false"
+    :columns="ONLINE_DATA_COLUMNS"
+    :rows="rows"
+    :total="total"
+    :page-index="pageIndex"
+    :page-size="pageSize"
+    :loading="loading"
+    :error-message="errorMessage"
+    :row-key="rowKey"
+    :cell-class="onlineCellClass"
+    @update:page-index="changePage"
+    @update:page-size="changePageSize"
+    @retry="load()"
+  >
+    <template #filters>
+      <form class="flex flex-wrap items-center gap-x-4 gap-y-3" @submit.prevent="applySearch()">
+        <Field orientation="horizontal" class="w-auto">
+          <FieldLabel
+            for="filter-online-start"
+            class="w-16 shrink-0 whitespace-nowrap font-normal text-muted-foreground"
+            >起始时间</FieldLabel
+          >
+          <Input
+            id="filter-online-start"
+            v-model="draftStart"
+            type="datetime-local"
+            class="h-9 w-52"
+          />
+        </Field>
+        <Field orientation="horizontal" class="w-auto">
+          <FieldLabel
+            for="filter-online-end"
+            class="w-16 shrink-0 whitespace-nowrap font-normal text-muted-foreground"
+            >结束时间</FieldLabel
+          >
+          <Input id="filter-online-end" v-model="draftEnd" type="datetime-local" class="h-9 w-52" />
+        </Field>
+        <div class="flex items-center gap-2">
+          <Button type="submit" :disabled="loading">
+            <Search data-icon="inline-start" />
+            查询
+          </Button>
+          <Button type="button" variant="ghost" :disabled="loading" @click="resetFilters()">
+            <RotateCcw data-icon="inline-start" />
+            重置
+          </Button>
+        </div>
+        <p v-if="filterError" role="alert" class="text-destructive w-full text-sm">
+          {{ filterError }}
+        </p>
+      </form>
+    </template>
 
-    <form class="flex flex-wrap items-end gap-3" @submit.prevent="search">
-      <Field class="w-52">
-        <FieldLabel for="filter-online-start">起始时间</FieldLabel>
-        <input
-          id="filter-online-start"
-          v-model="draftStart"
-          type="datetime-local"
-          class="border-input bg-input/20 h-7 w-full rounded-md border px-2 text-sm outline-none focus-visible:ring-2"
-        />
-      </Field>
-      <Field class="w-52">
-        <FieldLabel for="filter-online-end">结束时间</FieldLabel>
-        <input
-          id="filter-online-end"
-          v-model="draftEnd"
-          type="datetime-local"
-          class="border-input bg-input/20 h-7 w-full rounded-md border px-2 text-sm outline-none focus-visible:ring-2"
-        />
-      </Field>
-      <Button type="submit" :disabled="loading">查询</Button>
-    </form>
+    <template #empty="{ errorMessage: loadError }">
+      <Empty>
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <MonitorSmartphone />
+          </EmptyMedia>
+          <EmptyTitle>
+            {{ loadError ? '这次没有加载到在线会话' : '没有符合条件的在线会话' }}
+          </EmptyTitle>
+          <EmptyDescription>
+            {{ loadError ? '稍后重试，或调整时间范围后再查询。' : '调整时间范围后再查询。' }}
+          </EmptyDescription>
+        </EmptyHeader>
+      </Empty>
+    </template>
 
-    <p class="text-muted-foreground text-sm">
-      {{ loading ? '正在加载' : `共 ${total} 个会话` }}
-    </p>
+    <template #cell-username="{ row }">
+      <span class="flex min-w-28 items-center gap-2">
+        <span class="truncate font-medium text-foreground">{{ row.username }}</span>
+        <Badge v-if="row.userId === currentUserId" variant="secondary" class="font-normal">
+          当前账号
+        </Badge>
+      </span>
+    </template>
 
-    <p v-if="filterError || loadError" role="alert" class="text-destructive text-sm">
-      {{ filterError || loadError }}
-      <Button
-        v-if="loadError"
-        type="button"
-        variant="outline"
-        size="sm"
-        class="ml-2"
-        @click="load()"
-      >
-        重试
-      </Button>
-    </p>
+    <template #cell-loginTime="{ row }">
+      <span class="text-muted-foreground tabular-nums">{{ formatLoginTime(row.loginTime) }}</span>
+    </template>
 
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead scope="col">账号</TableHead>
-          <TableHead scope="col">昵称</TableHead>
-          <TableHead scope="col">登录 IP</TableHead>
-          <TableHead scope="col">浏览器</TableHead>
-          <TableHead scope="col">系统</TableHead>
-          <TableHead scope="col">登录时间</TableHead>
-          <TableHead scope="col">操作</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        <TableEmpty v-if="!loading && rows.length === 0" :colspan="7">
-          {{ loadError ? '这次没有加载到在线会话。' : '没有符合条件的在线会话。' }}
-        </TableEmpty>
-        <TableRow v-for="row in rows" :key="row.sessionId">
-          <TableCell>
-            {{ row.username }}
-            <span v-if="row.userId === currentUserId" class="text-muted-foreground ml-2"
-              >当前账号</span
-            >
-          </TableCell>
-          <TableCell>{{ row.nickname }}</TableCell>
-          <TableCell>{{ row.loginIp }}</TableCell>
-          <TableCell>{{ row.browser }}</TableCell>
-          <TableCell>{{ row.os }}</TableCell>
-          <TableCell>{{ formatLoginTime(row.loginTime) }}</TableCell>
-          <TableCell>
-            <div v-if="can('system:online:kick')" class="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                :disabled="kicking"
-                @click="openKick(row, 'session')"
-              >
-                下线此会话
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                :disabled="kicking"
-                @click="openKick(row, 'user')"
-              >
-                下线该用户
-              </Button>
-            </div>
-          </TableCell>
-        </TableRow>
-      </TableBody>
-    </Table>
-
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      <Field class="w-28">
-        <FieldLabel for="online-page-size">每页</FieldLabel>
-        <select
-          id="online-page-size"
-          class="border-input bg-input/20 h-7 w-full rounded-md border px-2 text-sm outline-none focus-visible:ring-2"
-          :value="pageSize"
-          @change="changePageSize"
-        >
-          <option v-for="size in ONLINE_PAGE_SIZES" :key="size" :value="size">{{ size }}</option>
-        </select>
-      </Field>
-      <div class="flex items-center gap-2">
+    <template #cell-actions="{ row }">
+      <div v-if="can('system:online:kick')" class="flex min-w-40 flex-nowrap gap-1">
         <Button
           type="button"
-          variant="outline"
-          :disabled="pageIndex <= 0 || loading"
-          @click="changePage(pageIndex - 1)"
+          variant="ghost"
+          size="sm"
+          :disabled="kicking"
+          @click="openKick(row, 'session')"
         >
-          上一页
+          下线会话
         </Button>
-        <span class="text-sm">{{ pageIndex + 1 }} / {{ pageCount }}</span>
         <Button
           type="button"
-          variant="outline"
-          :disabled="pageIndex + 1 >= pageCount || loading"
-          @click="changePage(pageIndex + 1)"
+          variant="ghost"
+          size="sm"
+          :disabled="kicking"
+          @click="openKick(row, 'user')"
         >
-          下一页
+          下线用户
         </Button>
       </div>
-    </div>
+    </template>
+  </ProTable>
 
-    <AlertDialog :open="kickOpen" @update:open="onKickOpen">
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>强制下线</AlertDialogTitle>
-          <AlertDialogDescription v-if="kickTarget">
-            {{ kickCopy(kickTarget) }}
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <p v-if="kickError" role="alert" class="text-destructive text-sm">{{ kickError }}</p>
-        <AlertDialogFooter>
-          <AlertDialogCancel :disabled="kicking">取消</AlertDialogCancel>
-          <Button type="button" variant="destructive" :disabled="kicking" @click="confirmKick">
-            <Spinner v-if="kicking" />
-            {{ kicking ? '正在下线' : '下线' }}
-          </Button>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  </section>
+  <AlertDialog :open="kickOpen" @update:open="onKickOpen">
+    <AlertDialogContent>
+      <AlertDialogHeader>
+        <AlertDialogTitle>强制下线</AlertDialogTitle>
+        <AlertDialogDescription v-if="kickTarget">
+          {{ kickCopy(kickTarget) }}
+          <span v-if="kickError" class="text-destructive mt-2 block">{{ kickError }}</span>
+        </AlertDialogDescription>
+      </AlertDialogHeader>
+      <AlertDialogFooter>
+        <AlertDialogCancel :disabled="kicking">取消</AlertDialogCancel>
+        <Button type="button" variant="destructive" :disabled="kicking" @click="confirmKick">
+          <Spinner v-if="kicking" />
+          下线
+        </Button>
+      </AlertDialogFooter>
+    </AlertDialogContent>
+  </AlertDialog>
 </template>

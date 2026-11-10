@@ -1,7 +1,6 @@
 import type { ParamCreateForm, ParamQuery, ParamUpdateForm } from '@/api/param'
+import type { ColumnSettingItem } from '@/components/common/column-settings'
 import { ParamTypeOptions, type ParamType } from '@/types/enums'
-
-export const PARAM_PAGE_SIZES = [10, 20, 50, 100] as const
 
 export const PARAM_BIZ_OPTIONS = [
   { value: 0, label: '系统' },
@@ -11,6 +10,37 @@ export const PARAM_BIZ_OPTIONS = [
   { value: 4, label: '通知' },
   { value: 99, label: '其他' },
 ] as const
+
+/** 筛选下拉需要字符串值，分类码在查询时再转回数字。 */
+export const PARAM_BIZ_SELECT_OPTIONS = PARAM_BIZ_OPTIONS.map((item) => ({
+  value: String(item.value),
+  label: item.label,
+}))
+
+export const PARAM_DATA_COLUMNS: ColumnSettingItem[] = [
+  { key: 'paramKey', label: '参数键' },
+  { key: 'paramValue', label: '参数值' },
+  { key: 'paramType', label: '类型' },
+  { key: 'bizType', label: '分类' },
+  { key: 'encrypted', label: '加密' },
+  { key: 'description', label: '描述' },
+]
+
+const CELL_MIN_WIDTH: Record<string, string> = {
+  paramKey: 'min-w-40',
+  paramValue: 'min-w-40',
+  paramType: 'min-w-20',
+  bizType: 'min-w-20',
+  encrypted: 'min-w-12',
+  description: 'min-w-40',
+}
+
+/** 单元格文本样式：参数键加重，其余只做截断。 */
+export function paramCellClass(columnId: string): string {
+  const minWidth = CELL_MIN_WIDTH[columnId] ?? 'min-w-16'
+  if (columnId === 'paramKey') return `block truncate font-medium text-foreground ${minWidth}`
+  return `block truncate ${minWidth}`
+}
 
 const PARAM_TYPES = new Set<string>(ParamTypeOptions.map((item) => item.value))
 
@@ -134,8 +164,4 @@ export function toParamUpdate(input: {
   }
   if (input.description) body.description = input.description
   return body
-}
-
-export function pageIndexFromResponse(current: number): number {
-  return Math.max(0, current - 1)
 }

@@ -1,6 +1,32 @@
 import type { OnlineSessionQuery } from '@/api/online'
+import type { ColumnSettingItem } from '@/components/common/column-settings'
 
-export const ONLINE_PAGE_SIZES = [10, 20, 50, 100] as const
+export const ONLINE_DATA_COLUMNS: ColumnSettingItem[] = [
+  { key: 'username', label: '账号' },
+  { key: 'nickname', label: '昵称' },
+  { key: 'loginIp', label: '登录 IP' },
+  { key: 'browser', label: '浏览器' },
+  { key: 'os', label: '系统' },
+  { key: 'loginTime', label: '登录时间' },
+]
+
+const CELL_MIN_WIDTH: Record<string, string> = {
+  username: 'min-w-28',
+  nickname: 'min-w-24',
+  loginIp: 'min-w-28',
+  browser: 'min-w-24',
+  os: 'min-w-20',
+  loginTime: 'min-w-36',
+}
+
+/** 单元格文本样式：账号加重，登录时间用等宽数字并弱化，其余只做截断。 */
+export function onlineCellClass(columnId: string): string {
+  const minWidth = CELL_MIN_WIDTH[columnId] ?? 'min-w-16'
+  if (columnId === 'username') return `block truncate font-medium text-foreground ${minWidth}`
+  if (columnId === 'loginTime')
+    return `block truncate text-muted-foreground tabular-nums ${minWidth}`
+  return `block truncate ${minWidth}`
+}
 
 const TIME_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?$/
 
@@ -37,10 +63,6 @@ export function toOnlineQuery(input: {
   if (startTime) query.startTime = startTime
   if (endTime) query.endTime = endTime
   return query
-}
-
-export function pageIndexFromResponse(current: number): number {
-  return Math.max(0, current - 1)
 }
 
 export function formatLoginTime(value: unknown): string {

@@ -1,8 +1,14 @@
 <script setup lang="ts">
-import { computed, onMounted, shallowRef } from 'vue'
+import { Plus, RotateCcw, Search, SlidersHorizontal, Trash2 } from '@lucide/vue'
+import { onMounted, shallowRef } from 'vue'
 import { deleteParams, getParamPage, type SystemParam } from '@/api/param'
-import { RequestError } from '@/utils/request'
+import { ParamTypeOptions } from '@/types/enums'
 import { useSessionStore } from '@/stores/session'
+import { useDeleteMany } from '@/composables/useDeleteMany'
+import { usePagedList } from '@/composables/usePagedList'
+import { QUIET } from '@/utils/failure'
+import ProTable from '@/components/common/ProTable.vue'
+import SingleSelect from '@/components/common/SingleSelect.vue'
 import { Button } from '@/components/ui/button'
 import {
   AlertDialog,
@@ -13,24 +19,22 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from '@/components/ui/empty'
 import { Field, FieldLabel } from '@/components/ui/field'
 import { Spinner } from '@/components/ui/spinner'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableEmpty,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import { ParamTypeOptions } from '@/types/enums'
 import ParamEditor from './ParamEditor.vue'
 import {
-  PARAM_BIZ_OPTIONS,
-  PARAM_PAGE_SIZES,
-  pageIndexFromResponse,
+  PARAM_BIZ_SELECT_OPTIONS,
+  PARAM_DATA_COLUMNS,
   paramBizLabel,
+  paramCellClass,
   paramTypeLabel,
   toParamQuery,
 } from './param-form'
@@ -38,101 +42,57 @@ import {
 const session = useSessionStore()
 const can = (code: string) => session.can(code)
 
-const rows = shallowRef<SystemParam[]>([])
-const total = shallowRef(0)
-const pageIndex = shallowRef(0)
-const pageSize = shallowRef<(typeof PARAM_PAGE_SIZES)[number]>(10)
 const bizType = shallowRef('')
 const paramType = shallowRef('')
-const loading = shallowRef(false)
-const error = shallowRef('')
-const selectedIds = shallowRef<number[]>([])
 const editorOpen = shallowRef(false)
 const editorId = shallowRef<number | null>(null)
-const deleteOpen = shallowRef(false)
-const deleteError = shallowRef('')
-const deleting = shallowRef(false)
-let generation = 0
 
-const pageCount = computed(() => Math.max(1, Math.ceil(total.value / pageSize.value)))
-const allSelected = computed(
-  () => rows.value.length > 0 && rows.value.every((row) => selectedIds.value.includes(row.id)),
-)
-
-function failureMessage(errorValue: unknown, fallback: string): string {
-  if (errorValue instanceof RequestError && errorValue.message) return errorValue.message
-  return fallback
-}
-
-async function load() {
-  const requestId = ++generation
-  loading.value = true
-  error.value = ''
-  try {
-    const page = await getParamPage(
+const {
+  rows,
+  total,
+  pageIndex,
+  pageSize,
+  loading,
+  errorMessage,
+  selectedIds,
+  clearSelection,
+  load,
+  search,
+  changePage,
+  changePageSize,
+  toggleSelected,
+  togglePage,
+} = usePagedList<SystemParam>({
+  fetchPage: (input) =>
+    getParamPage(
       toParamQuery({
-        pageIndex: pageIndex.value,
-        pageSize: pageSize.value,
+        pageIndex: input.pageIndex,
+        pageSize: input.pageSize,
         bizType: bizType.value,
         paramType: paramType.value,
       }),
-      { showErrorMessage: false },
-    )
-    if (requestId !== generation) return
-    rows.value = page.records ?? []
-    total.value = page.total ?? 0
-    if (typeof page.current === 'number') pageIndex.value = pageIndexFromResponse(page.current)
-    if ((PARAM_PAGE_SIZES as readonly number[]).includes(page.size)) {
-      pageSize.value = page.size as (typeof PARAM_PAGE_SIZES)[number]
-    }
-    selectedIds.value = selectedIds.value.filter((id) => rows.value.some((row) => row.id === id))
-  } catch (loadError) {
-    if (requestId !== generation) return
-    rows.value = []
-    total.value = 0
-    selectedIds.value = []
-    error.value = failureMessage(loadError, '系统参数加载失败')
-  } finally {
-    if (requestId === generation) loading.value = false
-  }
-}
+      QUIET,
+    ),
+  fallbackMessage: '系统参数加载失败',
+})
+const {
+  open: deleteOpen,
+  deleting,
+  error: deleteError,
+  openDialog: openDelete,
+  setOpen: setDeleteOpen,
+  confirm: confirmDelete,
+} = useDeleteMany<SystemParam>({
+  deleteRows: (ids) => deleteParams(ids, QUIET),
+  selectedIds,
+  clearSelection,
+  rows,
+  pageIndex,
+  changePage,
+  load,
+})
 
-function search() {
-  pageIndex.value = 0
-  selectedIds.value = []
-  void load()
-}
-
-function changePageSize(event: Event) {
-  const value = Number(
-    event.target instanceof HTMLSelectElement ? event.target.value : pageSize.value,
-  )
-  if ((PARAM_PAGE_SIZES as readonly number[]).includes(value)) {
-    pageSize.value = value as (typeof PARAM_PAGE_SIZES)[number]
-  }
-  pageIndex.value = 0
-  selectedIds.value = []
-  void load()
-}
-
-function changePage(next: number) {
-  pageIndex.value = next
-  selectedIds.value = []
-  void load()
-}
-
-function toggleRow(id: number, event: Event) {
-  const checked = event.target instanceof HTMLInputElement && event.target.checked
-  const next = new Set(selectedIds.value)
-  if (checked) next.add(id)
-  else next.delete(id)
-  selectedIds.value = [...next]
-}
-
-function togglePage(event: Event) {
-  const checked = event.target instanceof HTMLInputElement && event.target.checked
-  selectedIds.value = checked ? rows.value.map((row) => row.id) : []
-}
+const rowLabel = (row: SystemParam) => row.paramKey
 
 function openCreate() {
   editorId.value = null
@@ -144,33 +104,15 @@ function openEdit(row: SystemParam) {
   editorOpen.value = true
 }
 
-function openDelete() {
-  deleteError.value = ''
-  deleteOpen.value = true
+function resetFilters() {
+  bizType.value = ''
+  paramType.value = ''
+  return search()
 }
 
 function onSaved() {
   if (editorId.value === null) pageIndex.value = 0
   void load()
-}
-
-async function confirmDelete() {
-  deleting.value = true
-  deleteError.value = ''
-  try {
-    await deleteParams(selectedIds.value, { showErrorMessage: false })
-    deleteOpen.value = false
-    selectedIds.value = []
-    await load()
-    if (rows.value.length === 0 && pageIndex.value > 0) {
-      pageIndex.value -= 1
-      await load()
-    }
-  } catch (deleteFailure) {
-    deleteError.value = failureMessage(deleteFailure, '删除失败，请稍后重试')
-  } finally {
-    deleting.value = false
-  }
 }
 
 onMounted(() => {
@@ -179,174 +121,169 @@ onMounted(() => {
 </script>
 
 <template>
-  <section class="flex flex-col gap-4">
-    <header class="flex flex-wrap items-end justify-between gap-3">
-      <div>
-        <h1 class="text-lg font-medium">系统参数</h1>
-        <p class="text-muted-foreground mt-1 text-sm">
-          按分类和类型查找。加密参数在列表中显示为 ****。
-        </p>
-      </div>
-      <Button v-if="can('system:param:add')" type="button" @click="openCreate">新增参数</Button>
-    </header>
+  <ProTable
+    fill
+    :columns="PARAM_DATA_COLUMNS"
+    :rows="rows"
+    :total="total"
+    :page-index="pageIndex"
+    :page-size="pageSize"
+    :loading="loading"
+    :error-message="errorMessage"
+    :selected-ids="selectedIds"
+    :row-label="rowLabel"
+    :cell-class="paramCellClass"
+    @update:page-index="changePage"
+    @update:page-size="changePageSize"
+    @toggle-row="toggleSelected"
+    @toggle-page="togglePage"
+    @retry="load()"
+  >
+    <template #filters>
+      <form class="flex flex-wrap items-center gap-x-4 gap-y-3" @submit.prevent="search()">
+        <Field orientation="horizontal" class="w-auto">
+          <FieldLabel
+            for="filter-param-biz"
+            class="w-8 shrink-0 whitespace-nowrap font-normal text-muted-foreground"
+            >分类</FieldLabel
+          >
+          <SingleSelect
+            id="filter-param-biz"
+            v-model="bizType"
+            :options="PARAM_BIZ_SELECT_OPTIONS"
+            placeholder="全部"
+            size="lg"
+            searchable
+            clearable
+            class="w-40"
+          />
+        </Field>
+        <Field orientation="horizontal" class="w-auto">
+          <FieldLabel
+            for="filter-param-type"
+            class="w-8 shrink-0 whitespace-nowrap font-normal text-muted-foreground"
+            >类型</FieldLabel
+          >
+          <SingleSelect
+            id="filter-param-type"
+            v-model="paramType"
+            :options="ParamTypeOptions"
+            placeholder="全部"
+            size="lg"
+            searchable
+            clearable
+            class="w-36"
+          />
+        </Field>
+        <div class="flex items-center gap-2">
+          <Button type="submit" :disabled="loading">
+            <Search data-icon="inline-start" />
+            查询
+          </Button>
+          <Button type="button" variant="ghost" :disabled="loading" @click="resetFilters()">
+            <RotateCcw data-icon="inline-start" />
+            重置
+          </Button>
+        </div>
+      </form>
+    </template>
 
-    <form class="flex flex-wrap items-end gap-3" @submit.prevent="search">
-      <Field class="w-40">
-        <FieldLabel for="filter-param-biz">分类</FieldLabel>
-        <select
-          id="filter-param-biz"
-          v-model="bizType"
-          class="border-input bg-input/20 h-7 w-full rounded-md border px-2 text-sm outline-none focus-visible:ring-2"
-        >
-          <option value="">全部</option>
-          <option v-for="item in PARAM_BIZ_OPTIONS" :key="item.value" :value="String(item.value)">
-            {{ item.label }}
-          </option>
-        </select>
-      </Field>
-      <Field class="w-40">
-        <FieldLabel for="filter-param-type">类型</FieldLabel>
-        <select
-          id="filter-param-type"
-          v-model="paramType"
-          class="border-input bg-input/20 h-7 w-full rounded-md border px-2 text-sm outline-none focus-visible:ring-2"
-        >
-          <option value="">全部</option>
-          <option v-for="item in ParamTypeOptions" :key="item.value" :value="item.value">
-            {{ item.label }}
-          </option>
-        </select>
-      </Field>
-      <Button type="submit" :disabled="loading">查询</Button>
-    </form>
-
-    <div class="flex flex-wrap items-center justify-between gap-2">
-      <p class="text-muted-foreground text-sm">
-        {{ loading ? '正在加载' : `共 ${total} 个参数` }}
-      </p>
+    <template #actions>
+      <Button v-if="can('system:param:add')" type="button" @click="openCreate">
+        <Plus data-icon="inline-start" />
+        新增参数
+      </Button>
       <Button
         v-if="can('system:param:remove')"
         type="button"
-        variant="destructive"
+        variant="outline"
         :disabled="selectedIds.length === 0 || deleting"
         @click="openDelete"
       >
+        <Trash2 data-icon="inline-start" />
         删除所选
+        <span v-if="selectedIds.length > 0" class="text-muted-foreground">
+          {{ selectedIds.length }}
+        </span>
       </Button>
-    </div>
+    </template>
 
-    <p v-if="error" role="alert" class="text-destructive text-sm">
-      {{ error }}
-      <Button type="button" variant="outline" size="sm" class="ml-2" @click="load()">重试</Button>
-    </p>
+    <template #empty="{ errorMessage: loadError }">
+      <Empty>
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <SlidersHorizontal />
+          </EmptyMedia>
+          <EmptyTitle>
+            {{ loadError ? '这次没有加载到系统参数' : '没有符合条件的系统参数' }}
+          </EmptyTitle>
+          <EmptyDescription>
+            {{
+              loadError
+                ? '稍后重试，或调整筛选条件后再查询。'
+                : '换个分类或类型试试，或新增一个参数。'
+            }}
+          </EmptyDescription>
+        </EmptyHeader>
+        <EmptyContent>
+          <Button
+            v-if="can('system:param:add') && !loadError"
+            type="button"
+            variant="outline"
+            size="sm"
+            @click="openCreate"
+          >
+            新增参数
+          </Button>
+        </EmptyContent>
+      </Empty>
+    </template>
 
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead scope="col">
-            <input
-              type="checkbox"
-              aria-label="选择当前页参数"
-              :checked="allSelected"
-              :disabled="rows.length === 0"
-              @change="togglePage"
-            />
-          </TableHead>
-          <TableHead scope="col">参数键</TableHead>
-          <TableHead scope="col">参数值</TableHead>
-          <TableHead scope="col">类型</TableHead>
-          <TableHead scope="col">分类</TableHead>
-          <TableHead scope="col">加密</TableHead>
-          <TableHead scope="col">描述</TableHead>
-          <TableHead scope="col">操作</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        <TableEmpty v-if="!loading && rows.length === 0" :colspan="8">
-          {{ error ? '这次没有加载到系统参数。' : '没有符合条件的系统参数。' }}
-        </TableEmpty>
-        <TableRow v-for="row in rows" :key="row.id">
-          <TableCell>
-            <input
-              type="checkbox"
-              :aria-label="`选择 ${row.paramKey}`"
-              :checked="selectedIds.includes(row.id)"
-              @change="toggleRow(row.id, $event)"
-            />
-          </TableCell>
-          <TableCell>{{ row.paramKey }}</TableCell>
-          <TableCell class="max-w-48 truncate">{{ row.paramValue }}</TableCell>
-          <TableCell>{{ paramTypeLabel(row.paramType) }}</TableCell>
-          <TableCell>{{ paramBizLabel(row.bizType) }}</TableCell>
-          <TableCell>{{ row.encrypted ? '是' : '否' }}</TableCell>
-          <TableCell class="max-w-48 truncate">{{ row.description }}</TableCell>
-          <TableCell>
-            <Button
-              v-if="can('system:param:query') && can('system:param:edit')"
-              type="button"
-              variant="outline"
-              size="sm"
-              @click="openEdit(row)"
-            >
-              编辑
-            </Button>
-          </TableCell>
-        </TableRow>
-      </TableBody>
-    </Table>
+    <template #cell-paramType="{ row }">
+      {{ paramTypeLabel(row.paramType) }}
+    </template>
 
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      <Field class="w-28">
-        <FieldLabel for="param-page-size">每页</FieldLabel>
-        <select
-          id="param-page-size"
-          class="border-input bg-input/20 h-7 w-full rounded-md border px-2 text-sm outline-none focus-visible:ring-2"
-          :value="pageSize"
-          @change="changePageSize"
-        >
-          <option v-for="size in PARAM_PAGE_SIZES" :key="size" :value="size">{{ size }}</option>
-        </select>
-      </Field>
-      <div class="flex items-center gap-2">
+    <template #cell-bizType="{ row }">
+      {{ paramBizLabel(row.bizType) }}
+    </template>
+
+    <template #cell-encrypted="{ row }">
+      <span class="text-muted-foreground">{{ row.encrypted ? '是' : '否' }}</span>
+    </template>
+
+    <template #cell-actions="{ row }">
+      <div class="flex min-w-24 flex-nowrap gap-1">
         <Button
+          v-if="can('system:param:query') && can('system:param:edit')"
           type="button"
-          variant="outline"
-          :disabled="pageIndex <= 0 || loading"
-          @click="changePage(pageIndex - 1)"
+          variant="ghost"
+          size="sm"
+          @click="openEdit(row)"
         >
-          上一页
-        </Button>
-        <span class="text-sm">{{ pageIndex + 1 }} / {{ pageCount }}</span>
-        <Button
-          type="button"
-          variant="outline"
-          :disabled="pageIndex + 1 >= pageCount || loading"
-          @click="changePage(pageIndex + 1)"
-        >
-          下一页
+          编辑
         </Button>
       </div>
-    </div>
+    </template>
+  </ProTable>
 
-    <ParamEditor v-model:open="editorOpen" :param-id="editorId" @saved="onSaved" />
+  <ParamEditor v-model:open="editorOpen" :param-id="editorId" @saved="onSaved" />
 
-    <AlertDialog :open="deleteOpen" @update:open="deleteOpen = $event">
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>删除系统参数</AlertDialogTitle>
-          <AlertDialogDescription>
-            将删除 {{ selectedIds.length }} 个参数。删除后按键读取会得不到原值。
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <p v-if="deleteError" role="alert" class="text-destructive text-sm">{{ deleteError }}</p>
-        <AlertDialogFooter>
-          <AlertDialogCancel :disabled="deleting">取消</AlertDialogCancel>
-          <Button type="button" variant="destructive" :disabled="deleting" @click="confirmDelete">
-            <Spinner v-if="deleting" />
-            {{ deleting ? '正在删除' : '删除' }}
-          </Button>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  </section>
+  <AlertDialog :open="deleteOpen" @update:open="setDeleteOpen">
+    <AlertDialogContent>
+      <AlertDialogHeader>
+        <AlertDialogTitle>删除系统参数</AlertDialogTitle>
+        <AlertDialogDescription>
+          将删除 {{ selectedIds.length }} 个参数。删除后按键读取会得不到原值。
+          <span v-if="deleteError" class="text-destructive mt-2 block">{{ deleteError }}</span>
+        </AlertDialogDescription>
+      </AlertDialogHeader>
+      <AlertDialogFooter>
+        <AlertDialogCancel :disabled="deleting">取消</AlertDialogCancel>
+        <Button type="button" variant="destructive" :disabled="deleting" @click="confirmDelete">
+          <Spinner v-if="deleting" />
+          删除
+        </Button>
+      </AlertDialogFooter>
+    </AlertDialogContent>
+  </AlertDialog>
 </template>
