@@ -6,14 +6,16 @@ export interface DeleteManyOptions<T> {
   deleteRows: (ids: number[]) => Promise<unknown>
   selectedIds: Ref<number[]>
   clearSelection: () => void
-  rows: Ref<T[]>
-  pageIndex: Ref<number>
-  changePage: (index: number) => Promise<void>
-  load: () => Promise<void>
+  /** 删除成功后刷新列表；无分页页面用它做本地重载。 */
+  load?: () => Promise<void> | void
+  /** 以下三项只给服务端分页页面：当前页删空后自动回退一页。 */
+  rows?: Ref<T[]>
+  pageIndex?: Ref<number>
+  changePage?: (index: number) => Promise<void>
   fallbackMessage?: string
 }
 
-/** 批量删除的确认框状态，删除后清空勾选并在当前页清空时回退一页。 */
+/** 批量删除的确认框状态，删除后清空勾选，并在分页场景处理空页回退。 */
 export function useDeleteMany<T>(options: DeleteManyOptions<T>) {
   const open = shallowRef(false)
   const deleting = shallowRef(false)
@@ -35,8 +37,14 @@ export function useDeleteMany<T>(options: DeleteManyOptions<T>) {
       await options.deleteRows(options.selectedIds.value)
       open.value = false
       options.clearSelection()
-      await options.load()
-      if (options.rows.value.length === 0 && options.pageIndex.value > 0) {
+      await options.load?.()
+      if (
+        options.rows &&
+        options.pageIndex &&
+        options.changePage &&
+        options.rows.value.length === 0 &&
+        options.pageIndex.value > 0
+      ) {
         await options.changePage(options.pageIndex.value - 1)
       }
     } catch (failure) {

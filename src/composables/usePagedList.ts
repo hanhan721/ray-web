@@ -1,4 +1,5 @@
 import { shallowRef } from 'vue'
+import { useSelection } from '@/composables/useSelection'
 import { failureMessage } from '@/utils/failure'
 import { PAGE_SIZES, pageIndexFromResponse } from '@/utils/pagination'
 
@@ -17,7 +18,6 @@ export interface PagedListOptions<T> {
  */
 export function usePagedList<T>(options: PagedListOptions<T>) {
   const pageSizes = options.pageSizes ?? PAGE_SIZES
-  const rowId = options.rowId ?? ((row: T) => (row as { id: number }).id)
 
   const rows = shallowRef<T[]>([])
   const total = shallowRef(0)
@@ -25,12 +25,10 @@ export function usePagedList<T>(options: PagedListOptions<T>) {
   const pageSize = shallowRef<number>(pageSizes[0] ?? 10)
   const loading = shallowRef(false)
   const errorMessage = shallowRef('')
-  const selectedIds = shallowRef<number[]>([])
+  const { selectedIds, clearSelection, toggleSelected, toggleAll } = useSelection<T>({
+    rowId: options.rowId,
+  })
   let generation = 0
-
-  function clearSelection() {
-    selectedIds.value = []
-  }
 
   async function load() {
     const requestId = ++generation
@@ -76,15 +74,8 @@ export function usePagedList<T>(options: PagedListOptions<T>) {
     return load()
   }
 
-  function toggleSelected(id: number, checked: boolean) {
-    const next = new Set(selectedIds.value)
-    if (checked) next.add(id)
-    else next.delete(id)
-    selectedIds.value = [...next]
-  }
-
   function togglePage(checked: boolean) {
-    selectedIds.value = checked ? rows.value.map((row) => rowId(row)) : []
+    toggleAll(rows.value, checked)
   }
 
   return {

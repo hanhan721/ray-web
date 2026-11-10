@@ -64,6 +64,10 @@ const props = withDefaults(
     showActions?: boolean
     /** 撑满视口高度，适合单表整页。 */
     fill?: boolean
+    /** 服务端分页；关掉后隐藏页码与每页条数，只保留总数和已选信息。 */
+    paginated?: boolean
+    /** 无分页时骨架屏占用的行数。 */
+    skeletonRows?: number
     rowKey?: (row: T) => TId
     rowLabel?: (row: T) => string
     cellClass?: (columnId: string) => string
@@ -80,6 +84,8 @@ const props = withDefaults(
     selectable: true,
     showActions: true,
     fill: false,
+    paginated: true,
+    skeletonRows: 5,
     rowKey: undefined,
     rowLabel: undefined,
     cellClass: undefined,
@@ -161,7 +167,10 @@ const table = useTable({
   state: tableState,
 })
 
-const pageCount = computed(() => Math.max(1, Math.ceil(props.total / props.pageSize)))
+const pageCount = computed(() =>
+  props.pageSize > 0 ? Math.max(1, Math.ceil(props.total / props.pageSize)) : 1,
+)
+const skeletonRowCount = computed(() => (props.paginated ? props.pageSize : props.skeletonRows))
 const allPageSelected = computed(
   () =>
     props.selectable &&
@@ -273,7 +282,7 @@ function isEmptyValue(value: unknown): boolean {
               :class="refreshing ? 'opacity-60 transition-opacity' : 'transition-opacity'"
             >
               <template v-if="showSkeleton">
-                <TableRow v-for="index in pageSize" :key="`loading-${index}`">
+                <TableRow v-for="index in skeletonRowCount" :key="`loading-${index}`">
                   <TableCell
                     v-for="header in table.getVisibleLeafColumns()"
                     :key="`${header.id}-loading-${index}`"
@@ -359,57 +368,59 @@ function isEmptyValue(value: unknown): boolean {
           <span class="text-muted-foreground text-sm tabular-nums" aria-live="polite"
             >共 {{ total }} 条</span
           >
-          <Field orientation="horizontal" class="w-auto">
-            <FieldLabel :for="pageSizeId" class="font-normal text-muted-foreground"
-              >每页</FieldLabel
-            >
-            <Select
-              :model-value="String(pageSize)"
+          <template v-if="paginated">
+            <Field orientation="horizontal" class="w-auto">
+              <FieldLabel :for="pageSizeId" class="font-normal text-muted-foreground"
+                >每页</FieldLabel
+              >
+              <Select
+                :model-value="String(pageSize)"
+                :disabled="loading"
+                @update:model-value="emit('update:pageSize', Number($event))"
+              >
+                <SelectTrigger :id="pageSizeId" size="sm" class="w-20">
+                  <SelectValue>{{ pageSize }}</SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem v-for="size in pageSizes" :key="size" :value="String(size)">
+                      {{ size }}
+                    </SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </Field>
+            <Pagination
+              :page="pageIndex + 1"
+              :items-per-page="pageSize"
+              :total="total"
+              :sibling-count="1"
               :disabled="loading"
-              @update:model-value="emit('update:pageSize', Number($event))"
+              :show-edges="pageCount > 7"
+              class="mx-0 w-auto justify-end"
+              @update:page="emit('update:pageIndex', $event - 1)"
             >
-              <SelectTrigger :id="pageSizeId" size="sm" class="w-20">
-                <SelectValue>{{ pageSize }}</SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  <SelectItem v-for="size in pageSizes" :key="size" :value="String(size)">
-                    {{ size }}
-                  </SelectItem>
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </Field>
-          <Pagination
-            :page="pageIndex + 1"
-            :items-per-page="pageSize"
-            :total="total"
-            :sibling-count="1"
-            :disabled="loading"
-            :show-edges="pageCount > 7"
-            class="mx-0 w-auto justify-end"
-            @update:page="emit('update:pageIndex', $event - 1)"
-          >
-            <PaginationContent v-slot="{ items }" class="gap-1">
-              <PaginationPrevious size="sm">
-                <span class="hidden sm:block">上一页</span>
-              </PaginationPrevious>
-              <template v-for="(item, index) in items" :key="index">
-                <PaginationItem
-                  v-if="item.type === 'page'"
-                  :value="item.value"
-                  :is-active="item.value === pageIndex + 1"
-                  size="sm"
-                >
-                  {{ item.value }}
-                </PaginationItem>
-                <PaginationEllipsis v-else :index="index" />
-              </template>
-              <PaginationNext size="sm">
-                <span class="hidden sm:block">下一页</span>
-              </PaginationNext>
-            </PaginationContent>
-          </Pagination>
+              <PaginationContent v-slot="{ items }" class="gap-1">
+                <PaginationPrevious size="sm">
+                  <span class="hidden sm:block">上一页</span>
+                </PaginationPrevious>
+                <template v-for="(item, index) in items" :key="index">
+                  <PaginationItem
+                    v-if="item.type === 'page'"
+                    :value="item.value"
+                    :is-active="item.value === pageIndex + 1"
+                    size="sm"
+                  >
+                    {{ item.value }}
+                  </PaginationItem>
+                  <PaginationEllipsis v-else :index="index" />
+                </template>
+                <PaginationNext size="sm">
+                  <span class="hidden sm:block">下一页</span>
+                </PaginationNext>
+              </PaginationContent>
+            </Pagination>
+          </template>
         </div>
       </CardFooter>
     </Card>
