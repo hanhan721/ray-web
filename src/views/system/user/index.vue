@@ -188,6 +188,9 @@ const CELL_MIN_WIDTH: Record<string, string> = {
 
 function cellClass(columnId: string): string {
   const minWidth = CELL_MIN_WIDTH[columnId] ?? 'min-w-16'
+  if (columnId === 'username') return `block truncate font-medium text-foreground ${minWidth}`
+  if (columnId === 'createTime')
+    return `block truncate text-muted-foreground tabular-nums ${minWidth}`
   return `block truncate ${minWidth}`
 }
 
@@ -319,7 +322,9 @@ onMounted(() => {
       <CardContent>
         <form class="flex flex-wrap items-center gap-x-4 gap-y-3" @submit.prevent="search()">
           <Field orientation="horizontal" class="w-auto">
-            <FieldLabel for="filter-username" class="w-8 shrink-0 whitespace-nowrap"
+            <FieldLabel
+              for="filter-username"
+              class="w-8 shrink-0 whitespace-nowrap font-normal text-muted-foreground"
               >账号</FieldLabel
             >
             <Input
@@ -331,7 +336,9 @@ onMounted(() => {
             />
           </Field>
           <Field orientation="horizontal" class="w-auto">
-            <FieldLabel for="filter-nickname" class="w-8 shrink-0 whitespace-nowrap"
+            <FieldLabel
+              for="filter-nickname"
+              class="w-8 shrink-0 whitespace-nowrap font-normal text-muted-foreground"
               >昵称</FieldLabel
             >
             <Input
@@ -343,7 +350,9 @@ onMounted(() => {
             />
           </Field>
           <Field orientation="horizontal" class="w-auto">
-            <FieldLabel for="filter-enabled" class="w-8 shrink-0 whitespace-nowrap"
+            <FieldLabel
+              for="filter-enabled"
+              class="w-8 shrink-0 whitespace-nowrap font-normal text-muted-foreground"
               >状态</FieldLabel
             >
             <Select
@@ -422,9 +431,20 @@ onMounted(() => {
           class="min-h-[180px] min-h-0 flex-1 overflow-hidden [&_[data-slot=table-container]]:h-full [&_[data-slot=table-container]]:max-h-full [&_[data-slot=table-container]]:min-h-[180px] [&_[data-slot=table-container]]:overflow-y-auto"
         >
           <Table>
-            <TableHeader class="bg-card sticky top-0 z-10">
-              <TableRow v-for="headerGroup in table.getHeaderGroups()" :key="headerGroup.id">
-                <TableHead v-for="header in headerGroup.headers" :key="header.id" scope="col">
+            <TableHeader
+              class="bg-card/95 supports-[backdrop-filter]:bg-card/85 sticky top-0 z-10 backdrop-blur"
+            >
+              <TableRow
+                v-for="headerGroup in table.getHeaderGroups()"
+                :key="headerGroup.id"
+                class="hover:bg-transparent"
+              >
+                <TableHead
+                  v-for="header in headerGroup.headers"
+                  :key="header.id"
+                  scope="col"
+                  class="text-xs"
+                >
                   <Checkbox
                     v-if="header.column.id === 'select'"
                     aria-label="选择当前页"
@@ -509,6 +529,7 @@ onMounted(() => {
                     <Badge
                       v-else-if="cell.column.id === 'enabled'"
                       :variant="row.original.enabled === false ? 'secondary' : 'default'"
+                      class="font-normal"
                     >
                       {{ row.original.enabled === false ? '停用' : '启用' }}
                     </Badge>
@@ -561,8 +582,10 @@ onMounted(() => {
           </Table>
         </div>
       </CardContent>
-      <CardFooter class="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t pt-4">
-        <p class="flex min-h-5 items-center gap-1.5 text-muted-foreground text-sm">
+      <CardFooter
+        class="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-border/60 pt-4"
+      >
+        <p class="flex min-h-5 items-center gap-1.5 text-muted-foreground text-sm tabular-nums">
           <Spinner v-if="refreshing" class="size-3.5" aria-hidden="true" />
           <span aria-live="polite">
             {{
@@ -571,9 +594,11 @@ onMounted(() => {
           </span>
         </p>
         <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
-          <span class="text-muted-foreground text-sm" aria-live="polite">共 {{ total }} 条</span>
+          <span class="text-muted-foreground text-sm tabular-nums" aria-live="polite"
+            >共 {{ total }} 条</span
+          >
           <Field orientation="horizontal" class="w-auto">
-            <FieldLabel for="page-size">每页</FieldLabel>
+            <FieldLabel for="page-size" class="font-normal text-muted-foreground">每页</FieldLabel>
             <Select
               :model-value="String(pageSize)"
               :disabled="loading"
