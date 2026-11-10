@@ -18,7 +18,7 @@ const forwarded = useForwardProps(delegatedProps)
     v-bind="forwarded"
     :class="
       cn(
-        'no-scrollbar max-h-[min(calc(--spacing(72)---spacing(9)),calc(var(--available-height)---spacing(9)))] scroll-py-1 overflow-y-auto p-1 data-empty:p-0',
+        'no-scrollbar max-h-[min(16rem,var(--reka-combobox-content-available-height,16rem))] scroll-py-1 overflow-y-auto p-1 data-empty:p-0',
         props.class,
       )
     "

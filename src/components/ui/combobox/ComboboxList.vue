@@ -4,6 +4,7 @@ import type { HTMLAttributes } from 'vue'
 import { reactiveOmit } from '@vueuse/core'
 import { cn } from 'cn'
 import { ComboboxContent, ComboboxPortal, useForwardPropsEmits } from 'reka-ui'
+import { selectPanelClass } from '@/components/ui/select/select-styles'
 
 defineOptions({
   inheritAttrs: false,
@@ -13,8 +14,9 @@ const props = withDefaults(
   defineProps<ComboboxContentProps & { class?: HTMLAttributes['class'] }>(),
   {
     position: 'popper',
-    align: 'center',
+    align: 'start',
     sideOffset: 4,
+    collisionPadding: 10,
   },
 )
 const emits = defineEmits<ComboboxContentEmits>()
@@ -30,7 +32,8 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits)
       v-bind="{ ...$attrs, ...forwarded }"
       :class="
         cn(
-          'bg-popover text-popover-foreground data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 data-closed:zoom-out-95 data-open:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 ring-foreground/10 *:data-[slot=input-group]:bg-input/20 dark:bg-popover max-h-72 min-w-32 overflow-hidden rounded-lg shadow-md ring-1 duration-100 *:data-[slot=input-group]:m-1 *:data-[slot=input-group]:mb-0 *:data-[slot=input-group]:h-7 *:data-[slot=input-group]:border-none *:data-[slot=input-group]:shadow-none data-[side=inline-start]:slide-in-from-right-2 data-[side=inline-end]:slide-in-from-left-2 cn-menu-target cn-menu-translucent group/combobox-content z-50 w-(--reka-combobox-trigger-width)',
+          selectPanelClass,
+          'data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 data-[side=bottom]:slide-in-from-top-1 data-[side=left]:slide-in-from-right-1 data-[side=right]:slide-in-from-left-1 data-[side=top]:slide-in-from-bottom-1 group/combobox-content z-50 max-h-[min(18rem,var(--reka-combobox-content-available-height,18rem))] w-(--reka-combobox-trigger-width) min-w-32 overflow-hidden duration-100',
           props.class,
         )
       "

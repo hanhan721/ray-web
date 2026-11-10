@@ -7,6 +7,7 @@ import { assignUserDepts, assignUserRoles, createUser, getUserById, updateUser }
 import { GenderOptions, type Gender } from '@/types/enums'
 import { RequestError } from '@/utils/request'
 import MultiSelect from '@/components/common/MultiSelect.vue'
+import SingleSelect from '@/components/common/SingleSelect.vue'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
@@ -19,14 +20,6 @@ import {
 } from '@/components/ui/dialog'
 import { Field, FieldError, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
@@ -408,27 +401,18 @@ async function onSubmit() {
                 </Field>
                 <Field>
                   <FieldLabel for="user-gender">性别</FieldLabel>
-                  <Select
-                    :model-value="gender === '' ? 'none' : gender"
+                  <SingleSelect
+                    id="user-gender"
+                    :model-value="gender"
+                    :options="GenderOptions"
+                    placeholder="未填写"
+                    size="lg"
+                    :searchable="false"
+                    :clearable="!originalGender"
                     :disabled="saving"
+                    class="w-full"
                     @update:model-value="setGender"
-                  >
-                    <SelectTrigger id="user-gender" size="lg" class="w-full text-sm">
-                      <SelectValue placeholder="未填写" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        <SelectItem value="none">未填写</SelectItem>
-                        <SelectItem
-                          v-for="option in GenderOptions"
-                          :key="option.value"
-                          :value="option.value"
-                        >
-                          {{ option.label }}
-                        </SelectItem>
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
+                  />
                 </Field>
                 <Field>
                   <FieldLabel for="user-phone">手机</FieldLabel>
@@ -487,6 +471,7 @@ async function onSubmit() {
                     placeholder="选择角色"
                     empty-text="没有可分配的角色"
                     no-results-text="没有匹配的角色"
+                    aria-label="角色"
                     :disabled="saving"
                   />
                 </FieldSet>
@@ -499,6 +484,7 @@ async function onSubmit() {
                     placeholder="选择部门"
                     empty-text="没有可分配的部门"
                     no-results-text="没有匹配的部门"
+                    aria-label="部门"
                     :disabled="saving"
                   />
                 </FieldSet>

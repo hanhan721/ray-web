@@ -15,6 +15,7 @@ import { deleteUsers, updateUserStatus, type SysUser } from '@/api/user'
 import { GenderLabel, PAGE_KEYS, type Gender } from '@/types/enums'
 import { RequestError } from '@/utils/request'
 import { useSessionStore } from '@/stores/session'
+import SingleSelect from '@/components/common/SingleSelect.vue'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -141,6 +142,10 @@ const deleting = shallowRef(false)
 const statusPendingId = shallowRef<number | null>(null)
 
 const can = (code: string) => session.can(code)
+const enabledOptions = [
+  { value: 'true', label: '启用' },
+  { value: 'false', label: '停用' },
+] as const
 const pageCount = computed(() => Math.max(1, Math.ceil(total.value / pageSize.value)))
 const allPageSelected = computed(
   () => rows.value.length > 0 && rows.value.every((row) => selectedIds.value.includes(row.id)),
@@ -355,21 +360,17 @@ onMounted(() => {
               class="w-8 shrink-0 whitespace-nowrap font-normal text-muted-foreground"
               >状态</FieldLabel
             >
-            <Select
-              :model-value="enabled === '' ? 'all' : enabled"
+            <SingleSelect
+              id="filter-enabled"
+              :model-value="enabled"
+              :options="enabledOptions"
+              placeholder="全部"
+              size="lg"
+              searchable
+              clearable
+              class="w-36"
               @update:model-value="setEnabledFilter"
-            >
-              <SelectTrigger id="filter-enabled" size="lg" class="w-36">
-                <SelectValue placeholder="全部" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  <SelectItem value="all">全部</SelectItem>
-                  <SelectItem value="true">启用</SelectItem>
-                  <SelectItem value="false">停用</SelectItem>
-                </SelectGroup>
-              </SelectContent>
-            </Select>
+            />
           </Field>
           <div class="flex items-center gap-2">
             <Button type="submit" :disabled="loading">
