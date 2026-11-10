@@ -14,6 +14,7 @@ import {
   type ScheduleJobLog,
 } from '@/api/schedule-job'
 import { RequestError } from '@/utils/request'
+import { PAGE_SIZES, pageIndexFromResponse } from '@/utils/pagination'
 import { useSessionStore } from '@/stores/session'
 import { Button } from '@/components/ui/button'
 import {
@@ -47,14 +48,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import JobEditor from './JobEditor.vue'
-import {
-  JOB_PAGE_SIZES,
-  formatDateTime,
-  pageIndexFromResponse,
-  retainDaysError,
-  toJobLogQuery,
-  toJobQuery,
-} from './job-form'
+import { formatDateTime, retainDaysError, toJobLogQuery, toJobQuery } from './job-form'
 
 const session = useSessionStore()
 const can = (code: string) => session.can(code)
@@ -62,7 +56,7 @@ const can = (code: string) => session.can(code)
 const rows = shallowRef<ScheduleJob[]>([])
 const total = shallowRef(0)
 const pageIndex = shallowRef(0)
-const pageSize = shallowRef<(typeof JOB_PAGE_SIZES)[number]>(10)
+const pageSize = shallowRef<(typeof PAGE_SIZES)[number]>(10)
 const jobName = shallowRef('')
 const jobGroup = shallowRef('')
 const beanName = shallowRef('')
@@ -88,7 +82,7 @@ const selectedLogJob = shallowRef<ScheduleJob | null>(null)
 const logRows = shallowRef<ScheduleJobLog[]>([])
 const logTotal = shallowRef(0)
 const logPageIndex = shallowRef(0)
-const logPageSize = shallowRef<(typeof JOB_PAGE_SIZES)[number]>(10)
+const logPageSize = shallowRef<(typeof PAGE_SIZES)[number]>(10)
 const logSuccess = shallowRef<'' | 'true' | 'false'>('')
 const appliedLogSuccess = shallowRef<'' | 'true' | 'false'>('')
 const logLoading = shallowRef(false)
@@ -144,8 +138,8 @@ async function load() {
     rows.value = page.records ?? []
     total.value = page.total ?? 0
     if (typeof page.current === 'number') pageIndex.value = pageIndexFromResponse(page.current)
-    if ((JOB_PAGE_SIZES as readonly number[]).includes(page.size)) {
-      pageSize.value = page.size as (typeof JOB_PAGE_SIZES)[number]
+    if ((PAGE_SIZES as readonly number[]).includes(page.size)) {
+      pageSize.value = page.size as (typeof PAGE_SIZES)[number]
     }
     selectedIds.value = selectedIds.value.filter((id) => rows.value.some((row) => row.id === id))
     const current = rows.value.find((row) => row.id === selectedLogJob.value?.id)
@@ -185,8 +179,8 @@ async function loadLogs() {
     logRows.value = page.records ?? []
     logTotal.value = page.total ?? 0
     if (typeof page.current === 'number') logPageIndex.value = pageIndexFromResponse(page.current)
-    if ((JOB_PAGE_SIZES as readonly number[]).includes(page.size)) {
-      logPageSize.value = page.size as (typeof JOB_PAGE_SIZES)[number]
+    if ((PAGE_SIZES as readonly number[]).includes(page.size)) {
+      logPageSize.value = page.size as (typeof PAGE_SIZES)[number]
     }
   } catch (error) {
     if (requestId !== logGeneration || selectedLogJob.value?.id !== job.id) return
@@ -212,8 +206,8 @@ function changePageSize(event: Event) {
   const value = Number(
     event.target instanceof HTMLSelectElement ? event.target.value : pageSize.value,
   )
-  if ((JOB_PAGE_SIZES as readonly number[]).includes(value)) {
-    pageSize.value = value as (typeof JOB_PAGE_SIZES)[number]
+  if ((PAGE_SIZES as readonly number[]).includes(value)) {
+    pageSize.value = value as (typeof PAGE_SIZES)[number]
   }
   pageIndex.value = 0
   selectedIds.value = []
@@ -230,8 +224,8 @@ function changeLogPageSize(event: Event) {
   const value = Number(
     event.target instanceof HTMLSelectElement ? event.target.value : logPageSize.value,
   )
-  if ((JOB_PAGE_SIZES as readonly number[]).includes(value)) {
-    logPageSize.value = value as (typeof JOB_PAGE_SIZES)[number]
+  if ((PAGE_SIZES as readonly number[]).includes(value)) {
+    logPageSize.value = value as (typeof PAGE_SIZES)[number]
   }
   logPageIndex.value = 0
   void loadLogs()
@@ -644,7 +638,7 @@ onMounted(() => {
             :value="pageSize"
             @change="changePageSize"
           >
-            <option v-for="size in JOB_PAGE_SIZES" :key="size" :value="size">{{ size }}</option>
+            <option v-for="size in PAGE_SIZES" :key="size" :value="size">{{ size }}</option>
           </select>
         </Field>
         <div class="flex items-center gap-2">
@@ -771,7 +765,7 @@ onMounted(() => {
             :value="logPageSize"
             @change="changeLogPageSize"
           >
-            <option v-for="size in JOB_PAGE_SIZES" :key="size" :value="size">{{ size }}</option>
+            <option v-for="size in PAGE_SIZES" :key="size" :value="size">{{ size }}</option>
           </select>
         </Field>
         <div class="flex items-center gap-2">

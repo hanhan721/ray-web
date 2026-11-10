@@ -1,7 +1,5 @@
 import type { JobForm, JobLogQuery, JobQuery } from '@/api/schedule-job'
 
-export const JOB_PAGE_SIZES = [10, 20, 50, 100] as const
-
 export function toJobQuery(input: {
   pageIndex: number
   pageSize: number
@@ -96,10 +94,6 @@ export function retainDaysError(value: string): string {
   const days = Number(value)
   if (days < 1 || days > 3650) return '保留天数需要是 1 到 3650 的整数'
   return ''
-}
-
-export function pageIndexFromResponse(current: number): number {
-  return Math.max(0, current - 1)
 }
 
 export function formatDateTime(value: unknown): string {
