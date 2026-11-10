@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, shallowRef, useTemplateRef, watch } from 'vue'
 import { createParam, getParamById, updateParam } from '@/api/param'
-import { RequestError } from '@/utils/request'
+import { failureMessage } from '@/utils/failure'
 import { ParamTypeOptions, type ParamType } from '@/types/enums'
 import { sameEditorSession } from '@/views/system/user/user-table'
 import { Button } from '@/components/ui/button'
@@ -56,11 +56,6 @@ const knownBiz = computed(() =>
 )
 const knownType = computed(() => isParamType(paramType.value))
 
-function failureMessage(error: unknown): string {
-  if (error instanceof RequestError && error.message) return error.message
-  return '保存失败，请稍后重试'
-}
-
 function focusField() {
   void nextTick(() => {
     if (creating.value) {
@@ -113,7 +108,7 @@ async function loadDetail(sessionId: number, id: number) {
     focusField()
   } catch (error) {
     if (!sameEditorSession(sessionId, session, id, props.paramId)) return
-    formError.value = failureMessage(error)
+    formError.value = failureMessage(error, '保存失败，请稍后重试')
   } finally {
     if (sameEditorSession(sessionId, session, id, props.paramId)) loading.value = false
   }
@@ -183,7 +178,7 @@ async function onSubmit() {
     emit('saved')
     if (stillHere()) emit('update:open', false)
   } catch (error) {
-    if (stillHere()) formError.value = failureMessage(error)
+    if (stillHere()) formError.value = failureMessage(error, '保存失败，请稍后重试')
   } finally {
     if (stillHere()) saving.value = false
   }

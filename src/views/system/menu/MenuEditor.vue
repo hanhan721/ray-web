@@ -2,7 +2,7 @@
 import { computed, nextTick, shallowRef, useTemplateRef, watch } from 'vue'
 import { createPermission, updatePermission } from '@/api/permission'
 import { PermissionTypeOptions, type PermissionType } from '@/types/enums'
-import { RequestError } from '@/utils/request'
+import { failureMessage } from '@/utils/failure'
 import { sameEditorSession } from '@/views/system/user/user-table'
 import { Button } from '@/components/ui/button'
 import {
@@ -96,11 +96,6 @@ watch(
   },
 )
 
-function failureMessage(error: unknown): string {
-  if (error instanceof RequestError && error.message) return error.message
-  return '保存失败，请稍后重试'
-}
-
 async function onSubmit() {
   const sessionId = session
   const menuId = props.menu?.id ?? null
@@ -154,7 +149,7 @@ async function onSubmit() {
     emit('saved')
     if (stillHere()) emit('update:open', false)
   } catch (error) {
-    if (stillHere()) formError.value = failureMessage(error)
+    if (stillHere()) formError.value = failureMessage(error, '保存失败，请稍后重试')
   } finally {
     if (stillHere()) saving.value = false
   }
