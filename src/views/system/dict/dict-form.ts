@@ -1,6 +1,36 @@
 import type { DictDataQuery, DictDataRecord, DictTypeQuery, DictTypeRecord } from '@/api/dict'
+import type { ColumnSettingItem } from '@/components/common/column-settings'
 
-export const DICT_PAGE_SIZES = [10, 20, 50, 100] as const
+export const DICT_TYPE_COLUMNS: ColumnSettingItem[] = [
+  { key: 'dictName', label: '名称' },
+  { key: 'dictType', label: '类型编码' },
+  { key: 'enabled', label: '状态' },
+]
+
+export const DICT_DATA_COLUMNS: ColumnSettingItem[] = [
+  { key: 'dictLabel', label: '标签' },
+  { key: 'dictValue', label: '字典值' },
+  { key: 'sort', label: '顺序' },
+  { key: 'enabled', label: '状态' },
+]
+
+const CELL_MIN_WIDTH: Record<string, string> = {
+  dictName: 'min-w-32',
+  dictType: 'min-w-36',
+  dictLabel: 'min-w-24',
+  dictValue: 'min-w-24',
+  sort: 'min-w-12',
+}
+
+/** 单元格文本样式：名称与标签加重，类型编码弱化，其余只做截断。 */
+export function dictCellClass(columnId: string): string {
+  const minWidth = CELL_MIN_WIDTH[columnId] ?? 'min-w-16'
+  if (columnId === 'dictName' || columnId === 'dictLabel') {
+    return `block truncate font-medium text-foreground ${minWidth}`
+  }
+  if (columnId === 'dictType') return `block truncate text-muted-foreground ${minWidth}`
+  return `block truncate ${minWidth}`
+}
 
 export function toTypeQuery(input: {
   pageIndex: number
@@ -110,8 +140,4 @@ export function toDictDataWrite(
     enabled,
     remark: row.remark ?? '',
   }
-}
-
-export function pageIndexFromResponse(current: number): number {
-  return Math.max(0, current - 1)
 }
