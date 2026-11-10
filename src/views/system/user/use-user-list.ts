@@ -25,11 +25,5 @@ export function useUserList() {
     fallbackMessage: '用户列表加载失败',
   })
 
-  function setRowEnabled(id: number, nextEnabled: boolean) {
-    list.rows.value = list.rows.value.map((row) =>
-      row.id === id ? { ...row, enabled: nextEnabled } : row,
-    )
-  }
-
-  return { ...list, username, nickname, enabled, setRowEnabled }
+  return { ...list, username, nickname, enabled }
 }

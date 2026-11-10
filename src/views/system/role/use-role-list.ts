@@ -25,11 +25,5 @@ export function useRoleList() {
     fallbackMessage: '角色列表加载失败',
   })
 
-  function setRowEnabled(id: number, nextEnabled: boolean) {
-    list.rows.value = list.rows.value.map((row) =>
-      row.id === id ? { ...row, enabled: nextEnabled } : row,
-    )
-  }
-
-  return { ...list, roleName, roleKey, enabled, setRowEnabled }
+  return { ...list, roleName, roleKey, enabled }
 }

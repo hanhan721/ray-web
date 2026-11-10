@@ -18,6 +18,7 @@ export interface PagedListOptions<T> {
  */
 export function usePagedList<T>(options: PagedListOptions<T>) {
   const pageSizes = options.pageSizes ?? PAGE_SIZES
+  const rowId = options.rowId ?? ((row: T) => (row as { id: number }).id)
 
   const rows = shallowRef<T[]>([])
   const total = shallowRef(0)
@@ -25,9 +26,7 @@ export function usePagedList<T>(options: PagedListOptions<T>) {
   const pageSize = shallowRef<number>(pageSizes[0] ?? 10)
   const loading = shallowRef(false)
   const errorMessage = shallowRef('')
-  const { selectedIds, clearSelection, toggleSelected, toggleAll } = useSelection<T>({
-    rowId: options.rowId,
-  })
+  const { selectedIds, clearSelection, toggleSelected, toggleAll } = useSelection<T>({ rowId })
   let generation = 0
 
   async function load() {
@@ -78,6 +77,13 @@ export function usePagedList<T>(options: PagedListOptions<T>) {
     toggleAll(rows.value, checked)
   }
 
+  /** 行内启停成功后就地更新，避免整页重新请求。 */
+  function setRowEnabled(id: number, enabled: boolean) {
+    rows.value = rows.value.map((row) =>
+      rowId(row) === id ? Object.assign({}, row, { enabled }) : row,
+    )
+  }
+
   return {
     rows,
     total,
@@ -93,5 +99,6 @@ export function usePagedList<T>(options: PagedListOptions<T>) {
     changePageSize,
     toggleSelected,
     togglePage,
+    setRowEnabled,
   }
 }
