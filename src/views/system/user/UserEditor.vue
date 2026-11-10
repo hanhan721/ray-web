@@ -83,6 +83,8 @@ const deptOptions = computed(() =>
   })),
 )
 let session = 0
+let rolesRequest: Promise<Role[]> | null = null
+let deptsRequest: Promise<Array<{ id: number; label: string; depth: number }>> | null = null
 
 function idKey(ids: number[]): string {
   return JSON.stringify([...ids].sort((left, right) => left - right))
@@ -125,25 +127,42 @@ function flattenDepts(
   return result
 }
 
-async function loadOptions(sessionId: number, userId: number | null) {
-  const tasks: Array<Promise<void>> = []
-  if (userId !== null && props.canAssignRoles) {
-    tasks.push(
-      getRoleList(quiet).then((items) => {
-        if (sameEditorSession(sessionId, session, userId, props.userId)) roles.value = items ?? []
-      }),
-    )
-  }
-  if (userId !== null && props.canAssignDepts) {
-    tasks.push(
-      getDeptTree(quiet).then((items) => {
-        if (sameEditorSession(sessionId, session, userId, props.userId)) {
-          depts.value = flattenDepts(items ?? [])
-        }
-      }),
-    )
-  }
+async function loadOptions(userId: number | null) {
+  if (userId === null) return
+  const tasks: Array<Promise<unknown>> = []
+  if (props.canAssignRoles) tasks.push(ensureRoles())
+  if (props.canAssignDepts) tasks.push(ensureDepts())
   await Promise.all(tasks)
+}
+
+function ensureRoles(): Promise<Role[]> {
+  if (!rolesRequest) {
+    rolesRequest = getRoleList(quiet)
+      .then((items) => {
+        roles.value = items ?? []
+        return roles.value
+      })
+      .catch((error) => {
+        rolesRequest = null
+        throw error
+      })
+  }
+  return rolesRequest
+}
+
+function ensureDepts(): Promise<Array<{ id: number; label: string; depth: number }>> {
+  if (!deptsRequest) {
+    deptsRequest = getDeptTree(quiet)
+      .then((items) => {
+        depts.value = flattenDepts(items ?? [])
+        return depts.value
+      })
+      .catch((error) => {
+        deptsRequest = null
+        throw error
+      })
+  }
+  return deptsRequest
 }
 
 async function loadDetail(sessionId: number, userId: number) {
@@ -181,8 +200,6 @@ async function resetForm() {
   avatarFileId.value = null
   roleIds.value = []
   deptIds.value = []
-  roles.value = []
-  depts.value = []
   formError.value = ''
   stepNote.value = ''
   profileSavedKey.value = ''
@@ -192,7 +209,7 @@ async function resetForm() {
   saving.value = false
   loading.value = true
   try {
-    await loadOptions(sessionId, userId)
+    await loadOptions(userId)
     if (!sameEditorSession(sessionId, session, userId, props.userId)) return
     if (userId !== null) await loadDetail(sessionId, userId)
     if (!sameEditorSession(sessionId, session, userId, props.userId)) return
