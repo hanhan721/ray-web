@@ -1,4 +1,25 @@
 import type { Dept, DeptTree } from '@/api/dept'
+import type { ColumnSettingItem } from '@/components/common/column-settings'
+
+export const DEPT_DATA_COLUMNS: ColumnSettingItem[] = [
+  { key: 'deptName', label: '名称' },
+  { key: 'leader', label: '负责人' },
+  { key: 'phone', label: '电话' },
+  { key: 'enabled', label: '状态' },
+]
+
+const CELL_MIN_WIDTH: Record<string, string> = {
+  deptName: 'min-w-48',
+  leader: 'min-w-24',
+  phone: 'min-w-32',
+}
+
+/** 单元格文本样式：部门名加重，其余只做截断。 */
+export function deptCellClass(columnId: string): string {
+  const minWidth = CELL_MIN_WIDTH[columnId] ?? 'min-w-16'
+  if (columnId === 'deptName') return `block truncate font-medium text-foreground ${minWidth}`
+  return `block truncate ${minWidth}`
+}
 
 export interface DeptRow {
   id: number

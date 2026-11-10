@@ -1,10 +1,18 @@
 <script setup lang="ts">
+import { ListTree, Plus, RefreshCw, RotateCcw, Trash2 } from '@lucide/vue'
 import { computed, onMounted, shallowRef, watch } from 'vue'
 import { deletePermissions, getPermissionTree, updatePermission } from '@/api/permission'
-import { PermissionTypeLabel, type PermissionType } from '@/types/enums'
-import { RequestError } from '@/utils/request'
+import { PermissionTypeLabel, PermissionTypeOptions, type PermissionType } from '@/types/enums'
 import { useSessionStore } from '@/stores/session'
+import { useDeleteMany } from '@/composables/useDeleteMany'
+import { useRowStatus } from '@/composables/useRowStatus'
+import { useSelection } from '@/composables/useSelection'
+import { QUIET, failureMessage } from '@/utils/failure'
+import ProTable from '@/components/common/ProTable.vue'
+import SingleSelect from '@/components/common/SingleSelect.vue'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -14,85 +22,93 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from '@/components/ui/empty'
 import { Field, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
-import { Switch } from '@/components/ui/switch'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableEmpty,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import MenuEditor from './MenuEditor.vue'
-import { filterMenuRows, flattenMenus, toMenuWrite, type MenuRow } from './menu-tree'
+import {
+  MENU_DATA_COLUMNS,
+  filterMenuRows,
+  flattenMenus,
+  menuCellClass,
+  toMenuWrite,
+  type MenuRow,
+} from './menu-tree'
 
 const session = useSessionStore()
+const can = (code: string) => session.can(code)
+
 const rows = shallowRef<MenuRow[]>([])
 const name = shallowRef('')
 const typeFilter = shallowRef<PermissionType | ''>('')
 const loading = shallowRef(false)
 const errorMessage = shallowRef('')
-const selectedIds = shallowRef<number[]>([])
 const editorOpen = shallowRef(false)
 const editorMenu = shallowRef<MenuRow | null>(null)
-const deleteOpen = shallowRef(false)
-const deleteError = shallowRef('')
-const deleting = shallowRef(false)
-const statusPendingId = shallowRef<number | null>(null)
 let generation = 0
 
+const { selectedIds, clearSelection, toggleSelected, toggleAll } = useSelection<MenuRow>()
 const visibleRows = computed(() => filterMenuRows(rows.value, name.value, typeFilter.value))
-const allVisibleSelected = computed(
-  () =>
-    visibleRows.value.length > 0 &&
-    visibleRows.value.every((row) => selectedIds.value.includes(row.id)),
-)
-const can = (code: string) => session.can(code)
+const rowLabel = (row: MenuRow) => row.name
 
-function failureMessage(error: unknown): string {
-  if (error instanceof RequestError && error.message) return error.message
-  return '菜单加载失败'
-}
+const {
+  open: deleteOpen,
+  deleting,
+  error: deleteError,
+  openDialog: openDelete,
+  setOpen: setDeleteOpen,
+  confirm: confirmDelete,
+} = useDeleteMany<MenuRow>({
+  deleteRows: (ids) => deletePermissions(ids, QUIET),
+  selectedIds,
+  clearSelection,
+  load,
+})
+
+const { pendingIds: statusPendingIds, change: changeStatus } = useRowStatus({
+  update: (id, enabled) => {
+    const row = rows.value.find((item) => item.id === id)
+    return row ? updatePermission(toMenuWrite(row, enabled)) : Promise.resolve()
+  },
+  setRowEnabled: (id, enabled) => {
+    rows.value = rows.value.map((item) => (item.id === id ? { ...item, enabled } : item))
+  },
+})
 
 async function load() {
   const requestId = ++generation
   loading.value = true
   errorMessage.value = ''
   try {
-    const tree = await getPermissionTree({ showErrorMessage: false }, { reload: true })
+    const tree = await getPermissionTree(QUIET, { reload: true })
     if (requestId !== generation) return
     rows.value = flattenMenus(tree ?? [])
     selectedIds.value = selectedIds.value.filter((id) => rows.value.some((row) => row.id === id))
   } catch (error) {
     if (requestId !== generation) return
     rows.value = []
-    errorMessage.value = failureMessage(error)
+    errorMessage.value = failureMessage(error, '菜单加载失败')
   } finally {
     if (requestId === generation) loading.value = false
   }
 }
 
-function search() {
-  selectedIds.value = []
+function setTypeFilter(value: unknown) {
+  typeFilter.value = value === 'DIRECTORY' || value === 'MENU' || value === 'BUTTON' ? value : ''
 }
 
-watch([name, typeFilter], () => {
-  selectedIds.value = []
-})
-
-function toggleSelected(id: number, checked: boolean) {
-  const next = new Set(selectedIds.value)
-  if (checked) next.add(id)
-  else next.delete(id)
-  selectedIds.value = [...next]
-}
-
-function toggleVisible(checked: boolean) {
-  selectedIds.value = checked ? visibleRows.value.map((row) => row.id) : []
+function resetFilters() {
+  name.value = ''
+  typeFilter.value = ''
+  clearSelection()
 }
 
 function openCreate() {
@@ -105,38 +121,9 @@ function openEdit(row: MenuRow) {
   editorOpen.value = true
 }
 
-function openDelete() {
-  deleteError.value = ''
-  deleteOpen.value = true
-}
-
-async function changeStatus(row: MenuRow, enabled: boolean) {
-  statusPendingId.value = row.id
-  try {
-    await updatePermission(toMenuWrite(row, enabled))
-    await load()
-  } catch {
-    // 请求层已经提示后端原因。开关仍绑定原状态。
-  } finally {
-    statusPendingId.value = null
-  }
-}
-
-async function confirmDelete() {
-  deleting.value = true
-  deleteError.value = ''
-  try {
-    await deletePermissions(selectedIds.value, { showErrorMessage: false })
-    deleteOpen.value = false
-    selectedIds.value = []
-    await load()
-  } catch (error) {
-    deleteError.value =
-      error instanceof RequestError && error.message ? error.message : '删除失败，请稍后重试'
-  } finally {
-    deleting.value = false
-  }
-}
+watch([name, typeFilter], () => {
+  clearSelection()
+})
 
 onMounted(() => {
   void load()
@@ -144,156 +131,186 @@ onMounted(() => {
 </script>
 
 <template>
-  <section class="flex flex-col gap-4">
-    <header class="flex flex-wrap items-end justify-between gap-3">
-      <div>
-        <h1 class="text-lg font-medium">菜单管理</h1>
-        <p class="text-muted-foreground mt-1 text-sm">
-          按名称和类型在已加载的权限树里查找。删除上级前要先处理下级。编辑按钮，或更改启用状态、权限标识后，需要重新登录。
+  <ProTable
+    :paginated="false"
+    :columns="MENU_DATA_COLUMNS"
+    :rows="visibleRows"
+    :total="visibleRows.length"
+    :page-index="0"
+    :page-size="visibleRows.length"
+    :loading="loading"
+    :error-message="errorMessage"
+    :selected-ids="selectedIds"
+    selection-unit="个"
+    :row-label="rowLabel"
+    :cell-class="menuCellClass"
+    @toggle-row="toggleSelected"
+    @toggle-page="toggleAll(visibleRows, $event)"
+    @retry="load()"
+  >
+    <template #filters>
+      <form class="flex flex-wrap items-center gap-x-4 gap-y-3" @submit.prevent="load()">
+        <Field orientation="horizontal" class="w-auto">
+          <FieldLabel
+            for="filter-menu-name"
+            class="w-8 shrink-0 whitespace-nowrap font-normal text-muted-foreground"
+            >名称</FieldLabel
+          >
+          <Input
+            id="filter-menu-name"
+            v-model="name"
+            name="name"
+            placeholder="输入菜单名称"
+            class="h-9 w-48"
+          />
+        </Field>
+        <Field orientation="horizontal" class="w-auto">
+          <FieldLabel
+            for="filter-menu-type"
+            class="w-8 shrink-0 whitespace-nowrap font-normal text-muted-foreground"
+            >类型</FieldLabel
+          >
+          <SingleSelect
+            id="filter-menu-type"
+            :model-value="typeFilter"
+            :options="PermissionTypeOptions"
+            placeholder="全部"
+            size="lg"
+            searchable
+            clearable
+            class="w-32"
+            @update:model-value="setTypeFilter"
+          />
+        </Field>
+        <div class="flex items-center gap-2">
+          <Button type="button" variant="ghost" :disabled="loading" @click="resetFilters()">
+            <RotateCcw data-icon="inline-start" />
+            重置
+          </Button>
+          <Button type="submit" variant="outline" :disabled="loading">
+            <RefreshCw data-icon="inline-start" />
+            刷新
+          </Button>
+        </div>
+        <p class="text-muted-foreground w-full text-xs">
+          按名称和类型在已加载的权限树里筛选；改权限标识或启用状态后需要重新登录。
         </p>
-      </div>
+      </form>
+    </template>
+
+    <template #actions>
       <Button v-if="can('system:permission:add')" type="button" @click="openCreate">
+        <Plus data-icon="inline-start" />
         新增菜单
       </Button>
-    </header>
-
-    <form class="flex flex-wrap items-end gap-3" @submit.prevent="search()">
-      <Field class="w-48">
-        <FieldLabel for="filter-menu-name">名称</FieldLabel>
-        <Input id="filter-menu-name" v-model="name" name="name" />
-      </Field>
-      <Field class="w-36">
-        <FieldLabel for="filter-menu-type">类型</FieldLabel>
-        <select
-          id="filter-menu-type"
-          v-model="typeFilter"
-          class="border-input bg-input/20 h-7 w-full rounded-md border px-2 text-sm outline-none focus-visible:ring-2"
-        >
-          <option value="">全部</option>
-          <option value="DIRECTORY">目录</option>
-          <option value="MENU">菜单</option>
-          <option value="BUTTON">按钮</option>
-        </select>
-      </Field>
-      <Button type="submit" :disabled="loading">查询</Button>
-      <Button type="button" variant="outline" :disabled="loading" @click="load()">刷新</Button>
-    </form>
-
-    <div class="flex flex-wrap items-center justify-between gap-2">
-      <p class="text-muted-foreground text-sm">
-        {{ loading ? '正在加载' : `共 ${rows.length} 个权限` }}
-      </p>
       <Button
         v-if="can('system:permission:remove')"
         type="button"
-        variant="destructive"
+        variant="outline"
         :disabled="selectedIds.length === 0 || deleting"
         @click="openDelete"
       >
+        <Trash2 data-icon="inline-start" />
         删除所选
+        <span v-if="selectedIds.length > 0" class="text-muted-foreground">
+          {{ selectedIds.length }}
+        </span>
       </Button>
-    </div>
+    </template>
 
-    <p v-if="errorMessage" role="alert" class="text-destructive text-sm">
-      {{ errorMessage }}
-      <Button type="button" variant="outline" size="sm" class="ml-2" @click="load()">重试</Button>
-    </p>
-
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead scope="col">
-            <input
-              type="checkbox"
-              aria-label="选择当前结果"
-              :checked="allVisibleSelected"
-              :disabled="visibleRows.length === 0"
-              @change="toggleVisible(($event.target as HTMLInputElement).checked)"
-            />
-          </TableHead>
-          <TableHead scope="col">名称</TableHead>
-          <TableHead scope="col">类型</TableHead>
-          <TableHead scope="col">标识</TableHead>
-          <TableHead scope="col">路由</TableHead>
-          <TableHead scope="col">状态</TableHead>
-          <TableHead scope="col">操作</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        <TableEmpty v-if="!loading && visibleRows.length === 0" :colspan="7">
-          {{ errorMessage ? '这次没有加载到菜单。' : '没有符合条件的菜单。' }}
-        </TableEmpty>
-        <TableRow v-for="row in visibleRows" :key="row.id">
-          <TableCell>
-            <input
-              type="checkbox"
-              :aria-label="`选择 ${row.name}`"
-              :checked="selectedIds.includes(row.id)"
-              @change="toggleSelected(row.id, ($event.target as HTMLInputElement).checked)"
-            />
-          </TableCell>
-          <TableCell>
-            <span
-              class="block max-w-72 truncate"
-              :style="{ paddingLeft: `${row.depth * 16}px` }"
-              :title="row.name"
-            >
-              {{ row.name }}
-            </span>
-          </TableCell>
-          <TableCell>{{ PermissionTypeLabel[row.type] }}</TableCell>
-          <TableCell>{{ row.code }}</TableCell>
-          <TableCell>{{ row.url }}</TableCell>
-          <TableCell>
-            <Switch
-              v-if="can('system:permission:edit')"
-              :model-value="row.enabled"
-              :disabled="statusPendingId === row.id"
-              :aria-label="`${row.name} 的状态`"
-              @update:model-value="changeStatus(row, Boolean($event))"
-            />
-            <span v-else>{{ row.enabled ? '启用' : '停用' }}</span>
-          </TableCell>
-          <TableCell>
-            <Button
-              v-if="can('system:permission:query')"
-              type="button"
-              variant="outline"
-              size="sm"
-              @click="openEdit(row)"
-            >
-              编辑
-            </Button>
-          </TableCell>
-        </TableRow>
-      </TableBody>
-    </Table>
-
-    <MenuEditor
-      :open="editorOpen"
-      :menu="editorMenu"
-      :rows="rows"
-      @update:open="editorOpen = $event"
-      @saved="load()"
-    />
-
-    <AlertDialog :open="deleteOpen" @update:open="deleteOpen = $event">
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>删除所选菜单</AlertDialogTitle>
-          <AlertDialogDescription>
-            将删除 {{ selectedIds.length }} 个权限。仍有下级时，后端会拒绝这次删除。
-            <span v-if="deleteError" class="text-destructive mt-2 block">{{ deleteError }}</span>
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel :disabled="deleting">取消</AlertDialogCancel>
-          <Button type="button" variant="destructive" :disabled="deleting" @click="confirmDelete">
-            <Spinner v-if="deleting" />
-            删除
+    <template #empty="{ errorMessage: loadError }">
+      <Empty>
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <ListTree />
+          </EmptyMedia>
+          <EmptyTitle>
+            {{ loadError ? '这次没有加载到菜单' : '没有符合条件的菜单' }}
+          </EmptyTitle>
+          <EmptyDescription>
+            {{ loadError ? '稍后重试。' : '换个名称或类型试试，或新增一个菜单。' }}
+          </EmptyDescription>
+        </EmptyHeader>
+        <EmptyContent>
+          <Button
+            v-if="can('system:permission:add') && !loadError"
+            type="button"
+            variant="outline"
+            size="sm"
+            @click="openCreate"
+          >
+            新增菜单
           </Button>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  </section>
+        </EmptyContent>
+      </Empty>
+    </template>
+
+    <template #cell-name="{ row }">
+      <span
+        class="block max-w-72 truncate font-medium text-foreground"
+        :style="{ paddingLeft: `${row.depth * 16}px` }"
+        :title="row.name"
+      >
+        {{ row.name }}
+      </span>
+    </template>
+
+    <template #cell-type="{ row }">
+      {{ PermissionTypeLabel[row.type] }}
+    </template>
+
+    <template #cell-enabled="{ row }">
+      <Switch
+        v-if="can('system:permission:edit')"
+        :model-value="row.enabled"
+        :disabled="statusPendingIds.has(row.id)"
+        :aria-label="`${row.name} 的状态`"
+        @update:model-value="changeStatus(row.id, Boolean($event))"
+      />
+      <Badge v-else :variant="row.enabled ? 'default' : 'secondary'" class="font-normal">
+        {{ row.enabled ? '启用' : '停用' }}
+      </Badge>
+    </template>
+
+    <template #cell-actions="{ row }">
+      <div class="flex min-w-16 flex-nowrap gap-1">
+        <Button
+          v-if="can('system:permission:query')"
+          type="button"
+          variant="ghost"
+          size="sm"
+          @click="openEdit(row)"
+        >
+          编辑
+        </Button>
+      </div>
+    </template>
+  </ProTable>
+
+  <MenuEditor
+    :open="editorOpen"
+    :menu="editorMenu"
+    :rows="rows"
+    @update:open="editorOpen = $event"
+    @saved="load()"
+  />
+
+  <AlertDialog :open="deleteOpen" @update:open="setDeleteOpen">
+    <AlertDialogContent>
+      <AlertDialogHeader>
+        <AlertDialogTitle>删除所选菜单</AlertDialogTitle>
+        <AlertDialogDescription>
+          将删除 {{ selectedIds.length }} 个权限。仍有下级时，后端会拒绝这次删除。
+          <span v-if="deleteError" class="text-destructive mt-2 block">{{ deleteError }}</span>
+        </AlertDialogDescription>
+      </AlertDialogHeader>
+      <AlertDialogFooter>
+        <AlertDialogCancel :disabled="deleting">取消</AlertDialogCancel>
+        <Button type="button" variant="destructive" :disabled="deleting" @click="confirmDelete">
+          <Spinner v-if="deleting" />
+          删除
+        </Button>
+      </AlertDialogFooter>
+    </AlertDialogContent>
+  </AlertDialog>
 </template>

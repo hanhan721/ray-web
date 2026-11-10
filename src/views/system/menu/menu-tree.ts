@@ -1,5 +1,30 @@
 import type { Permission, PermissionForm, PermissionTree } from '@/types/permission'
 import type { PermissionType } from '@/types/enums'
+import type { ColumnSettingItem } from '@/components/common/column-settings'
+
+export const MENU_DATA_COLUMNS: ColumnSettingItem[] = [
+  { key: 'name', label: '名称' },
+  { key: 'type', label: '类型' },
+  { key: 'code', label: '标识' },
+  { key: 'url', label: '路由' },
+  { key: 'enabled', label: '状态' },
+]
+
+const CELL_MIN_WIDTH: Record<string, string> = {
+  name: 'min-w-48',
+  type: 'min-w-16',
+  code: 'min-w-32',
+  url: 'min-w-40',
+}
+
+/** 单元格文本样式：菜单名加重，标识与路由弱化，其余只做截断。 */
+export function menuCellClass(columnId: string): string {
+  const minWidth = CELL_MIN_WIDTH[columnId] ?? 'min-w-16'
+  if (columnId === 'name') return `block truncate font-medium text-foreground ${minWidth}`
+  if (columnId === 'code' || columnId === 'url')
+    return `block truncate text-muted-foreground ${minWidth}`
+  return `block truncate ${minWidth}`
+}
 
 export interface MenuRow {
   id: number
