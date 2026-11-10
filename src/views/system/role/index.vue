@@ -1,21 +1,17 @@
 <script setup lang="ts">
-import { computed, onMounted, shallowRef } from 'vue'
-import {
-  columnOrderingFeature,
-  columnVisibilityFeature,
-  createColumnHelper,
-  FlexRender,
-  rowPaginationFeature,
-  tableFeatures,
-  useTable,
-} from '@tanstack/vue-table'
-import { getColumnConfig, resetColumnConfig, saveColumnConfig } from '@/api/column-config'
+import { RotateCcw, Search, ShieldCheck, ShieldPlus, Trash2 } from '@lucide/vue'
+import { onMounted, shallowRef } from 'vue'
 import { deleteRoles, updateRoleStatus, type Role } from '@/api/role'
 import { PAGE_KEYS } from '@/types/enums'
-import { QUIET, failureMessage } from '@/utils/failure'
-import { useRowStatus } from '@/composables/useRowStatus'
 import { useSessionStore } from '@/stores/session'
+import { useDeleteMany } from '@/composables/useDeleteMany'
+import { useRowStatus } from '@/composables/useRowStatus'
+import { QUIET } from '@/utils/failure'
+import ProTable from '@/components/common/ProTable.vue'
+import SingleSelect from '@/components/common/SingleSelect.vue'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -26,35 +22,19 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from '@/components/ui/empty'
+import { Field, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
-import { Switch } from '@/components/ui/switch'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableEmpty,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import RoleEditor from './RoleEditor.vue'
 import { useRoleList } from './use-role-list'
-import {
-  applyColumnConfig,
-  ROLE_DATA_COLUMNS,
-  ROLE_PAGE_SIZES,
-  tableColumnOrder,
-  toColumnConfig,
-} from './role-table'
+import { ROLE_DATA_COLUMNS, ROLE_ENABLED_OPTIONS, roleCellClass } from './role-table'
 
 const session = useSessionStore()
 const {
@@ -77,78 +57,31 @@ const {
   togglePage,
   setRowEnabled,
 } = useRoleList()
-const features = tableFeatures({
-  rowPaginationFeature,
-  columnVisibilityFeature,
-  columnOrderingFeature,
+const {
+  open: deleteOpen,
+  deleting,
+  error: deleteError,
+  openDialog: openDelete,
+  setOpen: setDeleteOpen,
+  confirm: confirmDelete,
+} = useDeleteMany<Role>({
+  deleteRows: (ids) => deleteRoles(ids, QUIET),
+  selectedIds,
+  clearSelection,
+  rows,
+  pageIndex,
+  changePage,
+  load,
 })
-const helper = createColumnHelper<typeof features, Role>()
-const columns = [
-  helper.display({ id: 'select', header: '选择' }),
-  ...ROLE_DATA_COLUMNS.map((column) =>
-    helper.accessor((row: Role): unknown => row[column.key as keyof Role], {
-      id: column.key,
-      header: column.label,
-    }),
-  ),
-  helper.display({ id: 'actions', header: '操作' }),
-]
-const columnOrder = shallowRef<string[]>(ROLE_DATA_COLUMNS.map((column) => column.key))
-const columnVisibility = shallowRef<Record<string, boolean>>(
-  Object.fromEntries(ROLE_DATA_COLUMNS.map((column) => [column.key, true])),
-)
-const columnDialogOpen = shallowRef(false)
-const columnSaving = shallowRef(false)
-const columnError = shallowRef('')
-const editorOpen = shallowRef(false)
-const editorId = shallowRef<number | null>(null)
-const deleteOpen = shallowRef(false)
-const deleteError = shallowRef('')
-const deleting = shallowRef(false)
 const { pendingIds: statusPendingIds, change: changeStatus } = useRowStatus({
   update: updateRoleStatus,
   setRowEnabled,
 })
+const editorOpen = shallowRef(false)
+const editorId = shallowRef<number | null>(null)
 
 const can = (code: string) => session.can(code)
-const pageCount = computed(() => Math.max(1, Math.ceil(total.value / pageSize.value)))
-const allPageSelected = computed(
-  () => rows.value.length > 0 && rows.value.every((row) => selectedIds.value.includes(row.id)),
-)
-
-const table = useTable({
-  features,
-  columns,
-  data: rows,
-  getRowId: (row: Role) => String(row.id),
-  manualPagination: true,
-  rowCount: total,
-  autoResetPageIndex: false,
-  state: computed(() => ({
-    pagination: { pageIndex: pageIndex.value, pageSize: pageSize.value },
-    columnVisibility: { ...columnVisibility.value, select: true, actions: true },
-    columnOrder: tableColumnOrder(columnOrder.value),
-  })),
-  onPaginationChange: (updater) => {
-    const current = { pageIndex: pageIndex.value, pageSize: pageSize.value }
-    const next = typeof updater === 'function' ? updater(current) : updater
-    if (next.pageSize !== current.pageSize) void changePageSize(next.pageSize)
-    else if (next.pageIndex !== current.pageIndex) void changePage(next.pageIndex)
-  },
-})
-
-async function loadColumns() {
-  try {
-    const saved = await getColumnConfig(PAGE_KEYS.SYS_ROLE, QUIET)
-    const applied = applyColumnConfig(saved)
-    columnOrder.value = applied.order
-    columnVisibility.value = applied.visibility
-  } catch {
-    const applied = applyColumnConfig(null)
-    columnOrder.value = applied.order
-    columnVisibility.value = applied.visibility
-  }
-}
+const rowLabel = (row: Role) => row.roleName
 
 function openCreate() {
   editorId.value = null
@@ -160,276 +93,205 @@ function openEdit(row: Role) {
   editorOpen.value = true
 }
 
-async function confirmDelete() {
-  deleting.value = true
-  deleteError.value = ''
-  try {
-    await deleteRoles(selectedIds.value, QUIET)
-    deleteOpen.value = false
-    clearSelection()
-    await load()
-    if (rows.value.length === 0 && pageIndex.value > 0) await changePage(pageIndex.value - 1)
-  } catch (error) {
-    deleteError.value = failureMessage(error, '操作失败，请稍后重试')
-  } finally {
-    deleting.value = false
-  }
+function setEnabledFilter(value: unknown) {
+  enabled.value = value === 'true' ? 'true' : value === 'false' ? 'false' : ''
 }
 
-function setColumnVisible(key: string, visible: boolean) {
-  columnVisibility.value = { ...columnVisibility.value, [key]: visible }
-}
-
-function setColumnDialog(open: boolean) {
-  if (open) columnError.value = ''
-  columnDialogOpen.value = open
-}
-
-async function saveColumns() {
-  columnSaving.value = true
-  columnError.value = ''
-  try {
-    await saveColumnConfig(
-      PAGE_KEYS.SYS_ROLE,
-      toColumnConfig(columnOrder.value, columnVisibility.value),
-      QUIET,
-    )
-    columnDialogOpen.value = false
-  } catch (error) {
-    columnError.value = failureMessage(error, '操作失败，请稍后重试')
-  } finally {
-    columnSaving.value = false
-  }
-}
-
-async function resetColumns() {
-  columnSaving.value = true
-  columnError.value = ''
-  try {
-    await resetColumnConfig(PAGE_KEYS.SYS_ROLE, QUIET)
-    const applied = applyColumnConfig(null)
-    columnOrder.value = applied.order
-    columnVisibility.value = applied.visibility
-    columnDialogOpen.value = false
-  } catch (error) {
-    columnError.value = failureMessage(error, '操作失败，请稍后重试')
-  } finally {
-    columnSaving.value = false
-  }
+function resetFilters() {
+  roleName.value = ''
+  roleKey.value = ''
+  enabled.value = ''
+  return search()
 }
 
 onMounted(() => {
   void load()
-  void loadColumns()
 })
 </script>
 
 <template>
-  <section class="flex flex-col gap-4">
-    <header class="flex flex-wrap items-end justify-between gap-3">
-      <div>
-        <h1 class="text-lg font-medium">角色管理</h1>
-        <p class="text-muted-foreground mt-1 text-sm">
-          按名称或标识查找。列表按顺序升序，翻页后重新选择。
-        </p>
-      </div>
-      <div class="flex flex-wrap gap-2">
-        <Button type="button" variant="outline" @click="setColumnDialog(true)">列</Button>
-        <Button v-if="can('system:role:add')" type="button" @click="openCreate">新增角色</Button>
-      </div>
-    </header>
+  <ProTable
+    fill
+    :columns="ROLE_DATA_COLUMNS"
+    :rows="rows"
+    :total="total"
+    :page-index="pageIndex"
+    :page-size="pageSize"
+    :loading="loading"
+    :error-message="errorMessage"
+    :selected-ids="selectedIds"
+    :page-key="PAGE_KEYS.SYS_ROLE"
+    selection-unit="个"
+    :row-label="rowLabel"
+    :cell-class="roleCellClass"
+    @update:page-index="changePage"
+    @update:page-size="changePageSize"
+    @toggle-row="toggleSelected"
+    @toggle-page="togglePage"
+    @retry="load()"
+  >
+    <template #filters>
+      <form class="flex flex-wrap items-center gap-x-4 gap-y-3" @submit.prevent="search()">
+        <Field orientation="horizontal" class="w-auto">
+          <FieldLabel
+            for="filter-role-name"
+            class="w-8 shrink-0 whitespace-nowrap font-normal text-muted-foreground"
+            >名称</FieldLabel
+          >
+          <Input
+            id="filter-role-name"
+            v-model="roleName"
+            name="roleName"
+            placeholder="输入角色名称"
+            class="h-9 w-44"
+          />
+        </Field>
+        <Field orientation="horizontal" class="w-auto">
+          <FieldLabel
+            for="filter-role-key"
+            class="w-8 shrink-0 whitespace-nowrap font-normal text-muted-foreground"
+            >标识</FieldLabel
+          >
+          <Input
+            id="filter-role-key"
+            v-model="roleKey"
+            name="roleKey"
+            placeholder="输入角色标识"
+            class="h-9 w-44"
+          />
+        </Field>
+        <Field orientation="horizontal" class="w-auto">
+          <FieldLabel
+            for="filter-role-enabled"
+            class="w-8 shrink-0 whitespace-nowrap font-normal text-muted-foreground"
+            >状态</FieldLabel
+          >
+          <SingleSelect
+            id="filter-role-enabled"
+            :model-value="enabled"
+            :options="ROLE_ENABLED_OPTIONS"
+            placeholder="全部"
+            size="lg"
+            searchable
+            clearable
+            class="w-36"
+            @update:model-value="setEnabledFilter"
+          />
+        </Field>
+        <div class="flex items-center gap-2">
+          <Button type="submit" :disabled="loading">
+            <Search data-icon="inline-start" />
+            查询
+          </Button>
+          <Button type="button" variant="ghost" :disabled="loading" @click="resetFilters()">
+            <RotateCcw data-icon="inline-start" />
+            重置
+          </Button>
+        </div>
+      </form>
+    </template>
 
-    <form class="flex flex-wrap items-end gap-3" @submit.prevent="search()">
-      <Field class="w-40">
-        <FieldLabel for="filter-role-name">名称</FieldLabel>
-        <Input id="filter-role-name" v-model="roleName" name="roleName" />
-      </Field>
-      <Field class="w-40">
-        <FieldLabel for="filter-role-key">标识</FieldLabel>
-        <Input id="filter-role-key" v-model="roleKey" name="roleKey" />
-      </Field>
-      <Field class="w-32">
-        <FieldLabel for="filter-role-enabled">状态</FieldLabel>
-        <select
-          id="filter-role-enabled"
-          v-model="enabled"
-          class="border-input bg-input/20 h-7 w-full rounded-md border px-2 text-sm outline-none focus-visible:ring-2"
-        >
-          <option value="">全部</option>
-          <option value="true">启用</option>
-          <option value="false">停用</option>
-        </select>
-      </Field>
-      <Button type="submit" :disabled="loading">查询</Button>
-    </form>
-
-    <div class="flex flex-wrap items-center justify-between gap-2">
-      <p class="text-muted-foreground text-sm">{{ loading ? '正在加载' : `共 ${total} 个角色` }}</p>
+    <template #actions>
+      <Button v-if="can('system:role:add')" type="button" @click="openCreate">
+        <ShieldPlus data-icon="inline-start" />
+        新增角色
+      </Button>
       <Button
         v-if="can('system:role:remove')"
         type="button"
-        variant="destructive"
+        variant="outline"
         :disabled="selectedIds.length === 0 || deleting"
-        @click="deleteOpen = true"
+        @click="openDelete"
       >
+        <Trash2 data-icon="inline-start" />
         删除所选
+        <span v-if="selectedIds.length > 0" class="text-muted-foreground">
+          {{ selectedIds.length }}
+        </span>
       </Button>
-    </div>
+    </template>
 
-    <p v-if="errorMessage" role="alert" class="text-destructive text-sm">
-      {{ errorMessage }}
-      <Button type="button" variant="outline" size="sm" class="ml-2" @click="load()">重试</Button>
-    </p>
+    <template #empty="{ errorMessage: loadError }">
+      <Empty>
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <ShieldCheck />
+          </EmptyMedia>
+          <EmptyTitle>
+            {{ loadError ? '这次没有加载到角色' : '没有符合条件的角色' }}
+          </EmptyTitle>
+          <EmptyDescription>
+            {{
+              loadError ? '稍后重试，或调整筛选条件后再查询。' : '换个关键字试试，或新增一个角色。'
+            }}
+          </EmptyDescription>
+        </EmptyHeader>
+        <EmptyContent>
+          <Button
+            v-if="can('system:role:add') && !loadError"
+            type="button"
+            variant="outline"
+            size="sm"
+            @click="openCreate"
+          >
+            新增角色
+          </Button>
+        </EmptyContent>
+      </Empty>
+    </template>
 
-    <Table>
-      <TableHeader>
-        <TableRow v-for="headerGroup in table.getHeaderGroups()" :key="headerGroup.id">
-          <TableHead v-for="header in headerGroup.headers" :key="header.id" scope="col">
-            <input
-              v-if="header.column.id === 'select'"
-              type="checkbox"
-              aria-label="选择当前页"
-              :checked="allPageSelected"
-              :disabled="rows.length === 0"
-              @change="togglePage(($event.target as HTMLInputElement).checked)"
-            />
-            <FlexRender v-else :header="header" />
-          </TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        <TableEmpty
-          v-if="!loading && rows.length === 0"
-          :colspan="table.getVisibleLeafColumns().length"
-        >
-          {{ errorMessage ? '这次没有加载到角色。' : '没有符合条件的角色。' }}
-        </TableEmpty>
-        <TableRow v-for="row in table.getRowModel().rows" :key="row.id">
-          <TableCell v-for="cell in row.getVisibleCells()" :key="cell.id">
-            <input
-              v-if="cell.column.id === 'select'"
-              type="checkbox"
-              :aria-label="`选择 ${row.original.roleName}`"
-              :checked="selectedIds.includes(row.original.id)"
-              @change="toggleSelected(row.original.id, ($event.target as HTMLInputElement).checked)"
-            />
-            <Switch
-              v-else-if="cell.column.id === 'enabled' && can('system:role:status')"
-              :model-value="row.original.enabled !== false"
-              :disabled="statusPendingIds.has(row.original.id)"
-              :aria-label="`${row.original.roleName} 的状态`"
-              @update:model-value="changeStatus(row.original.id, Boolean($event))"
-            />
-            <span v-else-if="cell.column.id === 'enabled'">
-              {{ row.original.enabled === false ? '停用' : '启用' }}
-            </span>
-            <div v-else-if="cell.column.id === 'actions'" class="flex flex-wrap gap-1">
-              <Button
-                v-if="can('system:role:query')"
-                type="button"
-                variant="outline"
-                size="sm"
-                @click="openEdit(row.original)"
-              >
-                编辑
-              </Button>
-            </div>
-            <span v-else class="block max-w-56 truncate" :title="String(cell.getValue() ?? '')">
-              <FlexRender :cell="cell" />
-            </span>
-          </TableCell>
-        </TableRow>
-      </TableBody>
-    </Table>
+    <template #cell-enabled="{ row }">
+      <Switch
+        v-if="can('system:role:status')"
+        :model-value="row.enabled !== false"
+        :disabled="statusPendingIds.has(row.id)"
+        :aria-label="`${row.roleName} 的状态`"
+        @update:model-value="changeStatus(row.id, Boolean($event))"
+      />
+      <Badge v-else :variant="row.enabled === false ? 'secondary' : 'default'" class="font-normal">
+        {{ row.enabled === false ? '停用' : '启用' }}
+      </Badge>
+    </template>
 
-    <div class="flex flex-wrap items-center justify-between gap-2">
-      <Field orientation="horizontal" class="w-auto">
-        <FieldLabel for="role-page-size">每页</FieldLabel>
-        <select
-          id="role-page-size"
-          class="border-input bg-input/20 h-7 rounded-md border px-2 text-sm outline-none focus-visible:ring-2"
-          :value="pageSize"
-          @change="changePageSize(Number(($event.target as HTMLSelectElement).value))"
-        >
-          <option v-for="size in ROLE_PAGE_SIZES" :key="size" :value="size">{{ size }}</option>
-        </select>
-      </Field>
-      <div class="flex items-center gap-2">
+    <template #cell-actions="{ row }">
+      <div class="flex min-w-24 flex-nowrap gap-1">
         <Button
+          v-if="can('system:role:query')"
           type="button"
-          variant="outline"
-          :disabled="pageIndex <= 0 || loading"
-          @click="changePage(pageIndex - 1)"
+          variant="ghost"
+          size="sm"
+          @click="openEdit(row)"
         >
-          上一页
-        </Button>
-        <span class="text-sm">{{ pageIndex + 1 }} / {{ pageCount }}</span>
-        <Button
-          type="button"
-          variant="outline"
-          :disabled="pageIndex + 1 >= pageCount || loading"
-          @click="changePage(pageIndex + 1)"
-        >
-          下一页
+          编辑
         </Button>
       </div>
-    </div>
+    </template>
+  </ProTable>
 
-    <RoleEditor
-      :open="editorOpen"
-      :role-id="editorId"
-      :can-assign-permissions="can('system:role:permission') && can('system:permission:list')"
-      @update:open="editorOpen = $event"
-      @saved="load()"
-    />
+  <RoleEditor
+    :open="editorOpen"
+    :role-id="editorId"
+    :can-assign-permissions="can('system:role:permission') && can('system:permission:list')"
+    @update:open="editorOpen = $event"
+    @saved="load()"
+  />
 
-    <AlertDialog :open="deleteOpen" @update:open="deleteOpen = $event">
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>删除所选角色</AlertDialogTitle>
-          <AlertDialogDescription>
-            将删除 {{ selectedIds.length }} 个角色。这个操作不能从当前页面撤销。
-            <span v-if="deleteError" class="text-destructive mt-2 block">{{ deleteError }}</span>
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel :disabled="deleting">取消</AlertDialogCancel>
-          <Button type="button" variant="destructive" :disabled="deleting" @click="confirmDelete">
-            <Spinner v-if="deleting" />
-            删除
-          </Button>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-
-    <Dialog :open="columnDialogOpen" @update:open="setColumnDialog">
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>显示列</DialogTitle>
-          <DialogDescription>隐藏的列也会保存。恢复默认会删除这份个人配置。</DialogDescription>
-        </DialogHeader>
-        <FieldGroup>
-          <Field v-for="column in ROLE_DATA_COLUMNS" :key="column.key" orientation="horizontal">
-            <input
-              :id="`role-column-${column.key}`"
-              type="checkbox"
-              :checked="columnVisibility[column.key] !== false"
-              @change="setColumnVisible(column.key, ($event.target as HTMLInputElement).checked)"
-            />
-            <FieldLabel :for="`role-column-${column.key}`">{{ column.label }}</FieldLabel>
-          </Field>
-        </FieldGroup>
-        <p v-if="columnError" role="alert" class="text-destructive text-sm">{{ columnError }}</p>
-        <DialogFooter>
-          <Button type="button" variant="outline" :disabled="columnSaving" @click="resetColumns"
-            >恢复默认</Button
-          >
-          <Button type="button" :disabled="columnSaving" @click="saveColumns">
-            <Spinner v-if="columnSaving" />
-            保存
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  </section>
+  <AlertDialog :open="deleteOpen" @update:open="setDeleteOpen">
+    <AlertDialogContent>
+      <AlertDialogHeader>
+        <AlertDialogTitle>删除所选角色</AlertDialogTitle>
+        <AlertDialogDescription>
+          将删除 {{ selectedIds.length }} 个角色。这个操作不能从当前页面撤销。
+          <span v-if="deleteError" class="text-destructive mt-2 block">{{ deleteError }}</span>
+        </AlertDialogDescription>
+      </AlertDialogHeader>
+      <AlertDialogFooter>
+        <AlertDialogCancel :disabled="deleting">取消</AlertDialogCancel>
+        <Button type="button" variant="destructive" :disabled="deleting" @click="confirmDelete">
+          <Spinner v-if="deleting" />
+          删除
+        </Button>
+      </AlertDialogFooter>
+    </AlertDialogContent>
+  </AlertDialog>
 </template>

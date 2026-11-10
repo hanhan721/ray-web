@@ -1,20 +1,34 @@
 import type { RoleQuery } from '@/api/role'
-import { applyColumnPreference, toColumnPreference } from '@/utils/column-preference'
+import type { ColumnSettingItem } from '@/components/common/column-settings'
 
-export const ROLE_PAGE_SIZES = [10, 20, 50, 100] as const
-
-export interface RoleColumnDefinition {
-  key: string
-  label: string
-}
-
-export const ROLE_DATA_COLUMNS: RoleColumnDefinition[] = [
+export const ROLE_DATA_COLUMNS: ColumnSettingItem[] = [
   { key: 'roleName', label: '名称' },
   { key: 'roleKey', label: '标识' },
   { key: 'sort', label: '顺序' },
   { key: 'enabled', label: '状态' },
   { key: 'createTime', label: '创建时间' },
 ]
+
+export const ROLE_ENABLED_OPTIONS = [
+  { value: 'true', label: '启用' },
+  { value: 'false', label: '停用' },
+] as const
+
+const CELL_MIN_WIDTH: Record<string, string> = {
+  roleName: 'min-w-24',
+  roleKey: 'min-w-28',
+  sort: 'min-w-12',
+  createTime: 'min-w-36',
+}
+
+/** 单元格文本样式：名称加重，时间用等宽数字并弱化，其余只做截断。 */
+export function roleCellClass(columnId: string): string {
+  const minWidth = CELL_MIN_WIDTH[columnId] ?? 'min-w-16'
+  if (columnId === 'roleName') return `block truncate font-medium text-foreground ${minWidth}`
+  if (columnId === 'createTime')
+    return `block truncate text-muted-foreground tabular-nums ${minWidth}`
+  return `block truncate ${minWidth}`
+}
 
 export interface RoleListInput {
   pageIndex: number
@@ -36,26 +50,4 @@ export function toRoleQuery(input: RoleListInput): RoleQuery {
   if (input.enabled === 'true') query.enabled = true
   if (input.enabled === 'false') query.enabled = false
   return query
-}
-
-export function pageIndexFromResponse(current: number): number {
-  return Math.max(0, current - 1)
-}
-
-export function isCurrentRequest(requestId: number, latestId: number): boolean {
-  return requestId === latestId
-}
-
-const roleKeys = () => ROLE_DATA_COLUMNS.map((column) => column.key)
-
-export function applyColumnConfig(saved: ColumnConfigItem[] | null) {
-  return applyColumnPreference(roleKeys(), saved)
-}
-
-export function toColumnConfig(order: string[], visibility: Record<string, boolean>) {
-  return toColumnPreference(roleKeys(), order, visibility)
-}
-
-export function tableColumnOrder(dataOrder: string[]): string[] {
-  return ['select', ...dataOrder, 'actions']
 }
