@@ -1,11 +1,4 @@
-export interface ColumnPreference {
-  key: string
-  visible: boolean
-  sort: number
-  width: number | null
-  fixed: 'left' | 'right' | null
-}
-
+/** 列配置的持久化结构见全局 `ColumnConfigItem`，这里只描述应用后的结果。 */
 export interface AppliedColumnPreference {
   order: string[]
   visibility: Record<string, boolean>
@@ -13,7 +6,7 @@ export interface AppliedColumnPreference {
 
 export function applyColumnPreference(
   keys: readonly string[],
-  saved: ColumnPreference[] | null,
+  saved: ColumnConfigItem[] | null,
 ): AppliedColumnPreference {
   if (!saved) {
     return {
@@ -40,7 +33,7 @@ export function toColumnPreference(
   keys: readonly string[],
   order: string[],
   visibility: Record<string, boolean>,
-): ColumnPreference[] {
+): ColumnConfigItem[] {
   const known = new Set(keys)
   const result = order.filter((key) => known.has(key))
   for (const key of keys) {
