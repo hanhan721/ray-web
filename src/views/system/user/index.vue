@@ -15,6 +15,8 @@ import { deleteUsers, updateUserStatus, type SysUser } from '@/api/user'
 import { GenderLabel, PAGE_KEYS, type Gender } from '@/types/enums'
 import { RequestError } from '@/utils/request'
 import { useSessionStore } from '@/stores/session'
+import type { ColumnSettingsDraft } from '@/components/common/column-settings'
+import DataTableColumnSettings from '@/components/common/DataTableColumnSettings.vue'
 import SingleSelect from '@/components/common/SingleSelect.vue'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -31,14 +33,6 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import {
   Empty,
   EmptyContent,
   EmptyDescription,
@@ -46,7 +40,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from '@/components/ui/empty'
-import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
+import { Field, FieldLabel } from '@/components/ui/field'
 import {
   Pagination,
   PaginationContent,
@@ -273,24 +267,18 @@ async function confirmDelete() {
   }
 }
 
-function setColumnVisible(key: string, visible: boolean) {
-  columnVisibility.value = { ...columnVisibility.value, [key]: visible }
-}
-
 function setColumnDialog(open: boolean) {
   if (open) columnError.value = ''
   columnDialogOpen.value = open
 }
 
-async function saveColumns() {
+async function saveColumns(draft: ColumnSettingsDraft) {
   columnSaving.value = true
   columnError.value = ''
   try {
-    await saveColumnConfig(
-      PAGE_KEYS.SYS_USER,
-      toColumnConfig(columnOrder.value, columnVisibility.value),
-      quiet,
-    )
+    await saveColumnConfig(PAGE_KEYS.SYS_USER, toColumnConfig(draft.order, draft.visibility), quiet)
+    columnOrder.value = draft.order
+    columnVisibility.value = draft.visibility
     columnDialogOpen.value = false
   } catch (error) {
     columnError.value = failureMessage(error)
@@ -416,7 +404,7 @@ onMounted(() => {
             @click="setColumnDialog(true)"
           >
             <Columns3 data-icon="inline-start" />
-            列
+            列设置
           </Button>
         </CardAction>
       </CardHeader>
@@ -685,33 +673,16 @@ onMounted(() => {
       </AlertDialogContent>
     </AlertDialog>
 
-    <Dialog :open="columnDialogOpen" @update:open="setColumnDialog">
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>显示列</DialogTitle>
-          <DialogDescription>隐藏的列也会保存。恢复默认会删除这份个人配置。</DialogDescription>
-        </DialogHeader>
-        <FieldGroup class="gap-1">
-          <Field v-for="column in USER_DATA_COLUMNS" :key="column.key" orientation="horizontal">
-            <Checkbox
-              :id="`column-${column.key}`"
-              :model-value="columnVisibility[column.key] !== false"
-              @update:model-value="setColumnVisible(column.key, Boolean($event))"
-            />
-            <FieldLabel :for="`column-${column.key}`">{{ column.label }}</FieldLabel>
-          </Field>
-        </FieldGroup>
-        <p v-if="columnError" role="alert" class="text-destructive text-sm">{{ columnError }}</p>
-        <DialogFooter>
-          <Button type="button" variant="outline" :disabled="columnSaving" @click="resetColumns"
-            >恢复默认</Button
-          >
-          <Button type="button" :disabled="columnSaving" @click="saveColumns">
-            <Spinner v-if="columnSaving" />
-            保存
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <DataTableColumnSettings
+      :open="columnDialogOpen"
+      :columns="USER_DATA_COLUMNS"
+      :order="columnOrder"
+      :visibility="columnVisibility"
+      :saving="columnSaving"
+      :error="columnError"
+      @update:open="setColumnDialog"
+      @save="saveColumns"
+      @reset="resetColumns"
+    />
   </section>
 </template>
