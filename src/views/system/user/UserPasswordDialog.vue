@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { shallowRef, useTemplateRef, watch } from 'vue'
 import { resetUserPassword } from '@/api/user'
-import { RequestError } from '@/utils/request'
+import { QUIET, failureMessage } from '@/utils/failure'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -31,11 +31,6 @@ const saving = shallowRef(false)
 const passwordInput = useTemplateRef<{ $el?: unknown }>('passwordInput')
 let session = 0
 
-function failureMessage(error: unknown): string {
-  if (error instanceof RequestError && error.message) return error.message
-  return '密码重置失败，请稍后重试'
-}
-
 watch(
   () => props.open,
   (open) => {
@@ -63,12 +58,12 @@ async function onSubmit() {
   if (userId === null) return
   saving.value = true
   try {
-    await resetUserPassword(userId, nextPassword, { showErrorMessage: false })
+    await resetUserPassword(userId, nextPassword, QUIET)
     if (sessionId !== session) return
     emit('update:open', false)
   } catch (error) {
     if (sessionId !== session) return
-    formError.value = failureMessage(error)
+    formError.value = failureMessage(error, '密码重置失败，请稍后重试')
   } finally {
     if (sessionId === session) saving.value = false
   }

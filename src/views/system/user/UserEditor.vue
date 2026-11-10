@@ -5,7 +5,7 @@ import { getDeptTree, type DeptTree } from '@/api/dept'
 import { getRoleList, type Role } from '@/api/role'
 import { assignUserDepts, assignUserRoles, createUser, getUserById, updateUser } from '@/api/user'
 import { GenderOptions, type Gender } from '@/types/enums'
-import { RequestError } from '@/utils/request'
+import { QUIET, failureMessage } from '@/utils/failure'
 import MultiSelect from '@/components/common/MultiSelect.vue'
 import SingleSelect from '@/components/common/SingleSelect.vue'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -50,6 +50,7 @@ function setGender(value: unknown) {
 }
 const enabled = shallowRef(true)
 const remark = shallowRef('')
+// 表单没有头像字段，仅原样透传后端返回的文件 id，避免保存资料时清空已有头像。
 const avatarFileId = shallowRef<number | null>(null)
 const roleIds = shallowRef<number[]>([])
 const deptIds = shallowRef<number[]>([])
@@ -90,8 +91,6 @@ function idKey(ids: number[]): string {
   return JSON.stringify([...ids].sort((left, right) => left - right))
 }
 
-const quiet = { showErrorMessage: false } as const
-
 function profileKey(body: ReturnType<typeof toUserWrite>): string {
   return JSON.stringify(body)
 }
@@ -108,11 +107,6 @@ function writeBody(userId: number | null = props.userId): ReturnType<typeof toUs
     enabled: enabled.value,
     remark: remark.value,
   })
-}
-
-function failureMessage(error: unknown): string {
-  if (error instanceof RequestError && error.message) return error.message
-  return '保存失败，请稍后重试'
 }
 
 function flattenDepts(
@@ -137,7 +131,7 @@ async function loadOptions(userId: number | null) {
 
 function ensureRoles(): Promise<Role[]> {
   if (!rolesRequest) {
-    rolesRequest = getRoleList(quiet)
+    rolesRequest = getRoleList(QUIET)
       .then((items) => {
         roles.value = items ?? []
         return roles.value
@@ -152,7 +146,7 @@ function ensureRoles(): Promise<Role[]> {
 
 function ensureDepts(): Promise<Array<{ id: number; label: string; depth: number }>> {
   if (!deptsRequest) {
-    deptsRequest = getDeptTree(quiet)
+    deptsRequest = getDeptTree(QUIET)
       .then((items) => {
         depts.value = flattenDepts(items ?? [])
         return depts.value
@@ -166,7 +160,7 @@ function ensureDepts(): Promise<Array<{ id: number; label: string; depth: number
 }
 
 async function loadDetail(sessionId: number, userId: number) {
-  const detail = await getUserById(userId, quiet)
+  const detail = await getUserById(userId, QUIET)
   if (!sameEditorSession(sessionId, session, userId, props.userId)) return
   const user = detail.user
   username.value = user.username
@@ -216,7 +210,7 @@ async function resetForm() {
     detailReady.value = true
   } catch (error) {
     if (sameEditorSession(sessionId, session, userId, props.userId)) {
-      formError.value = failureMessage(error)
+      formError.value = failureMessage(error, '保存失败，请稍后重试')
     }
   } finally {
     if (sameEditorSession(sessionId, session, userId, props.userId)) {
@@ -273,6 +267,7 @@ async function onSubmit() {
     formError.value = '请填写密码'
     return
   }
+  // 后端不允许清空已有性别，这里提前拦住，避免提交后才报错。
   if (userId !== null && !gender.value && originalGender.value) {
     formError.value = '性别暂时不能清空。请选择男、女或保密。'
     return
@@ -283,22 +278,22 @@ async function onSubmit() {
   const stillHere = () => sameEditorSession(sessionId, session, userId, props.userId)
   try {
     if (savedProfile !== profile) {
-      if (userId === null) await createUser({ ...body, password: passwordValue }, quiet)
-      else await updateUser({ ...body, id: userId }, quiet)
+      if (userId === null) await createUser({ ...body, password: passwordValue }, QUIET)
+      else await updateUser({ ...body, id: userId }, QUIET)
       if (stillHere()) profileSavedKey.value = profile
     }
     profileOk = true
   } catch (error) {
     if (!stillHere()) return
-    failed.push(`资料：${failureMessage(error)}`)
+    failed.push(`资料：${failureMessage(error, '保存失败，请稍后重试')}`)
   }
   if (profileOk && userId !== null && props.canAssignRoles && savedRoles !== roleKey) {
     try {
-      await assignUserRoles(userId, nextRoles, quiet)
+      await assignUserRoles(userId, nextRoles, QUIET)
       if (stillHere()) rolesSavedKey.value = roleKey
     } catch (error) {
       if (!stillHere()) return
-      failed.push(`角色：${failureMessage(error)}`)
+      failed.push(`角色：${failureMessage(error, '保存失败，请稍后重试')}`)
     }
   }
   if (
@@ -309,11 +304,11 @@ async function onSubmit() {
     savedDepts !== deptKey
   ) {
     try {
-      await assignUserDepts(userId, nextDepts, quiet)
+      await assignUserDepts(userId, nextDepts, QUIET)
       if (stillHere()) deptsSavedKey.value = deptKey
     } catch (error) {
       if (!stillHere()) return
-      failed.push(`部门：${failureMessage(error)}`)
+      failed.push(`部门：${failureMessage(error, '保存失败，请稍后重试')}`)
     }
   }
   if (!stillHere()) {
