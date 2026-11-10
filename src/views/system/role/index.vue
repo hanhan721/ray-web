@@ -12,7 +12,8 @@ import {
 import { getColumnConfig, resetColumnConfig, saveColumnConfig } from '@/api/column-config'
 import { deleteRoles, updateRoleStatus, type Role } from '@/api/role'
 import { PAGE_KEYS } from '@/types/enums'
-import { RequestError } from '@/utils/request'
+import { QUIET, failureMessage } from '@/utils/failure'
+import { useRowStatus } from '@/composables/useRowStatus'
 import { useSessionStore } from '@/stores/session'
 import { Button } from '@/components/ui/button'
 import {
@@ -101,11 +102,13 @@ const columnSaving = shallowRef(false)
 const columnError = shallowRef('')
 const editorOpen = shallowRef(false)
 const editorId = shallowRef<number | null>(null)
-const quiet = { showErrorMessage: false } as const
 const deleteOpen = shallowRef(false)
 const deleteError = shallowRef('')
 const deleting = shallowRef(false)
-const statusPendingId = shallowRef<number | null>(null)
+const { pendingIds: statusPendingIds, change: changeStatus } = useRowStatus({
+  update: updateRoleStatus,
+  setRowEnabled,
+})
 
 const can = (code: string) => session.can(code)
 const pageCount = computed(() => Math.max(1, Math.ceil(total.value / pageSize.value)))
@@ -134,14 +137,9 @@ const table = useTable({
   },
 })
 
-function failureMessage(error: unknown): string {
-  if (error instanceof RequestError && error.message) return error.message
-  return '操作失败，请稍后重试'
-}
-
 async function loadColumns() {
   try {
-    const saved = await getColumnConfig(PAGE_KEYS.SYS_ROLE, quiet)
+    const saved = await getColumnConfig(PAGE_KEYS.SYS_ROLE, QUIET)
     const applied = applyColumnConfig(saved)
     columnOrder.value = applied.order
     columnVisibility.value = applied.visibility
@@ -162,29 +160,17 @@ function openEdit(row: Role) {
   editorOpen.value = true
 }
 
-async function changeStatus(row: Role, nextEnabled: boolean) {
-  statusPendingId.value = row.id
-  try {
-    await updateRoleStatus(row.id, nextEnabled)
-    setRowEnabled(row.id, nextEnabled)
-  } catch {
-    // 请求层已经提示后端原因。开关仍绑定原状态。
-  } finally {
-    statusPendingId.value = null
-  }
-}
-
 async function confirmDelete() {
   deleting.value = true
   deleteError.value = ''
   try {
-    await deleteRoles(selectedIds.value, quiet)
+    await deleteRoles(selectedIds.value, QUIET)
     deleteOpen.value = false
     clearSelection()
     await load()
     if (rows.value.length === 0 && pageIndex.value > 0) await changePage(pageIndex.value - 1)
   } catch (error) {
-    deleteError.value = failureMessage(error)
+    deleteError.value = failureMessage(error, '操作失败，请稍后重试')
   } finally {
     deleting.value = false
   }
@@ -206,11 +192,11 @@ async function saveColumns() {
     await saveColumnConfig(
       PAGE_KEYS.SYS_ROLE,
       toColumnConfig(columnOrder.value, columnVisibility.value),
-      quiet,
+      QUIET,
     )
     columnDialogOpen.value = false
   } catch (error) {
-    columnError.value = failureMessage(error)
+    columnError.value = failureMessage(error, '操作失败，请稍后重试')
   } finally {
     columnSaving.value = false
   }
@@ -220,13 +206,13 @@ async function resetColumns() {
   columnSaving.value = true
   columnError.value = ''
   try {
-    await resetColumnConfig(PAGE_KEYS.SYS_ROLE, quiet)
+    await resetColumnConfig(PAGE_KEYS.SYS_ROLE, QUIET)
     const applied = applyColumnConfig(null)
     columnOrder.value = applied.order
     columnVisibility.value = applied.visibility
     columnDialogOpen.value = false
   } catch (error) {
-    columnError.value = failureMessage(error)
+    columnError.value = failureMessage(error, '操作失败，请稍后重试')
   } finally {
     columnSaving.value = false
   }
@@ -330,9 +316,9 @@ onMounted(() => {
             <Switch
               v-else-if="cell.column.id === 'enabled' && can('system:role:status')"
               :model-value="row.original.enabled !== false"
-              :disabled="statusPendingId === row.original.id"
+              :disabled="statusPendingIds.has(row.original.id)"
               :aria-label="`${row.original.roleName} 的状态`"
-              @update:model-value="changeStatus(row.original, Boolean($event))"
+              @update:model-value="changeStatus(row.original.id, Boolean($event))"
             />
             <span v-else-if="cell.column.id === 'enabled'">
               {{ row.original.enabled === false ? '停用' : '启用' }}

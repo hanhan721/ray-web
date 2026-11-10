@@ -3,7 +3,7 @@ import { computed, nextTick, shallowRef, useTemplateRef, watch } from 'vue'
 import { getPermissionTree, getRolePermissions, saveRolePermissions } from '@/api/permission'
 import { createRole, getRoleById, updateRole } from '@/api/role'
 import type { PermissionTree } from '@/types/permission'
-import { RequestError } from '@/utils/request'
+import { QUIET, failureMessage } from '@/utils/failure'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -55,15 +55,8 @@ const permissionsSavedKey = shallowRef('')
 const nameInput = useTemplateRef<{ $el?: unknown }>('nameInput')
 let session = 0
 
-const quiet = { showErrorMessage: false } as const
-
 function idKey(ids: number[]): string {
   return JSON.stringify([...ids].sort((left, right) => left - right))
-}
-
-function failureMessage(error: unknown): string {
-  if (error instanceof RequestError && error.message) return error.message
-  return '保存失败，请稍后重试'
 }
 
 function sortNumber(): number | null {
@@ -119,12 +112,12 @@ async function resetForm() {
   loading.value = true
   try {
     if (roleId !== null && props.canAssignPermissions) {
-      const tree = await getPermissionTree(quiet)
+      const tree = await getPermissionTree(QUIET)
       if (!sameEditorSession(sessionId, session, roleId, props.roleId)) return
       permissions.value = flatten(tree ?? [])
     }
     if (roleId !== null) {
-      const role = await getRoleById(roleId, quiet)
+      const role = await getRoleById(roleId, QUIET)
       if (!sameEditorSession(sessionId, session, roleId, props.roleId)) return
       roleName.value = role.roleName
       roleKey.value = role.roleKey
@@ -133,7 +126,7 @@ async function resetForm() {
       remark.value = role.remark ?? ''
       profileSavedKey.value = JSON.stringify(profileBody(roleId))
       if (props.canAssignPermissions) {
-        const ids = await getRolePermissions(roleId, quiet)
+        const ids = await getRolePermissions(roleId, QUIET)
         if (!sameEditorSession(sessionId, session, roleId, props.roleId)) return
         permissionIds.value = ids ?? []
         permissionsSavedKey.value = idKey(permissionIds.value)
@@ -143,7 +136,7 @@ async function resetForm() {
     detailReady.value = true
   } catch (error) {
     if (sameEditorSession(sessionId, session, roleId, props.roleId)) {
-      formError.value = failureMessage(error)
+      formError.value = failureMessage(error, '保存失败，请稍后重试')
     }
   } finally {
     if (sameEditorSession(sessionId, session, roleId, props.roleId)) {
@@ -215,14 +208,14 @@ async function onSubmit() {
   const stillHere = () => sameEditorSession(sessionId, session, roleId, props.roleId)
   try {
     if (savedProfile !== profile) {
-      if (roleId === null) await createRole(body, quiet)
-      else await updateRole({ ...body, id: roleId }, quiet)
+      if (roleId === null) await createRole(body, QUIET)
+      else await updateRole({ ...body, id: roleId }, QUIET)
       if (stillHere()) profileSavedKey.value = profile
     }
     profileOk = true
   } catch (error) {
     if (!stillHere()) return
-    failed.push(`资料：${failureMessage(error)}`)
+    failed.push(`资料：${failureMessage(error, '保存失败，请稍后重试')}`)
   }
   if (
     profileOk &&
@@ -231,11 +224,11 @@ async function onSubmit() {
     savedPermissions !== permissionKey
   ) {
     try {
-      await saveRolePermissions(roleId, nextPermissions, quiet)
+      await saveRolePermissions(roleId, nextPermissions, QUIET)
       if (stillHere()) permissionsSavedKey.value = permissionKey
     } catch (error) {
       if (!stillHere()) return
-      failed.push(`权限：${failureMessage(error)}`)
+      failed.push(`权限：${failureMessage(error, '保存失败，请稍后重试')}`)
     }
   }
   if (!stillHere()) {

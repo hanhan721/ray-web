@@ -1,6 +1,6 @@
 import { shallowRef } from 'vue'
 import { getRolePage, type Role } from '@/api/role'
-import { RequestError } from '@/utils/request'
+import { QUIET, failureMessage } from '@/utils/failure'
 import {
   isCurrentRequest,
   pageIndexFromResponse,
@@ -8,11 +8,6 @@ import {
   toRoleQuery,
   type RoleListInput,
 } from './role-table'
-
-function failureMessage(error: unknown): string {
-  if (error instanceof RequestError && error.message) return error.message
-  return '角色列表加载失败'
-}
 
 export function useRoleList() {
   const rows = shallowRef<Role[]>([])
@@ -46,7 +41,7 @@ export function useRoleList() {
     loading.value = true
     errorMessage.value = ''
     try {
-      const page = await getRolePage(toRoleQuery(input()), { showErrorMessage: false })
+      const page = await getRolePage(toRoleQuery(input()), QUIET)
       if (!isCurrentRequest(requestId, generation)) return
       rows.value = page.records ?? []
       total.value = page.total ?? 0
@@ -57,7 +52,7 @@ export function useRoleList() {
       if (!isCurrentRequest(requestId, generation)) return
       rows.value = []
       total.value = 0
-      errorMessage.value = failureMessage(error)
+      errorMessage.value = failureMessage(error, '角色列表加载失败')
     } finally {
       if (isCurrentRequest(requestId, generation)) loading.value = false
     }
