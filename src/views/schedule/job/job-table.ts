@@ -20,36 +20,36 @@ export const JOB_LOG_RESULT_OPTIONS = [
   { value: 'false', label: '失败' },
 ] as const
 
-const JOB_CELL_MIN_WIDTH: Record<string, string> = {
-  jobName: 'min-w-40',
-  jobGroup: 'min-w-24',
-  target: 'min-w-48',
-  cronExpression: 'min-w-36',
+const JOB_CELL_SIZE: Record<string, string> = {
+  jobName: 'min-w-40 max-w-48',
+  jobGroup: 'min-w-24 max-w-24',
+  target: 'min-w-48 max-w-48',
+  cronExpression: 'min-w-36 max-w-40',
 }
 
 /** 单元格文本样式：任务名加重，调用目标与 Cron 用等宽字体。 */
 export function jobCellClass(columnId: string): string {
-  const minWidth = JOB_CELL_MIN_WIDTH[columnId] ?? 'min-w-16'
-  if (columnId === 'jobName') return `block truncate font-medium text-foreground ${minWidth}`
+  const size = JOB_CELL_SIZE[columnId] ?? 'min-w-16'
+  if (columnId === 'jobName') return `block truncate font-medium text-foreground ${size}`
   if (columnId === 'target' || columnId === 'cronExpression') {
-    return `block truncate font-mono text-xs text-muted-foreground ${minWidth}`
+    return `block truncate font-mono text-xs text-muted-foreground ${size}`
   }
-  return `block truncate ${minWidth}`
+  return `block truncate ${size}`
 }
 
-const JOB_LOG_CELL_MIN_WIDTH: Record<string, string> = {
-  startTime: 'min-w-36',
-  success: 'min-w-16',
-  costTime: 'min-w-20',
-  result: 'min-w-48',
+const JOB_LOG_CELL_SIZE: Record<string, string> = {
+  startTime: 'min-w-36 max-w-40',
+  success: 'min-w-16 max-w-20',
+  costTime: 'min-w-20 max-w-24',
+  result: 'min-w-48 max-w-64',
 }
 
 /** 日志单元格：时间与耗时用等宽数字，说明只做截断。 */
 export function jobLogCellClass(columnId: string): string {
-  const minWidth = JOB_LOG_CELL_MIN_WIDTH[columnId] ?? 'min-w-16'
+  const size = JOB_LOG_CELL_SIZE[columnId] ?? 'min-w-16'
   if (columnId === 'startTime') {
-    return `block truncate text-muted-foreground tabular-nums ${minWidth}`
+    return `block truncate text-muted-foreground tabular-nums ${size}`
   }
-  if (columnId === 'costTime') return `block truncate tabular-nums ${minWidth}`
-  return `block truncate ${minWidth}`
+  if (columnId === 'costTime') return `block truncate tabular-nums ${size}`
+  return `block truncate ${size}`
 }
