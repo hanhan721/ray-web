@@ -118,12 +118,6 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="user-page-heading">
-    <div>
-      <h1>用户管理</h1>
-      <p>查看和管理系统用户、账号状态及权限归属。</p>
-    </div>
-  </div>
   <ProTable
     fill
     :columns="USER_DATA_COLUMNS"
@@ -329,9 +323,3 @@ onMounted(() => {
     </AlertDialogContent>
   </AlertDialog>
 </template>
-
-<style scoped>
-.user-page-heading { margin: 0 0 1.25rem; }
-.user-page-heading h1 { margin: 0; font-size: 1.5rem; line-height: 2rem; font-weight: 650; letter-spacing: -0.025em; }
-.user-page-heading p { margin: 0.3rem 0 0; color: var(--muted-foreground); font-size: 0.875rem; }
-</style>

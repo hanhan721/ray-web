@@ -63,7 +63,7 @@ async function onLogout() {
     >
       跳到主要内容
     </a>
-    <aside class="app-sidebar md:min-h-svh">
+    <aside class="app-sidebar md:min-h-svh md:border-r">
       <div class="flex items-center justify-between px-5 py-5">
         <RouterLink
           to="/"
@@ -154,13 +154,13 @@ async function onLogout() {
 </template>
 
 <style scoped>
-.app-sidebar { background: #182b3b; color: #e6eef3; }
-.brand-mark { display: grid; width: 2rem; height: 2rem; place-items: center; border-radius: 0.55rem; background: #54c3ad; color: #102d32; font-weight: 700; }
-.brand-subtitle { color: #b7c8d2; font-size: 0.75rem; font-weight: 400; }
-.nav-heading { color: #afc1cb; font-size: 0.75rem; }
-.nav-link { display: flex; align-items: center; gap: 0.75rem; min-height: 2.5rem; padding: 0.5rem 0.75rem; border-radius: 0.5rem; color: #d3e0e6; font-size: 0.875rem; outline: none; }
-.nav-link:hover { background: #294354; color: white; }
-.nav-link:focus-visible { outline: 2px solid #70ddc5; outline-offset: 2px; }
-.nav-link-active { background: #355867; color: white; font-weight: 600; }
+.app-sidebar { background: var(--sidebar); color: var(--sidebar-foreground); border-color: var(--sidebar-border); }
+.brand-mark { display: grid; width: 2rem; height: 2rem; place-items: center; border-radius: 0.55rem; background: var(--sidebar-accent); color: var(--sidebar-primary); font-weight: 700; }
+.brand-subtitle { color: var(--muted-foreground); font-size: 0.75rem; font-weight: 400; }
+.nav-heading { color: var(--muted-foreground); font-size: 0.75rem; }
+.nav-link { display: flex; align-items: center; gap: 0.75rem; min-height: 2.5rem; padding: 0.5rem 0.75rem; border-radius: 0.5rem; color: var(--sidebar-foreground); font-size: 0.875rem; outline: none; }
+.nav-link:hover { background: var(--muted); }
+.nav-link:focus-visible { outline: 2px solid var(--sidebar-primary); outline-offset: 2px; }
+.nav-link-active, .nav-link-active:hover { background: var(--sidebar-accent); color: var(--sidebar-primary); font-weight: 600; }
 .app-header { background: var(--card); border-bottom: 1px solid var(--border); }
 </style>
