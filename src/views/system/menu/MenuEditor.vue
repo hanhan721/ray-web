@@ -2,7 +2,7 @@
 import { computed, nextTick, shallowRef, useTemplateRef, watch } from 'vue'
 import { createPermission, updatePermission } from '@/api/permission'
 import { PermissionTypeOptions, type PermissionType } from '@/types/enums'
-import { failureMessage } from '@/utils/failure'
+import { QUIET, failureMessage } from '@/utils/failure'
 import { sameEditorSession } from '@/views/system/user/user-table'
 import FormDialog from '@/components/common/FormDialog.vue'
 import SingleSelect from '@/components/common/SingleSelect.vue'
@@ -150,8 +150,8 @@ async function onSubmit() {
   saving.value = true
   try {
     if (menuId !== null) {
-      await updatePermission({ ...body, id: menuId }, { showErrorMessage: false })
-    } else await createPermission(body, { showErrorMessage: false })
+      await updatePermission({ ...body, id: menuId }, QUIET)
+    } else await createPermission(body, QUIET)
     emit('saved')
     if (stillHere()) emit('update:open', false)
   } catch (error) {

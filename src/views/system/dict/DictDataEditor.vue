@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, shallowRef, useTemplateRef, watch } from 'vue'
 import { createDictData, updateDictData, type DictDataRecord } from '@/api/dict'
-import { failureMessage } from '@/utils/failure'
+import { QUIET, failureMessage } from '@/utils/failure'
 import { sameEditorSession } from '@/views/system/user/user-table'
 import FormDialog from '@/components/common/FormDialog.vue'
 import { Button } from '@/components/ui/button'
@@ -104,8 +104,8 @@ async function onSubmit() {
   }
   saving.value = true
   try {
-    if (itemId !== null) await updateDictData({ ...body, id: itemId }, { showErrorMessage: false })
-    else await createDictData(body, { showErrorMessage: false })
+    if (itemId !== null) await updateDictData({ ...body, id: itemId }, QUIET)
+    else await createDictData(body, QUIET)
     emit('saved')
     if (stillHere()) emit('update:open', false)
   } catch (error) {

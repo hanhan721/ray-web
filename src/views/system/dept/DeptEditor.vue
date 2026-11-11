@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, shallowRef, useTemplateRef, watch } from 'vue'
 import { createDept, updateDept } from '@/api/dept'
-import { failureMessage } from '@/utils/failure'
+import { QUIET, failureMessage } from '@/utils/failure'
 import FormDialog from '@/components/common/FormDialog.vue'
 import SingleSelect from '@/components/common/SingleSelect.vue'
 import { Button } from '@/components/ui/button'
@@ -119,8 +119,8 @@ async function onSubmit() {
   }
   saving.value = true
   try {
-    if (deptId !== null) await updateDept({ ...body, id: deptId }, { showErrorMessage: false })
-    else await createDept(body, { showErrorMessage: false })
+    if (deptId !== null) await updateDept({ ...body, id: deptId }, QUIET)
+    else await createDept(body, QUIET)
     emit('saved')
     if (stillHere()) emit('update:open', false)
   } catch (error) {

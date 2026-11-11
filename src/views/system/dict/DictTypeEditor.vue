@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, shallowRef, useTemplateRef, watch } from 'vue'
 import { createDictType, updateDictType, type DictTypeRecord } from '@/api/dict'
-import { failureMessage } from '@/utils/failure'
+import { QUIET, failureMessage } from '@/utils/failure'
 import { sameEditorSession } from '@/views/system/user/user-table'
 import FormDialog from '@/components/common/FormDialog.vue'
 import { Button } from '@/components/ui/button'
@@ -73,10 +73,10 @@ async function onSubmit() {
   try {
     if (typeId !== null) {
       const row = { ...body, id: typeId }
-      await updateDictType(row, { showErrorMessage: false })
+      await updateDictType(row, QUIET)
       emit('saved', row)
     } else {
-      await createDictType(body, { showErrorMessage: false })
+      await createDictType(body, QUIET)
       emit('saved', null)
     }
     if (stillHere()) emit('update:open', false)
