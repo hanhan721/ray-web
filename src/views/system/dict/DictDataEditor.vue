@@ -3,19 +3,13 @@ import { computed, nextTick, shallowRef, useTemplateRef, watch } from 'vue'
 import { createDictData, updateDictData, type DictDataRecord } from '@/api/dict'
 import { failureMessage } from '@/utils/failure'
 import { sameEditorSession } from '@/views/system/user/user-table'
+import FormDialog from '@/components/common/FormDialog.vue'
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
+import { Field, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
+import { Textarea } from '@/components/ui/textarea'
 import { dictDataFormError, parseSort } from './dict-form'
 
 const props = defineProps<{
@@ -123,18 +117,20 @@ async function onSubmit() {
 </script>
 
 <template>
-  <Dialog :open="open" @update:open="emit('update:open', $event)">
-    <DialogContent class="sm:max-w-md">
-      <DialogHeader>
-        <DialogTitle>{{ creating ? '新增字典数据' : '编辑字典数据' }}</DialogTitle>
-        <DialogDescription>这条数据属于当前选中的字典类型。</DialogDescription>
-      </DialogHeader>
-      <form
-        class="flex max-h-[70vh] flex-col gap-4 overflow-y-auto pr-1"
-        novalidate
-        @submit.prevent="onSubmit"
-      >
-        <FieldGroup>
+  <FormDialog
+    :open="open"
+    :title="creating ? '新增字典数据' : '编辑字典数据'"
+    description="这条数据属于当前选中的字典类型。"
+    size="lg"
+    :saving="saving"
+    :error="formError"
+    @update:open="emit('update:open', $event)"
+    @submit="onSubmit"
+  >
+    <div class="flex flex-col gap-6">
+      <FieldSet class="gap-3">
+        <FieldLegend class="mb-0">基本资料</FieldLegend>
+        <div class="grid gap-4 sm:grid-cols-2">
           <Field>
             <FieldLabel for="dict-data-label">标签</FieldLabel>
             <Input
@@ -142,53 +138,76 @@ async function onSubmit() {
               ref="labelInput"
               v-model="dictLabel"
               name="dictLabel"
+              class="h-9"
               :disabled="saving"
             />
           </Field>
           <Field>
             <FieldLabel for="dict-data-value">字典值</FieldLabel>
-            <Input id="dict-data-value" v-model="dictValue" :disabled="saving" />
+            <Input id="dict-data-value" v-model="dictValue" class="h-9" :disabled="saving" />
           </Field>
           <Field>
             <FieldLabel for="dict-data-sort">顺序</FieldLabel>
-            <Input id="dict-data-sort" v-model="sortText" inputmode="numeric" :disabled="saving" />
+            <Input
+              id="dict-data-sort"
+              v-model="sortText"
+              inputmode="numeric"
+              class="h-9"
+              :disabled="saving"
+            />
           </Field>
-          <Field>
-            <FieldLabel for="dict-data-list-class">列表样式</FieldLabel>
-            <Input id="dict-data-list-class" v-model="listClass" :disabled="saving" />
-          </Field>
-          <Field>
-            <FieldLabel for="dict-data-css-class">样式类名</FieldLabel>
-            <Input id="dict-data-css-class" v-model="cssClass" :disabled="saving" />
-          </Field>
-          <Field orientation="horizontal">
+          <Field orientation="horizontal" class="rounded-lg border bg-muted/20 px-3 py-2">
             <FieldLabel for="dict-data-default">默认</FieldLabel>
             <Switch id="dict-data-default" v-model="isDefault" :disabled="saving" />
           </Field>
-          <Field orientation="horizontal">
+          <Field
+            orientation="horizontal"
+            class="rounded-lg border bg-muted/20 px-3 py-2 sm:col-span-2"
+          >
             <FieldLabel for="dict-data-enabled">启用</FieldLabel>
             <Switch id="dict-data-enabled" v-model="enabled" :disabled="saving" />
           </Field>
+        </div>
+      </FieldSet>
+
+      <FieldSet class="gap-3">
+        <FieldLegend class="mb-0">样式与备注</FieldLegend>
+        <div class="grid gap-4 sm:grid-cols-2">
           <Field>
-            <FieldLabel for="dict-data-remark">备注</FieldLabel>
-            <Input id="dict-data-remark" v-model="remark" :disabled="saving" />
+            <FieldLabel for="dict-data-list-class">列表样式</FieldLabel>
+            <Input id="dict-data-list-class" v-model="listClass" class="h-9" :disabled="saving" />
           </Field>
-        </FieldGroup>
-        <FieldError v-if="formError">{{ formError }}</FieldError>
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            :disabled="saving"
-            @click="emit('update:open', false)"
-            >取消</Button
-          >
-          <Button type="submit" :disabled="saving">
-            <Spinner v-if="saving" />
-            {{ saving ? '正在保存' : '保存' }}
-          </Button>
-        </DialogFooter>
-      </form>
-    </DialogContent>
-  </Dialog>
+          <Field>
+            <FieldLabel for="dict-data-css-class">样式类名</FieldLabel>
+            <Input id="dict-data-css-class" v-model="cssClass" class="h-9" :disabled="saving" />
+          </Field>
+          <Field class="sm:col-span-2">
+            <FieldLabel for="dict-data-remark">备注</FieldLabel>
+            <Textarea
+              id="dict-data-remark"
+              v-model="remark"
+              placeholder="补充说明（可选）"
+              :disabled="saving"
+            />
+          </Field>
+        </div>
+      </FieldSet>
+    </div>
+
+    <template #footer>
+      <Button
+        type="button"
+        variant="outline"
+        class="w-full sm:w-auto"
+        :disabled="saving"
+        @click="emit('update:open', false)"
+      >
+        取消
+      </Button>
+      <Button type="submit" class="w-full sm:w-auto" :disabled="saving">
+        <Spinner v-if="saving" />
+        {{ saving ? '正在提交' : '提交' }}
+      </Button>
+    </template>
+  </FormDialog>
 </template>

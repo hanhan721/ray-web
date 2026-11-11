@@ -4,19 +4,14 @@ import { createPermission, updatePermission } from '@/api/permission'
 import { PermissionTypeOptions, type PermissionType } from '@/types/enums'
 import { failureMessage } from '@/utils/failure'
 import { sameEditorSession } from '@/views/system/user/user-table'
+import FormDialog from '@/components/common/FormDialog.vue'
+import SingleSelect from '@/components/common/SingleSelect.vue'
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
+import { Field, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
+import { Textarea } from '@/components/ui/textarea'
 import {
   excludedParentIds,
   menuFormError,
@@ -61,6 +56,17 @@ const parentOptions = computed(() => {
   const excluded = props.menu ? excludedParentIds(props.rows, props.menu.id) : new Set<number>()
   return props.rows.filter((row) => !excluded.has(row.id))
 })
+const parentSelectOptions = computed(() => [
+  { value: '0', label: '无' },
+  ...parentOptions.value.map((row) => ({
+    value: String(row.id),
+    label: `${'· '.repeat(row.depth)}${row.name}`,
+  })),
+])
+
+function setType(value: unknown) {
+  type.value = value === 'DIRECTORY' || value === 'MENU' || value === 'BUTTON' ? value : 'DIRECTORY'
+}
 
 function resetForm() {
   session += 1
@@ -157,75 +163,93 @@ async function onSubmit() {
 </script>
 
 <template>
-  <Dialog :open="open" @update:open="emit('update:open', $event)">
-    <DialogContent class="sm:max-w-md">
-      <DialogHeader>
-        <DialogTitle>{{ creating ? '新增菜单' : '编辑菜单' }}</DialogTitle>
-        <DialogDescription>
-          菜单要填写路由，按钮要填写权限标识。已有标识不能清空。编辑按钮，或更改启用、标识后，需要重新登录。
-        </DialogDescription>
-      </DialogHeader>
-      <form
-        class="flex max-h-[70vh] flex-col gap-4 overflow-y-auto pr-1"
-        novalidate
-        @submit.prevent="onSubmit"
-      >
-        <FieldGroup>
+  <FormDialog
+    :open="open"
+    :title="creating ? '新增菜单' : '编辑菜单'"
+    description="菜单要填写路由，按钮要填写权限标识。已有标识不能清空。编辑按钮，或更改启用、标识后，需要重新登录。"
+    size="xl"
+    :saving="saving"
+    :error="formError"
+    @update:open="emit('update:open', $event)"
+    @submit="onSubmit"
+  >
+    <div class="flex flex-col gap-6">
+      <FieldSet class="gap-3">
+        <FieldLegend class="mb-0">基本资料</FieldLegend>
+        <div class="grid gap-4 sm:grid-cols-2">
           <Field>
             <FieldLabel for="menu-name">名称</FieldLabel>
-            <Input id="menu-name" ref="nameInput" v-model="name" name="name" :disabled="saving" />
+            <Input
+              id="menu-name"
+              ref="nameInput"
+              v-model="name"
+              name="name"
+              class="h-9"
+              :disabled="saving"
+            />
           </Field>
           <Field>
             <FieldLabel for="menu-type">类型</FieldLabel>
-            <select
+            <SingleSelect
               id="menu-type"
-              v-model="type"
-              class="border-input bg-input/20 h-7 w-full rounded-md border px-2 text-sm outline-none focus-visible:ring-2"
+              :model-value="type"
+              :options="PermissionTypeOptions"
+              size="lg"
+              :searchable="false"
               :disabled="saving"
-            >
-              <option v-for="item in PermissionTypeOptions" :key="item.value" :value="item.value">
-                {{ item.label }}
-              </option>
-            </select>
+              class="w-full"
+              @update:model-value="setType"
+            />
           </Field>
           <Field>
             <FieldLabel for="menu-parent">上级</FieldLabel>
-            <select
+            <SingleSelect
               id="menu-parent"
               v-model="parentId"
-              class="border-input bg-input/20 h-7 w-full rounded-md border px-2 text-sm outline-none focus-visible:ring-2"
+              :options="parentSelectOptions"
+              placeholder="选择上级"
+              size="lg"
+              searchable
               :disabled="saving"
-            >
-              <option value="0">无</option>
-              <option v-for="row in parentOptions" :key="row.id" :value="String(row.id)">
-                {{ `${'· '.repeat(row.depth)}${row.name}` }}
-              </option>
-            </select>
-          </Field>
-          <Field>
-            <FieldLabel for="menu-url">路由</FieldLabel>
-            <Input id="menu-url" v-model="url" :disabled="saving" />
-          </Field>
-          <Field>
-            <FieldLabel for="menu-code">权限标识</FieldLabel>
-            <Input id="menu-code" v-model="code" :disabled="saving" />
-          </Field>
-          <Field>
-            <FieldLabel for="menu-component">组件</FieldLabel>
-            <Input id="menu-component" v-model="component" :disabled="saving" />
-          </Field>
-          <Field>
-            <FieldLabel for="menu-route-name">路由名称</FieldLabel>
-            <Input id="menu-route-name" v-model="routeName" :disabled="saving" />
-          </Field>
-          <Field>
-            <FieldLabel for="menu-redirect">重定向</FieldLabel>
-            <Input id="menu-redirect" v-model="redirect" :disabled="saving" />
+              class="w-full"
+            />
           </Field>
           <Field>
             <FieldLabel for="menu-icon">图标</FieldLabel>
-            <Input id="menu-icon" v-model="icon" :disabled="saving" />
+            <Input id="menu-icon" v-model="icon" class="h-9" :disabled="saving" />
           </Field>
+        </div>
+      </FieldSet>
+
+      <FieldSet class="gap-3">
+        <FieldLegend class="mb-0">路由与标识</FieldLegend>
+        <div class="grid gap-4 sm:grid-cols-2">
+          <Field>
+            <FieldLabel for="menu-url">路由</FieldLabel>
+            <Input id="menu-url" v-model="url" class="h-9" :disabled="saving" />
+          </Field>
+          <Field>
+            <FieldLabel for="menu-code">权限标识</FieldLabel>
+            <Input id="menu-code" v-model="code" class="h-9" :disabled="saving" />
+          </Field>
+          <Field>
+            <FieldLabel for="menu-component">组件</FieldLabel>
+            <Input id="menu-component" v-model="component" class="h-9" :disabled="saving" />
+          </Field>
+          <Field>
+            <FieldLabel for="menu-route-name">路由名称</FieldLabel>
+            <Input id="menu-route-name" v-model="routeName" class="h-9" :disabled="saving" />
+          </Field>
+          <Field class="sm:col-span-2">
+            <FieldLabel for="menu-redirect">重定向</FieldLabel>
+            <Input id="menu-redirect" v-model="redirect" class="h-9" :disabled="saving" />
+          </Field>
+        </div>
+      </FieldSet>
+
+      <FieldSet class="gap-3">
+        <FieldLegend class="mb-0">显示与状态</FieldLegend>
+        <div class="grid gap-4 sm:grid-cols-2">
           <Field>
             <FieldLabel for="menu-sort">顺序</FieldLabel>
             <Input
@@ -233,41 +257,49 @@ async function onSubmit() {
               v-model="sortText"
               name="sort"
               inputmode="numeric"
+              class="h-9"
               :disabled="saving"
             />
           </Field>
-          <Field orientation="horizontal">
-            <FieldLabel for="menu-hidden">隐藏</FieldLabel>
-            <Switch id="menu-hidden" v-model="hidden" :disabled="saving" />
-          </Field>
-          <Field orientation="horizontal">
-            <FieldLabel for="menu-keep-alive">缓存</FieldLabel>
-            <Switch id="menu-keep-alive" v-model="keepAlive" :disabled="saving" />
-          </Field>
-          <Field orientation="horizontal">
+          <Field orientation="horizontal" class="rounded-lg border bg-muted/20 px-3 py-2">
             <FieldLabel for="menu-enabled">启用</FieldLabel>
             <Switch id="menu-enabled" v-model="enabled" :disabled="saving" />
           </Field>
-          <Field>
-            <FieldLabel for="menu-description">描述</FieldLabel>
-            <Input id="menu-description" v-model="description" :disabled="saving" />
+          <Field orientation="horizontal" class="rounded-lg border bg-muted/20 px-3 py-2">
+            <FieldLabel for="menu-hidden">隐藏</FieldLabel>
+            <Switch id="menu-hidden" v-model="hidden" :disabled="saving" />
           </Field>
-        </FieldGroup>
-        <FieldError v-if="formError">{{ formError }}</FieldError>
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            :disabled="saving"
-            @click="emit('update:open', false)"
-            >取消</Button
-          >
-          <Button type="submit" :disabled="saving">
-            <Spinner v-if="saving" />
-            {{ saving ? '正在保存' : '保存' }}
-          </Button>
-        </DialogFooter>
-      </form>
-    </DialogContent>
-  </Dialog>
+          <Field orientation="horizontal" class="rounded-lg border bg-muted/20 px-3 py-2">
+            <FieldLabel for="menu-keep-alive">缓存</FieldLabel>
+            <Switch id="menu-keep-alive" v-model="keepAlive" :disabled="saving" />
+          </Field>
+          <Field class="sm:col-span-2">
+            <FieldLabel for="menu-description">描述</FieldLabel>
+            <Textarea
+              id="menu-description"
+              v-model="description"
+              placeholder="补充说明（可选）"
+              :disabled="saving"
+            />
+          </Field>
+        </div>
+      </FieldSet>
+    </div>
+
+    <template #footer>
+      <Button
+        type="button"
+        variant="outline"
+        class="w-full sm:w-auto"
+        :disabled="saving"
+        @click="emit('update:open', false)"
+      >
+        取消
+      </Button>
+      <Button type="submit" class="w-full sm:w-auto" :disabled="saving">
+        <Spinner v-if="saving" />
+        {{ saving ? '正在提交' : '提交' }}
+      </Button>
+    </template>
+  </FormDialog>
 </template>

@@ -2,19 +2,14 @@
 import { computed, nextTick, shallowRef, useTemplateRef, watch } from 'vue'
 import { createDept, updateDept } from '@/api/dept'
 import { failureMessage } from '@/utils/failure'
+import FormDialog from '@/components/common/FormDialog.vue'
+import SingleSelect from '@/components/common/SingleSelect.vue'
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
+import { Field, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
+import { Textarea } from '@/components/ui/textarea'
 import { sameEditorSession } from '@/views/system/user/user-table'
 import { excludedParentIds, type DeptRow } from './dept-tree'
 
@@ -47,6 +42,13 @@ const parentOptions = computed(() => {
   const excluded = props.dept ? excludedParentIds(props.rows, props.dept.id) : new Set<number>()
   return props.rows.filter((row) => !excluded.has(row.id))
 })
+const parentSelectOptions = computed(() => [
+  { value: '0', label: '无' },
+  ...parentOptions.value.map((row) => ({
+    value: String(row.id),
+    label: `${'· '.repeat(row.depth)}${row.deptName}`,
+  })),
+])
 
 function resetForm() {
   session += 1
@@ -130,20 +132,20 @@ async function onSubmit() {
 </script>
 
 <template>
-  <Dialog :open="open" @update:open="emit('update:open', $event)">
-    <DialogContent class="sm:max-w-md">
-      <DialogHeader>
-        <DialogTitle>{{ creating ? '新增部门' : '编辑部门' }}</DialogTitle>
-        <DialogDescription
-          >顶级部门的上级留在「无」。不能把部门挂到自己或下级下面。</DialogDescription
-        >
-      </DialogHeader>
-      <form
-        class="flex max-h-[70vh] flex-col gap-4 overflow-y-auto pr-1"
-        novalidate
-        @submit.prevent="onSubmit"
-      >
-        <FieldGroup>
+  <FormDialog
+    :open="open"
+    :title="creating ? '新增部门' : '编辑部门'"
+    description="顶级部门的上级留在「无」。不能把部门挂到自己或下级下面。"
+    size="xl"
+    :saving="saving"
+    :error="formError"
+    @update:open="emit('update:open', $event)"
+    @submit="onSubmit"
+  >
+    <div class="flex flex-col gap-6">
+      <FieldSet class="gap-3">
+        <FieldLegend class="mb-0">基本资料</FieldLegend>
+        <div class="grid gap-4 sm:grid-cols-2">
           <Field :data-invalid="formError && !deptName.trim() ? true : undefined">
             <FieldLabel for="dept-name">名称</FieldLabel>
             <Input
@@ -151,22 +153,22 @@ async function onSubmit() {
               ref="nameInput"
               v-model="deptName"
               name="deptName"
+              class="h-9"
               :disabled="saving"
             />
           </Field>
           <Field>
             <FieldLabel for="dept-parent">上级</FieldLabel>
-            <select
+            <SingleSelect
               id="dept-parent"
               v-model="parentId"
-              class="border-input bg-input/20 h-7 w-full rounded-md border px-2 text-sm outline-none focus-visible:ring-2"
+              :options="parentSelectOptions"
+              placeholder="选择上级"
+              size="lg"
+              searchable
               :disabled="saving"
-            >
-              <option value="0">无</option>
-              <option v-for="row in parentOptions" :key="row.id" :value="String(row.id)">
-                {{ `${'· '.repeat(row.depth)}${row.deptName}` }}
-              </option>
-            </select>
+              class="w-full"
+            />
           </Field>
           <Field>
             <FieldLabel for="dept-sort">顺序</FieldLabel>
@@ -175,45 +177,68 @@ async function onSubmit() {
               v-model="sortText"
               name="sort"
               inputmode="numeric"
+              class="h-9"
               :disabled="saving"
             />
           </Field>
           <Field>
             <FieldLabel for="dept-leader">负责人</FieldLabel>
-            <Input id="dept-leader" v-model="leader" :disabled="saving" />
+            <Input id="dept-leader" v-model="leader" class="h-9" :disabled="saving" />
           </Field>
+        </div>
+      </FieldSet>
+
+      <FieldSet class="gap-3">
+        <FieldLegend class="mb-0">联系方式</FieldLegend>
+        <div class="grid gap-4 sm:grid-cols-2">
           <Field>
             <FieldLabel for="dept-phone">电话</FieldLabel>
-            <Input id="dept-phone" v-model="phone" :disabled="saving" />
+            <Input id="dept-phone" v-model="phone" class="h-9" :disabled="saving" />
           </Field>
           <Field>
             <FieldLabel for="dept-email">邮箱</FieldLabel>
-            <Input id="dept-email" v-model="email" type="email" :disabled="saving" />
+            <Input id="dept-email" v-model="email" type="email" class="h-9" :disabled="saving" />
           </Field>
-          <Field orientation="horizontal">
+        </div>
+      </FieldSet>
+
+      <FieldSet class="gap-3">
+        <FieldLegend class="mb-0">状态与备注</FieldLegend>
+        <div class="grid gap-4 sm:grid-cols-2">
+          <Field
+            orientation="horizontal"
+            class="rounded-lg border bg-muted/20 px-3 py-2 sm:col-span-2"
+          >
             <FieldLabel for="dept-enabled">启用</FieldLabel>
             <Switch id="dept-enabled" v-model="enabled" :disabled="saving" />
           </Field>
-          <Field>
+          <Field class="sm:col-span-2">
             <FieldLabel for="dept-remark">备注</FieldLabel>
-            <Input id="dept-remark" v-model="remark" :disabled="saving" />
+            <Textarea
+              id="dept-remark"
+              v-model="remark"
+              placeholder="补充说明（可选）"
+              :disabled="saving"
+            />
           </Field>
-        </FieldGroup>
-        <FieldError v-if="formError">{{ formError }}</FieldError>
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            :disabled="saving"
-            @click="emit('update:open', false)"
-            >取消</Button
-          >
-          <Button type="submit" :disabled="saving">
-            <Spinner v-if="saving" />
-            {{ saving ? '正在保存' : '保存' }}
-          </Button>
-        </DialogFooter>
-      </form>
-    </DialogContent>
-  </Dialog>
+        </div>
+      </FieldSet>
+    </div>
+
+    <template #footer>
+      <Button
+        type="button"
+        variant="outline"
+        class="w-full sm:w-auto"
+        :disabled="saving"
+        @click="emit('update:open', false)"
+      >
+        取消
+      </Button>
+      <Button type="submit" class="w-full sm:w-auto" :disabled="saving">
+        <Spinner v-if="saving" />
+        {{ saving ? '正在提交' : '提交' }}
+      </Button>
+    </template>
+  </FormDialog>
 </template>

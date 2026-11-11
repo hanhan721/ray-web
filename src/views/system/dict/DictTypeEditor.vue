@@ -3,19 +3,13 @@ import { computed, nextTick, shallowRef, useTemplateRef, watch } from 'vue'
 import { createDictType, updateDictType, type DictTypeRecord } from '@/api/dict'
 import { failureMessage } from '@/utils/failure'
 import { sameEditorSession } from '@/views/system/user/user-table'
+import FormDialog from '@/components/common/FormDialog.vue'
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
+import { Field, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
+import { Textarea } from '@/components/ui/textarea'
 import { dictTypeFormError } from './dict-form'
 
 const props = defineProps<{
@@ -95,14 +89,20 @@ async function onSubmit() {
 </script>
 
 <template>
-  <Dialog :open="open" @update:open="emit('update:open', $event)">
-    <DialogContent class="sm:max-w-md">
-      <DialogHeader>
-        <DialogTitle>{{ creating ? '新增字典类型' : '编辑字典类型' }}</DialogTitle>
-        <DialogDescription>修改类型编码后，该类型下的数据会改用新编码。</DialogDescription>
-      </DialogHeader>
-      <form class="flex flex-col gap-4" novalidate @submit.prevent="onSubmit">
-        <FieldGroup>
+  <FormDialog
+    :open="open"
+    :title="creating ? '新增字典类型' : '编辑字典类型'"
+    description="修改类型编码后，该类型下的数据会改用新编码。"
+    size="lg"
+    :saving="saving"
+    :error="formError"
+    @update:open="emit('update:open', $event)"
+    @submit="onSubmit"
+  >
+    <div class="flex flex-col gap-6">
+      <FieldSet class="gap-3">
+        <FieldLegend class="mb-0">基本资料</FieldLegend>
+        <div class="grid gap-4 sm:grid-cols-2">
           <Field>
             <FieldLabel for="dict-type-name">名称</FieldLabel>
             <Input
@@ -110,37 +110,60 @@ async function onSubmit() {
               ref="nameInput"
               v-model="dictName"
               name="dictName"
+              class="h-9"
               :disabled="saving"
             />
           </Field>
           <Field>
             <FieldLabel for="dict-type-code">类型编码</FieldLabel>
-            <Input id="dict-type-code" v-model="typeCode" name="dictType" :disabled="saving" />
+            <Input
+              id="dict-type-code"
+              v-model="typeCode"
+              name="dictType"
+              class="h-9"
+              :disabled="saving"
+            />
           </Field>
-          <Field orientation="horizontal">
+        </div>
+      </FieldSet>
+
+      <FieldSet class="gap-3">
+        <FieldLegend class="mb-0">状态与备注</FieldLegend>
+        <div class="grid gap-4 sm:grid-cols-2">
+          <Field
+            orientation="horizontal"
+            class="rounded-lg border bg-muted/20 px-3 py-2 sm:col-span-2"
+          >
             <FieldLabel for="dict-type-enabled">启用</FieldLabel>
             <Switch id="dict-type-enabled" v-model="enabled" :disabled="saving" />
           </Field>
-          <Field>
+          <Field class="sm:col-span-2">
             <FieldLabel for="dict-type-remark">备注</FieldLabel>
-            <Input id="dict-type-remark" v-model="remark" :disabled="saving" />
+            <Textarea
+              id="dict-type-remark"
+              v-model="remark"
+              placeholder="补充说明（可选）"
+              :disabled="saving"
+            />
           </Field>
-        </FieldGroup>
-        <FieldError v-if="formError">{{ formError }}</FieldError>
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            :disabled="saving"
-            @click="emit('update:open', false)"
-            >取消</Button
-          >
-          <Button type="submit" :disabled="saving">
-            <Spinner v-if="saving" />
-            {{ saving ? '正在保存' : '保存' }}
-          </Button>
-        </DialogFooter>
-      </form>
-    </DialogContent>
-  </Dialog>
+        </div>
+      </FieldSet>
+    </div>
+
+    <template #footer>
+      <Button
+        type="button"
+        variant="outline"
+        class="w-full sm:w-auto"
+        :disabled="saving"
+        @click="emit('update:open', false)"
+      >
+        取消
+      </Button>
+      <Button type="submit" class="w-full sm:w-auto" :disabled="saving">
+        <Spinner v-if="saving" />
+        {{ saving ? '正在提交' : '提交' }}
+      </Button>
+    </template>
+  </FormDialog>
 </template>

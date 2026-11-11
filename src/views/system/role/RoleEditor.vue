@@ -4,26 +4,14 @@ import { getPermissionTree, getRolePermissions, saveRolePermissions } from '@/ap
 import { createRole, getRoleById, updateRole } from '@/api/role'
 import type { PermissionTree } from '@/types/permission'
 import { QUIET, failureMessage } from '@/utils/failure'
+import FormDialog from '@/components/common/FormDialog.vue'
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import {
-  Field,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-  FieldLegend,
-  FieldSet,
-} from '@/components/ui/field'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Field, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
+import { Textarea } from '@/components/ui/textarea'
 import { sameEditorSession } from '@/views/system/user/user-table'
 
 const props = defineProps<{
@@ -247,21 +235,29 @@ async function onSubmit() {
 </script>
 
 <template>
-  <Dialog :open="open" @update:open="emit('update:open', $event)">
-    <DialogContent class="sm:max-w-md">
-      <DialogHeader>
-        <DialogTitle>{{ creating ? '新增角色' : '编辑角色' }}</DialogTitle>
-        <DialogDescription>
-          {{ creating ? '创建后可以再分配权限。' : '资料和权限分开保存。列表按顺序升序。' }}
-        </DialogDescription>
-      </DialogHeader>
-      <form
-        class="flex max-h-[70vh] flex-col gap-4 overflow-y-auto pr-1"
-        novalidate
-        @submit.prevent="onSubmit"
-      >
-        <p v-if="loading" class="text-muted-foreground text-sm">正在读取角色资料。</p>
-        <FieldGroup v-else-if="detailReady">
+  <FormDialog
+    :open="open"
+    :title="creating ? '新增角色' : '编辑角色'"
+    :description="creating ? '创建后可以再分配权限。' : '资料和权限分开保存。列表按顺序升序。'"
+    size="xl"
+    :saving="saving"
+    :error="formError"
+    :step-note="stepNote"
+    @update:open="emit('update:open', $event)"
+    @submit="onSubmit"
+  >
+    <p
+      v-if="loading"
+      class="text-muted-foreground flex min-h-48 items-center justify-center gap-2 text-sm"
+    >
+      <Spinner />
+      正在读取角色资料
+    </p>
+
+    <div v-else-if="detailReady" class="flex flex-col gap-6">
+      <FieldSet class="gap-3">
+        <FieldLegend class="mb-0">基本资料</FieldLegend>
+        <div class="grid gap-4 sm:grid-cols-2">
           <Field :data-invalid="formError && !roleName.trim() ? true : undefined">
             <FieldLabel for="role-name">名称</FieldLabel>
             <Input
@@ -269,12 +265,13 @@ async function onSubmit() {
               ref="nameInput"
               v-model="roleName"
               name="roleName"
+              class="h-9"
               :disabled="saving"
             />
           </Field>
           <Field :data-invalid="formError && !roleKey.trim() ? true : undefined">
             <FieldLabel for="role-key">标识</FieldLabel>
-            <Input id="role-key" v-model="roleKey" name="roleKey" :disabled="saving" />
+            <Input id="role-key" v-model="roleKey" name="roleKey" class="h-9" :disabled="saving" />
           </Field>
           <Field>
             <FieldLabel for="role-sort">顺序</FieldLabel>
@@ -283,54 +280,75 @@ async function onSubmit() {
               v-model="sortText"
               name="sort"
               inputmode="numeric"
+              class="h-9"
               :disabled="saving"
             />
           </Field>
-          <Field orientation="horizontal">
+          <Field orientation="horizontal" class="rounded-lg border bg-muted/20 px-3 py-2">
             <FieldLabel for="role-enabled">启用</FieldLabel>
             <Switch id="role-enabled" v-model="enabled" :disabled="saving" />
           </Field>
-          <Field>
+          <Field class="sm:col-span-2">
             <FieldLabel for="role-remark">备注</FieldLabel>
-            <Input id="role-remark" v-model="remark" :disabled="saving" />
+            <Textarea
+              id="role-remark"
+              v-model="remark"
+              placeholder="补充说明（可选）"
+              :disabled="saving"
+            />
           </Field>
-          <FieldSet v-if="!creating && canAssignPermissions">
-            <FieldLegend>权限</FieldLegend>
-            <FieldGroup>
-              <Field
-                v-for="permission in permissions"
-                :key="permission.id"
-                orientation="horizontal"
-              >
-                <input
-                  :id="`role-permission-${permission.id}`"
-                  type="checkbox"
-                  :checked="permissionIds.includes(permission.id)"
-                  :disabled="saving"
-                  @change="
-                    setPermission(permission.id, ($event.target as HTMLInputElement).checked)
-                  "
-                />
-                <FieldLabel :for="`role-permission-${permission.id}`">{{
-                  permission.label
-                }}</FieldLabel>
-              </Field>
-              <p v-if="permissions.length === 0" class="text-muted-foreground text-sm">
-                没有可分配的权限。
-              </p>
-            </FieldGroup>
-          </FieldSet>
-        </FieldGroup>
-        <FieldError v-if="formError">{{ formError }}</FieldError>
-        <p v-if="stepNote" class="text-muted-foreground text-sm">{{ stepNote }}</p>
-        <DialogFooter>
-          <Button type="button" variant="outline" :disabled="saving" @click="close">取消</Button>
-          <Button type="submit" :disabled="saving || loading || !detailReady">
-            <Spinner v-if="saving" />
-            {{ saving ? '正在保存' : '保存' }}
-          </Button>
-        </DialogFooter>
-      </form>
-    </DialogContent>
-  </Dialog>
+        </div>
+      </FieldSet>
+
+      <FieldSet v-if="!creating && canAssignPermissions" class="gap-3">
+        <FieldLegend class="mb-0">权限</FieldLegend>
+        <p class="text-muted-foreground text-sm">
+          资料和权限分开提交；如果只成功了一步，会提示哪一步没有保存。
+        </p>
+        <div class="grid gap-2 sm:grid-cols-2">
+          <Field
+            v-for="permission in permissions"
+            :key="permission.id"
+            orientation="horizontal"
+            class="rounded-md border px-3 py-2"
+          >
+            <Checkbox
+              :id="`role-permission-${permission.id}`"
+              :model-value="permissionIds.includes(permission.id)"
+              :disabled="saving"
+              @update:model-value="setPermission(permission.id, Boolean($event))"
+            />
+            <FieldLabel :for="`role-permission-${permission.id}`" class="font-normal">
+              {{ permission.label }}
+            </FieldLabel>
+          </Field>
+        </div>
+        <p v-if="permissions.length === 0" class="text-muted-foreground text-sm">
+          没有可分配的权限。
+        </p>
+      </FieldSet>
+    </div>
+
+    <div v-else class="flex min-h-48 flex-col items-center justify-center gap-2 text-center">
+      <p class="text-sm font-medium">没有读取到角色资料</p>
+      <p class="text-muted-foreground text-xs">检查网络后重试，或关闭窗口稍后再试。</p>
+      <Button type="button" variant="outline" size="sm" @click="resetForm">重试</Button>
+    </div>
+
+    <template #footer>
+      <Button
+        type="button"
+        variant="outline"
+        class="w-full sm:w-auto"
+        :disabled="saving"
+        @click="close"
+      >
+        取消
+      </Button>
+      <Button type="submit" class="w-full sm:w-auto" :disabled="saving || loading || !detailReady">
+        <Spinner v-if="saving" />
+        {{ saving ? '正在提交' : '提交' }}
+      </Button>
+    </template>
+  </FormDialog>
 </template>
