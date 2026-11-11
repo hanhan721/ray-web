@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, shallowRef, watch } from 'vue'
+import { CalendarClock, Plus, RotateCcw, Search, ScrollText, Trash2 } from '@lucide/vue'
+import { onMounted, shallowRef, watch } from 'vue'
 import {
   cleanJobLogs,
   cleanJobLogsBefore,
@@ -13,9 +14,16 @@ import {
   type ScheduleJob,
   type ScheduleJobLog,
 } from '@/api/schedule-job'
-import { RequestError } from '@/utils/request'
-import { PAGE_SIZES, pageIndexFromResponse } from '@/utils/pagination'
+import { EnabledFilterOptions } from '@/types/enums'
 import { useSessionStore } from '@/stores/session'
+import { useDeleteMany } from '@/composables/useDeleteMany'
+import { usePagedList } from '@/composables/usePagedList'
+import { useRowStatus } from '@/composables/useRowStatus'
+import { QUIET, failureMessage } from '@/utils/failure'
+import FormDialog from '@/components/common/FormDialog.vue'
+import ProTable from '@/components/common/ProTable.vue'
+import SingleSelect from '@/components/common/SingleSelect.vue'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   AlertDialog,
@@ -27,36 +35,30 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from '@/components/ui/empty'
 import { Field, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableEmpty,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import JobEditor from './JobEditor.vue'
+import {
+  JOB_DATA_COLUMNS,
+  JOB_LOG_COLUMNS,
+  JOB_LOG_RESULT_OPTIONS,
+  jobCellClass,
+  jobLogCellClass,
+} from './job-table'
 import { formatDateTime, retainDaysError, toJobLogQuery, toJobQuery } from './job-form'
 
 const session = useSessionStore()
 const can = (code: string) => session.can(code)
 
-const rows = shallowRef<ScheduleJob[]>([])
-const total = shallowRef(0)
-const pageIndex = shallowRef(0)
-const pageSize = shallowRef<(typeof PAGE_SIZES)[number]>(10)
 const jobName = shallowRef('')
 const jobGroup = shallowRef('')
 const beanName = shallowRef('')
@@ -65,31 +67,22 @@ const appliedName = shallowRef('')
 const appliedGroup = shallowRef('')
 const appliedBean = shallowRef('')
 const appliedEnabled = shallowRef<'' | 'true' | 'false'>('')
-const loading = shallowRef(false)
-const loadError = shallowRef('')
-const selectedIds = shallowRef<number[]>([])
-const statusId = shallowRef<number | null>(null)
+
 const editorOpen = shallowRef(false)
 const editorJob = shallowRef<ScheduleJob | null>(null)
-const deleteOpen = shallowRef(false)
-const deleteError = shallowRef('')
-const deleting = shallowRef(false)
+
+const selectedLogJob = shallowRef<ScheduleJob | null>(null)
+const logSuccess = shallowRef<'' | 'true' | 'false'>('')
+const appliedLogSuccess = shallowRef<'' | 'true' | 'false'>('')
+const logNotice = shallowRef('')
+
 const triggerOpen = shallowRef(false)
 const triggerJobRow = shallowRef<ScheduleJob | null>(null)
 const triggerError = shallowRef('')
 const triggering = shallowRef(false)
-const selectedLogJob = shallowRef<ScheduleJob | null>(null)
-const logRows = shallowRef<ScheduleJobLog[]>([])
-const logTotal = shallowRef(0)
-const logPageIndex = shallowRef(0)
-const logPageSize = shallowRef<(typeof PAGE_SIZES)[number]>(10)
-const logSuccess = shallowRef<'' | 'true' | 'false'>('')
-const appliedLogSuccess = shallowRef<'' | 'true' | 'false'>('')
-const logLoading = shallowRef(false)
-const logError = shallowRef('')
-const logNotice = shallowRef('')
 const detailOpen = shallowRef(false)
 const detail = shallowRef<ScheduleJobLog | null>(null)
+const detailTarget = shallowRef<ScheduleJobLog | null>(null)
 const detailError = shallowRef('')
 const detailLoading = shallowRef(false)
 const cleanOpen = shallowRef(false)
@@ -99,161 +92,145 @@ const retainOpen = shallowRef(false)
 const retainDays = shallowRef('30')
 const retainError = shallowRef('')
 const retaining = shallowRef(false)
-let generation = 0
-let logGeneration = 0
-let deleteToken = 0
 let triggerToken = 0
 let detailToken = 0
 let cleanToken = 0
 let retainToken = 0
 
-const pageCount = computed(() => Math.max(1, Math.ceil(total.value / pageSize.value)))
-const logPageCount = computed(() => Math.max(1, Math.ceil(logTotal.value / logPageSize.value)))
-const allSelected = computed(
-  () => rows.value.length > 0 && rows.value.every((row) => selectedIds.value.includes(row.id)),
-)
-
-function failureMessage(error: unknown, fallback: string): string {
-  if (error instanceof RequestError && error.message) return error.message
-  return fallback
+function emptyLogPage<T>(pageSize: number): IPage<T> {
+  return { current: 1, size: pageSize, total: 0, pages: 0, records: [] }
 }
 
-async function load() {
-  const requestId = ++generation
-  loading.value = true
-  loadError.value = ''
-  try {
-    const page = await getJobPage(
+const {
+  rows,
+  total,
+  pageIndex,
+  pageSize,
+  loading,
+  errorMessage,
+  selectedIds,
+  clearSelection,
+  load,
+  search,
+  changePage,
+  changePageSize,
+  toggleSelected,
+  togglePage,
+  setRowEnabled,
+} = usePagedList<ScheduleJob>({
+  fetchPage: (input) =>
+    getJobPage(
       toJobQuery({
-        pageIndex: pageIndex.value,
-        pageSize: pageSize.value,
+        pageIndex: input.pageIndex,
+        pageSize: input.pageSize,
         jobName: appliedName.value,
         jobGroup: appliedGroup.value,
         beanName: appliedBean.value,
         enabled: appliedEnabled.value,
       }),
-      { showErrorMessage: false },
-    )
-    if (requestId !== generation) return
-    rows.value = page.records ?? []
-    total.value = page.total ?? 0
-    if (typeof page.current === 'number') pageIndex.value = pageIndexFromResponse(page.current)
-    if ((PAGE_SIZES as readonly number[]).includes(page.size)) {
-      pageSize.value = page.size as (typeof PAGE_SIZES)[number]
-    }
-    selectedIds.value = selectedIds.value.filter((id) => rows.value.some((row) => row.id === id))
-    const current = rows.value.find((row) => row.id === selectedLogJob.value?.id)
-    if (current) selectedLogJob.value = current
-  } catch (error) {
-    if (requestId !== generation) return
-    rows.value = []
-    total.value = 0
-    selectedIds.value = []
-    loadError.value = failureMessage(error, '定时任务加载失败')
-  } finally {
-    if (requestId === generation) loading.value = false
-  }
-}
+      QUIET,
+    ),
+  fallbackMessage: '定时任务加载失败',
+})
 
-async function loadLogs() {
-  const job = selectedLogJob.value
-  if (!job) {
-    logRows.value = []
-    logTotal.value = 0
-    return
-  }
-  const requestId = ++logGeneration
-  logLoading.value = true
-  logError.value = ''
-  try {
-    const page = await getJobLogPage(
+const {
+  open: deleteOpen,
+  deleting,
+  error: deleteError,
+  openDialog: openDelete,
+  setOpen: setDeleteOpen,
+  confirm: confirmDelete,
+} = useDeleteMany<ScheduleJob>({
+  deleteRows: async (ids) => {
+    await deleteJobs(ids, QUIET)
+    if (selectedLogJob.value && ids.includes(selectedLogJob.value.id)) {
+      selectedLogJob.value = null
+    }
+  },
+  selectedIds,
+  clearSelection,
+  rows,
+  pageIndex,
+  changePage,
+  load,
+  fallbackMessage: '删除失败，请稍后重试',
+})
+
+const { pendingIds: statusPendingIds, change: changeStatus } = useRowStatus({
+  update: (id, nextEnabled) => (nextEnabled ? resumeJob(id, QUIET) : pauseJob(id, QUIET)),
+  setRowEnabled,
+})
+
+const {
+  rows: logRows,
+  total: logTotal,
+  pageIndex: logPageIndex,
+  pageSize: logPageSize,
+  loading: logLoading,
+  errorMessage: logError,
+  load: loadLogPage,
+  search: searchLogPage,
+  changePage: changeLogPage,
+  changePageSize: changeLogPageSize,
+} = usePagedList<ScheduleJobLog>({
+  fetchPage: (input) => {
+    const job = selectedLogJob.value
+    if (!job) return Promise.resolve(emptyLogPage<ScheduleJobLog>(input.pageSize))
+    return getJobLogPage(
       toJobLogQuery({
-        pageIndex: logPageIndex.value,
-        pageSize: logPageSize.value,
+        pageIndex: input.pageIndex,
+        pageSize: input.pageSize,
         jobId: job.id,
         success: appliedLogSuccess.value,
       }),
-      { showErrorMessage: false },
+      QUIET,
     )
-    if (requestId !== logGeneration || selectedLogJob.value?.id !== job.id) return
-    logRows.value = page.records ?? []
-    logTotal.value = page.total ?? 0
-    if (typeof page.current === 'number') logPageIndex.value = pageIndexFromResponse(page.current)
-    if ((PAGE_SIZES as readonly number[]).includes(page.size)) {
-      logPageSize.value = page.size as (typeof PAGE_SIZES)[number]
-    }
-  } catch (error) {
-    if (requestId !== logGeneration || selectedLogJob.value?.id !== job.id) return
-    logRows.value = []
-    logTotal.value = 0
-    logError.value = failureMessage(error, '执行日志加载失败')
-  } finally {
-    if (requestId === logGeneration) logLoading.value = false
-  }
+  },
+  fallbackMessage: '执行日志加载失败',
+})
+
+const rowLabel = (row: ScheduleJob) => row.jobName
+const logRowLabel = (row: ScheduleJobLog) => formatDateTime(row.startTime) || `日志 ${row.id}`
+
+function setEnabledFilter(value: unknown) {
+  enabled.value = value === 'true' ? 'true' : value === 'false' ? 'false' : ''
 }
 
-function search() {
+function setLogSuccessFilter(value: unknown) {
+  logSuccess.value = value === 'true' ? 'true' : value === 'false' ? 'false' : ''
+}
+
+function searchJobs() {
   appliedName.value = jobName.value
   appliedGroup.value = jobGroup.value
   appliedBean.value = beanName.value
   appliedEnabled.value = enabled.value
-  pageIndex.value = 0
-  selectedIds.value = []
-  void load()
+  void search()
 }
 
-function changePageSize(event: Event) {
-  const value = Number(
-    event.target instanceof HTMLSelectElement ? event.target.value : pageSize.value,
-  )
-  if ((PAGE_SIZES as readonly number[]).includes(value)) {
-    pageSize.value = value as (typeof PAGE_SIZES)[number]
-  }
-  pageIndex.value = 0
-  selectedIds.value = []
-  void load()
-}
-
-function changePage(next: number) {
-  pageIndex.value = next
-  selectedIds.value = []
-  void load()
-}
-
-function changeLogPageSize(event: Event) {
-  const value = Number(
-    event.target instanceof HTMLSelectElement ? event.target.value : logPageSize.value,
-  )
-  if ((PAGE_SIZES as readonly number[]).includes(value)) {
-    logPageSize.value = value as (typeof PAGE_SIZES)[number]
-  }
-  logPageIndex.value = 0
-  void loadLogs()
-}
-
-function changeLogPage(next: number) {
-  logPageIndex.value = next
-  void loadLogs()
+function resetJobFilters() {
+  jobName.value = ''
+  jobGroup.value = ''
+  beanName.value = ''
+  enabled.value = ''
+  appliedName.value = ''
+  appliedGroup.value = ''
+  appliedBean.value = ''
+  appliedEnabled.value = ''
+  void search()
 }
 
 function searchLogs() {
   appliedLogSuccess.value = logSuccess.value
   logNotice.value = ''
-  logPageIndex.value = 0
-  void loadLogs()
+  void searchLogPage()
 }
 
-function toggleRow(id: number, event: Event) {
-  const checked = event.target instanceof HTMLInputElement && event.target.checked
-  const next = new Set(selectedIds.value)
-  if (checked) next.add(id)
-  else next.delete(id)
-  selectedIds.value = [...next]
-}
-
-function togglePage(event: Event) {
-  const checked = event.target instanceof HTMLInputElement && event.target.checked
-  selectedIds.value = checked ? rows.value.map((row) => row.id) : []
+function resetLogFilters() {
+  logSuccess.value = ''
+  appliedLogSuccess.value = ''
+  logNotice.value = ''
+  void searchLogPage()
 }
 
 function openCreate() {
@@ -267,22 +244,11 @@ function openEdit(row: ScheduleJob) {
 }
 
 function openLogs(row: ScheduleJob) {
-  logSuccess.value = ''
-  appliedLogSuccess.value = ''
-  logNotice.value = ''
   if (selectedLogJob.value?.id === row.id) {
-    logPageIndex.value = 0
-    void loadLogs()
+    void loadLogPage()
     return
   }
   selectedLogJob.value = row
-}
-
-function openDelete() {
-  if (deleting.value) return
-  deleteToken += 1
-  deleteError.value = ''
-  deleteOpen.value = true
 }
 
 function openTrigger(row: ScheduleJob) {
@@ -293,46 +259,11 @@ function openTrigger(row: ScheduleJob) {
   triggerOpen.value = true
 }
 
-function onDeleteOpen(open: boolean) {
-  if (open) return
-  deleteOpen.value = false
-  deleteToken += 1
-  deleting.value = false
-}
-
 function onTriggerOpen(open: boolean) {
   if (open) return
   triggerOpen.value = false
   triggerToken += 1
   triggering.value = false
-}
-
-async function confirmDelete() {
-  const token = deleteToken
-  const ids = [...selectedIds.value]
-  deleting.value = true
-  deleteError.value = ''
-  try {
-    await deleteJobs(ids, { showErrorMessage: false })
-    if (token !== deleteToken) {
-      await load()
-      return
-    }
-    deleteOpen.value = false
-    selectedIds.value = []
-    if (selectedLogJob.value && ids.includes(selectedLogJob.value.id)) selectedLogJob.value = null
-    await load()
-    if (rows.value.length === 0 && pageIndex.value > 0) {
-      pageIndex.value -= 1
-      await load()
-    }
-  } catch (error) {
-    const message = failureMessage(error, '删除失败，请稍后重试')
-    if (token === deleteToken) deleteError.value = message
-    else loadError.value = message
-  } finally {
-    if (token === deleteToken) deleting.value = false
-  }
 }
 
 async function confirmTrigger() {
@@ -342,43 +273,30 @@ async function confirmTrigger() {
   triggering.value = true
   triggerError.value = ''
   try {
-    await triggerJob(row.id, { showErrorMessage: false })
+    await triggerJob(row.id, QUIET)
     if (token !== triggerToken) {
-      if (selectedLogJob.value?.id === row.id) await loadLogs()
+      if (selectedLogJob.value?.id === row.id) await loadLogPage()
       return
     }
     triggerOpen.value = false
-    if (selectedLogJob.value?.id === row.id) await loadLogs()
+    if (selectedLogJob.value?.id === row.id) await loadLogPage()
   } catch (error) {
     const message = failureMessage(error, '执行失败，请稍后重试')
     if (token === triggerToken) triggerError.value = message
-    else loadError.value = message
   } finally {
     if (token === triggerToken) triggering.value = false
   }
 }
 
-async function changeStatus(row: ScheduleJob, nextEnabled: boolean) {
-  statusId.value = row.id
-  try {
-    if (nextEnabled) await resumeJob(row.id)
-    else await pauseJob(row.id)
-    await load()
-  } catch {
-    // 请求层已经提示后端原因。开关仍绑定原状态。
-  } finally {
-    statusId.value = null
-  }
-}
-
 async function openDetail(row: ScheduleJobLog) {
   const token = ++detailToken
+  detailTarget.value = row
   detail.value = null
   detailError.value = ''
   detailLoading.value = true
   detailOpen.value = true
   try {
-    const log = await getJobLogById(row.id, { showErrorMessage: false })
+    const log = await getJobLogById(row.id, QUIET)
     if (token !== detailToken || !detailOpen.value) return
     detail.value = log
   } catch (error) {
@@ -389,9 +307,19 @@ async function openDetail(row: ScheduleJobLog) {
   }
 }
 
+function onDetailOpen(open: boolean) {
+  if (open) return
+  closeDetail()
+}
+
 function closeDetail() {
   detailToken += 1
   detailOpen.value = false
+}
+
+function retryDetail() {
+  const row = detailTarget.value
+  if (row) void openDetail(row)
 }
 
 function openClean() {
@@ -401,13 +329,6 @@ function openClean() {
   cleanOpen.value = true
 }
 
-function openRetain() {
-  if (retaining.value) return
-  retainToken += 1
-  retainError.value = ''
-  retainOpen.value = true
-}
-
 function onCleanOpen(open: boolean) {
   if (open) return
   cleanOpen.value = false
@@ -415,32 +336,38 @@ function onCleanOpen(open: boolean) {
   cleaning.value = false
 }
 
-function onRetainOpen(open: boolean) {
-  if (open) return
-  retainOpen.value = false
-  retainToken += 1
-  retaining.value = false
-}
-
 async function confirmClean() {
   const token = cleanToken
   cleaning.value = true
   cleanError.value = ''
   try {
-    await cleanJobLogs({ showErrorMessage: false })
+    await cleanJobLogs(QUIET)
     if (token !== cleanToken) {
-      await loadLogs()
+      await loadLogPage()
       return
     }
     cleanOpen.value = false
-    await loadLogs()
+    await loadLogPage()
   } catch (error) {
     const message = failureMessage(error, '清空日志失败，请稍后重试')
     if (token === cleanToken) cleanError.value = message
-    else logError.value = message
   } finally {
     if (token === cleanToken) cleaning.value = false
   }
+}
+
+function openRetain() {
+  if (retaining.value) return
+  retainToken += 1
+  retainError.value = ''
+  retainOpen.value = true
+}
+
+function onRetainOpen(open: boolean) {
+  if (open) return
+  retainOpen.value = false
+  retainToken += 1
+  retaining.value = false
 }
 
 async function confirmRetain() {
@@ -453,30 +380,43 @@ async function confirmRetain() {
   retaining.value = true
   retainError.value = ''
   try {
-    const count = await cleanJobLogsBefore(Number(retainDays.value), { showErrorMessage: false })
+    const count = await cleanJobLogsBefore(Number(retainDays.value), QUIET)
     if (token !== retainToken) {
-      await loadLogs()
+      await loadLogPage()
       logNotice.value = `已删除 ${count ?? 0} 条较早的日志`
       return
     }
     retainOpen.value = false
-    await loadLogs()
+    await loadLogPage()
     logNotice.value = `已删除 ${count ?? 0} 条较早的日志`
   } catch (error) {
     const failure = failureMessage(error, '清理日志失败，请稍后重试')
     if (token === retainToken) retainError.value = failure
-    else logError.value = failure
   } finally {
     if (token === retainToken) retaining.value = false
   }
 }
 
+watch(rows, (items) => {
+  const current = selectedLogJob.value
+  if (!current) return
+  const next = items.find((row) => row.id === current.id)
+  if (next) selectedLogJob.value = next
+})
+
 watch(
   () => selectedLogJob.value?.id ?? null,
   (id, previous) => {
     if (id === previous) return
-    logPageIndex.value = 0
-    void loadLogs()
+    logSuccess.value = ''
+    appliedLogSuccess.value = ''
+    logNotice.value = ''
+    if (!id) {
+      logRows.value = []
+      logTotal.value = 0
+      return
+    }
+    void searchLogPage()
   },
 )
 
@@ -486,309 +426,343 @@ onMounted(() => {
 </script>
 
 <template>
-  <section class="flex flex-col gap-8">
-    <div class="flex flex-col gap-4">
-      <header class="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 class="text-lg font-medium">定时任务</h1>
-          <p class="text-muted-foreground mt-1 text-sm">
-            按名称、分组和 Bean 查找。分组按完整名称匹配。停用后不会按 Cron 执行。
-          </p>
-        </div>
-        <Button v-if="can('schedule:job:add')" type="button" @click="openCreate">新增任务</Button>
-      </header>
+  <section class="flex flex-col gap-6">
+    <ProTable
+      :columns="JOB_DATA_COLUMNS"
+      :rows="rows"
+      :total="total"
+      :page-index="pageIndex"
+      :page-size="pageSize"
+      :loading="loading"
+      :error-message="errorMessage"
+      :selected-ids="selectedIds"
+      selection-unit="个"
+      :row-label="rowLabel"
+      :cell-class="jobCellClass"
+      @update:page-index="changePage"
+      @update:page-size="changePageSize"
+      @toggle-row="toggleSelected"
+      @toggle-page="togglePage"
+      @retry="load()"
+    >
+      <template #filters>
+        <form class="flex flex-wrap items-center gap-x-4 gap-y-3" @submit.prevent="searchJobs()">
+          <Field orientation="horizontal" class="w-auto">
+            <FieldLabel
+              for="filter-job-name"
+              class="w-20 shrink-0 whitespace-nowrap font-normal text-muted-foreground"
+              >任务名称</FieldLabel
+            >
+            <Input
+              id="filter-job-name"
+              v-model="jobName"
+              name="jobName"
+              placeholder="输入任务名称"
+              class="h-9 w-40"
+            />
+          </Field>
+          <Field orientation="horizontal" class="w-auto">
+            <FieldLabel
+              for="filter-job-group"
+              class="w-20 shrink-0 whitespace-nowrap font-normal text-muted-foreground"
+              >任务分组</FieldLabel
+            >
+            <Input
+              id="filter-job-group"
+              v-model="jobGroup"
+              name="jobGroup"
+              placeholder="输入任务分组"
+              class="h-9 w-32"
+            />
+          </Field>
+          <Field orientation="horizontal" class="w-auto">
+            <FieldLabel
+              for="filter-job-bean"
+              class="w-20 shrink-0 whitespace-nowrap font-normal text-muted-foreground"
+              >Bean 名称</FieldLabel
+            >
+            <Input
+              id="filter-job-bean"
+              v-model="beanName"
+              name="beanName"
+              placeholder="输入 Bean 名称"
+              class="h-9 w-40"
+            />
+          </Field>
+          <Field orientation="horizontal" class="w-auto">
+            <FieldLabel
+              for="filter-job-enabled"
+              class="w-8 shrink-0 whitespace-nowrap font-normal text-muted-foreground"
+              >状态</FieldLabel
+            >
+            <SingleSelect
+              id="filter-job-enabled"
+              :model-value="enabled"
+              :options="EnabledFilterOptions"
+              placeholder="全部"
+              size="lg"
+              searchable
+              clearable
+              class="w-36"
+              @update:model-value="setEnabledFilter"
+            />
+          </Field>
+          <div class="flex items-center gap-2">
+            <Button type="submit" :disabled="loading">
+              <Search data-icon="inline-start" />
+              查询
+            </Button>
+            <Button type="button" variant="ghost" :disabled="loading" @click="resetJobFilters()">
+              <RotateCcw data-icon="inline-start" />
+              重置
+            </Button>
+          </div>
+        </form>
+      </template>
 
-      <form class="flex flex-wrap items-end gap-3" @submit.prevent="search">
-        <Field class="w-40">
-          <FieldLabel for="filter-job-name">任务名称</FieldLabel>
-          <Input id="filter-job-name" v-model="jobName" name="jobName" />
-        </Field>
-        <Field class="w-36">
-          <FieldLabel for="filter-job-group">任务分组</FieldLabel>
-          <Input id="filter-job-group" v-model="jobGroup" name="jobGroup" />
-        </Field>
-        <Field class="w-40">
-          <FieldLabel for="filter-job-bean">Bean 名称</FieldLabel>
-          <Input id="filter-job-bean" v-model="beanName" name="beanName" />
-        </Field>
-        <Field class="w-32">
-          <FieldLabel for="filter-job-enabled">状态</FieldLabel>
-          <select
-            id="filter-job-enabled"
-            v-model="enabled"
-            class="border-input bg-input/20 h-7 w-full rounded-md border px-2 text-sm outline-none focus-visible:ring-2"
-          >
-            <option value="">全部</option>
-            <option value="true">启用</option>
-            <option value="false">停用</option>
-          </select>
-        </Field>
-        <Button type="submit" :disabled="loading">查询</Button>
-      </form>
-
-      <div class="flex flex-wrap items-center justify-between gap-2">
-        <p class="text-muted-foreground text-sm">
-          {{ loading ? '正在加载' : `共 ${total} 个任务` }}
-        </p>
+      <template #actions>
+        <Button v-if="can('schedule:job:add')" type="button" @click="openCreate">
+          <Plus data-icon="inline-start" />
+          新增任务
+        </Button>
         <Button
           v-if="can('schedule:job:remove')"
           type="button"
-          variant="destructive"
+          variant="outline"
           :disabled="selectedIds.length === 0 || deleting"
           @click="openDelete"
         >
+          <Trash2 data-icon="inline-start" />
           删除所选
+          <span v-if="selectedIds.length > 0" class="text-muted-foreground">
+            {{ selectedIds.length }}
+          </span>
         </Button>
-      </div>
+      </template>
 
-      <p v-if="loadError" role="alert" class="text-destructive text-sm">
-        {{ loadError }}
-        <Button type="button" variant="outline" size="sm" class="ml-2" @click="load()">重试</Button>
-      </p>
+      <template #empty="{ errorMessage: loadError }">
+        <Empty>
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <CalendarClock />
+            </EmptyMedia>
+            <EmptyTitle>
+              {{ loadError ? '这次没有加载到定时任务' : '没有符合条件的定时任务' }}
+            </EmptyTitle>
+            <EmptyDescription>
+              {{
+                loadError
+                  ? '稍后重试，或调整筛选条件后再查询。'
+                  : '换个关键字试试，或新增一个任务。'
+              }}
+            </EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            <Button
+              v-if="can('schedule:job:add') && !loadError"
+              type="button"
+              variant="outline"
+              size="sm"
+              @click="openCreate"
+            >
+              新增任务
+            </Button>
+          </EmptyContent>
+        </Empty>
+      </template>
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead scope="col">
-              <input
-                type="checkbox"
-                aria-label="选择当前页任务"
-                :checked="allSelected"
-                :disabled="rows.length === 0"
-                @change="togglePage"
-              />
-            </TableHead>
-            <TableHead scope="col">任务名称</TableHead>
-            <TableHead scope="col">分组</TableHead>
-            <TableHead scope="col">调用目标</TableHead>
-            <TableHead scope="col">Cron</TableHead>
-            <TableHead scope="col">状态</TableHead>
-            <TableHead scope="col">操作</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          <TableEmpty v-if="!loading && rows.length === 0" :colspan="7">
-            {{ loadError ? '这次没有加载到定时任务。' : '没有符合条件的定时任务。' }}
-          </TableEmpty>
-          <TableRow v-for="row in rows" :key="row.id">
-            <TableCell>
-              <input
-                type="checkbox"
-                :aria-label="`选择 ${row.jobName}`"
-                :checked="selectedIds.includes(row.id)"
-                @change="toggleRow(row.id, $event)"
-              />
-            </TableCell>
-            <TableCell>{{ row.jobName }}</TableCell>
-            <TableCell>{{ row.jobGroup }}</TableCell>
-            <TableCell class="max-w-48 truncate">{{ row.beanName }}.{{ row.methodName }}</TableCell>
-            <TableCell class="max-w-40 truncate">{{ row.cronExpression }}</TableCell>
-            <TableCell>
-              <Switch
-                v-if="can('schedule:job:status')"
-                :model-value="row.enabled"
-                :disabled="statusId === row.id"
-                :aria-label="`${row.jobName} 的状态`"
-                @update:model-value="changeStatus(row, Boolean($event))"
-              />
-              <span v-else>{{ row.enabled ? '启用' : '停用' }}</span>
-            </TableCell>
-            <TableCell>
-              <div class="flex flex-wrap gap-2">
-                <Button
-                  v-if="can('schedule:job:edit')"
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  @click="openEdit(row)"
-                >
-                  编辑
-                </Button>
-                <Button
-                  v-if="can('schedule:job:trigger')"
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  :disabled="triggering"
-                  @click="openTrigger(row)"
-                >
-                  执行
-                </Button>
-                <Button
-                  v-if="can('schedule:job-log:list')"
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  @click="openLogs(row)"
-                >
-                  日志
-                </Button>
-              </div>
-            </TableCell>
-          </TableRow>
-        </TableBody>
-      </Table>
+      <template #cell-target="{ row }">
+        <span :class="jobCellClass('target')" :title="`${row.beanName}.${row.methodName}`">
+          {{ row.beanName }}.{{ row.methodName }}
+        </span>
+      </template>
 
-      <div class="flex flex-wrap items-center justify-between gap-3">
-        <Field class="w-28">
-          <FieldLabel for="job-page-size">每页</FieldLabel>
-          <select
-            id="job-page-size"
-            class="border-input bg-input/20 h-7 w-full rounded-md border px-2 text-sm outline-none focus-visible:ring-2"
-            :value="pageSize"
-            @change="changePageSize"
-          >
-            <option v-for="size in PAGE_SIZES" :key="size" :value="size">{{ size }}</option>
-          </select>
-        </Field>
-        <div class="flex items-center gap-2">
+      <template #cell-cronExpression="{ row }">
+        <span :class="jobCellClass('cronExpression')" :title="row.cronExpression">
+          {{ row.cronExpression }}
+        </span>
+      </template>
+
+      <template #cell-enabled="{ row }">
+        <Switch
+          v-if="can('schedule:job:status')"
+          :model-value="row.enabled"
+          :disabled="statusPendingIds.has(row.id)"
+          :aria-label="`${row.jobName} 的状态`"
+          @update:model-value="changeStatus(row.id, Boolean($event))"
+        />
+        <Badge v-else :variant="row.enabled ? 'default' : 'secondary'" class="font-normal">
+          {{ row.enabled ? '启用' : '停用' }}
+        </Badge>
+      </template>
+
+      <template #cell-actions="{ row }">
+        <div class="flex min-w-40 flex-nowrap gap-1">
           <Button
+            v-if="can('schedule:job:edit')"
             type="button"
-            variant="outline"
-            :disabled="pageIndex <= 0 || loading"
-            @click="changePage(pageIndex - 1)"
+            variant="ghost"
+            size="sm"
+            @click="openEdit(row)"
           >
-            上一页
+            编辑
           </Button>
-          <span class="text-sm">{{ pageIndex + 1 }} / {{ pageCount }}</span>
           <Button
+            v-if="can('schedule:job:trigger')"
             type="button"
-            variant="outline"
-            :disabled="pageIndex + 1 >= pageCount || loading"
-            @click="changePage(pageIndex + 1)"
+            variant="ghost"
+            size="sm"
+            :disabled="triggering"
+            @click="openTrigger(row)"
           >
-            下一页
+            执行
+          </Button>
+          <Button
+            v-if="can('schedule:job-log:list')"
+            type="button"
+            variant="ghost"
+            size="sm"
+            @click="openLogs(row)"
+          >
+            日志
           </Button>
         </div>
-      </div>
-    </div>
+      </template>
+    </ProTable>
 
-    <div v-if="selectedLogJob" class="flex flex-col gap-4">
-      <header class="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h2 class="text-base font-medium">{{ selectedLogJob.jobName }} 的执行日志</h2>
-          <p class="text-muted-foreground mt-1 text-sm">
-            只显示这个任务的记录。清空会删除全部任务的日志。
-          </p>
+    <ProTable
+      v-if="selectedLogJob"
+      :columns="JOB_LOG_COLUMNS"
+      :rows="logRows"
+      :total="logTotal"
+      :page-index="logPageIndex"
+      :page-size="logPageSize"
+      :loading="logLoading"
+      :error-message="logError"
+      :selectable="false"
+      :row-label="logRowLabel"
+      :cell-class="jobLogCellClass"
+      @update:page-index="changeLogPage"
+      @update:page-size="changeLogPageSize"
+      @retry="loadLogPage()"
+    >
+      <template #caption>
+        <div class="flex flex-col">
+          <span class="text-sm font-medium">{{ selectedLogJob.jobName }} 的执行日志</span>
+          <span class="text-muted-foreground text-xs">
+            只显示这个任务的记录；清空会删除全部任务的日志。
+          </span>
         </div>
-        <div class="flex flex-wrap gap-2">
-          <Button
-            v-if="can('schedule:job-log:clean')"
-            type="button"
-            variant="outline"
-            :disabled="retaining"
-            @click="openRetain"
-          >
-            清理较早日志
-          </Button>
-          <Button
-            v-if="can('schedule:job-log:clean')"
-            type="button"
-            variant="destructive"
-            :disabled="cleaning"
-            @click="openClean"
-          >
-            清空全部日志
-          </Button>
-        </div>
-      </header>
+      </template>
 
-      <form class="flex flex-wrap items-end gap-3" @submit.prevent="searchLogs">
-        <Field class="w-32">
-          <FieldLabel for="filter-log-success">结果</FieldLabel>
-          <select
-            id="filter-log-success"
-            v-model="logSuccess"
-            class="border-input bg-input/20 h-7 w-full rounded-md border px-2 text-sm outline-none focus-visible:ring-2"
-          >
-            <option value="">全部</option>
-            <option value="true">成功</option>
-            <option value="false">失败</option>
-          </select>
-        </Field>
-        <Button type="submit" :disabled="logLoading">查询</Button>
-      </form>
+      <template #filters>
+        <form class="flex flex-wrap items-center gap-x-4 gap-y-3" @submit.prevent="searchLogs()">
+          <Field orientation="horizontal" class="w-auto">
+            <FieldLabel
+              for="filter-log-success"
+              class="w-8 shrink-0 whitespace-nowrap font-normal text-muted-foreground"
+              >结果</FieldLabel
+            >
+            <SingleSelect
+              id="filter-log-success"
+              :model-value="logSuccess"
+              :options="JOB_LOG_RESULT_OPTIONS"
+              placeholder="全部"
+              size="lg"
+              searchable
+              clearable
+              class="w-36"
+              @update:model-value="setLogSuccessFilter"
+            />
+          </Field>
+          <div class="flex items-center gap-2">
+            <Button type="submit" :disabled="logLoading">
+              <Search data-icon="inline-start" />
+              查询
+            </Button>
+            <Button type="button" variant="ghost" :disabled="logLoading" @click="resetLogFilters()">
+              <RotateCcw data-icon="inline-start" />
+              重置
+            </Button>
+          </div>
+          <p v-if="logNotice" class="text-muted-foreground w-full text-sm">{{ logNotice }}</p>
+        </form>
+      </template>
 
-      <p class="text-muted-foreground text-sm">
-        {{ logLoading ? '正在加载' : `共 ${logTotal} 条日志` }}
-      </p>
-      <p v-if="logNotice" class="text-muted-foreground text-sm">{{ logNotice }}</p>
-      <p v-if="logError" role="alert" class="text-destructive text-sm">
-        {{ logError }}
-        <Button type="button" variant="outline" size="sm" class="ml-2" @click="loadLogs()"
-          >重试</Button
+      <template #actions>
+        <Button
+          v-if="can('schedule:job-log:clean')"
+          type="button"
+          variant="outline"
+          :disabled="retaining"
+          @click="openRetain"
         >
-      </p>
+          清理较早日志
+        </Button>
+        <Button
+          v-if="can('schedule:job-log:clean')"
+          type="button"
+          variant="destructive"
+          :disabled="cleaning"
+          @click="openClean"
+        >
+          清空全部日志
+        </Button>
+      </template>
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead scope="col">开始时间</TableHead>
-            <TableHead scope="col">结果</TableHead>
-            <TableHead scope="col">耗时</TableHead>
-            <TableHead scope="col">说明</TableHead>
-            <TableHead scope="col">操作</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          <TableEmpty v-if="!logLoading && logRows.length === 0" :colspan="5">
-            {{ logError ? '这次没有加载到执行日志。' : '没有符合条件的执行日志。' }}
-          </TableEmpty>
-          <TableRow v-for="log in logRows" :key="log.id">
-            <TableCell>{{ formatDateTime(log.startTime) }}</TableCell>
-            <TableCell>{{ log.success ? '成功' : '失败' }}</TableCell>
-            <TableCell>{{ log.costTime ?? 0 }} 毫秒</TableCell>
-            <TableCell class="max-w-64 truncate">{{
-              log.success ? log.result : log.errorMsg
-            }}</TableCell>
-            <TableCell>
-              <Button
-                v-if="can('schedule:job-log:query')"
-                type="button"
-                variant="outline"
-                size="sm"
-                @click="openDetail(log)"
-              >
-                详情
-              </Button>
-            </TableCell>
-          </TableRow>
-        </TableBody>
-      </Table>
+      <template #empty="{ errorMessage: loadError }">
+        <Empty>
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <ScrollText />
+            </EmptyMedia>
+            <EmptyTitle>
+              {{ loadError ? '这次没有加载到执行日志' : '这个任务还没有执行日志' }}
+            </EmptyTitle>
+            <EmptyDescription>
+              {{ loadError ? '稍后重试，或调整筛选条件后再查询。' : '执行一次任务后再回来看。' }}
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      </template>
 
-      <div class="flex flex-wrap items-center justify-between gap-3">
-        <Field class="w-28">
-          <FieldLabel for="log-page-size">每页</FieldLabel>
-          <select
-            id="log-page-size"
-            class="border-input bg-input/20 h-7 w-full rounded-md border px-2 text-sm outline-none focus-visible:ring-2"
-            :value="logPageSize"
-            @change="changeLogPageSize"
-          >
-            <option v-for="size in PAGE_SIZES" :key="size" :value="size">{{ size }}</option>
-          </select>
-        </Field>
-        <div class="flex items-center gap-2">
+      <template #cell-startTime="{ row }">
+        <span :class="jobLogCellClass('startTime')">{{ formatDateTime(row.startTime) }}</span>
+      </template>
+
+      <template #cell-success="{ row }">
+        <Badge :variant="row.success ? 'default' : 'destructive'" class="font-normal">
+          {{ row.success ? '成功' : '失败' }}
+        </Badge>
+      </template>
+
+      <template #cell-costTime="{ row }">
+        <span :class="jobLogCellClass('costTime')">{{ row.costTime ?? 0 }} 毫秒</span>
+      </template>
+
+      <template #cell-result="{ row }">
+        <span
+          :class="jobLogCellClass('result')"
+          :title="row.success ? (row.result ?? '') : (row.errorMsg ?? '')"
+        >
+          {{ row.success ? row.result || '没有返回内容' : row.errorMsg || '没有错误说明' }}
+        </span>
+      </template>
+
+      <template #cell-actions="{ row }">
+        <div class="flex min-w-16 flex-nowrap gap-1">
           <Button
+            v-if="can('schedule:job-log:query')"
             type="button"
-            variant="outline"
-            :disabled="logPageIndex <= 0 || logLoading"
-            @click="changeLogPage(logPageIndex - 1)"
+            variant="ghost"
+            size="sm"
+            @click="openDetail(row)"
           >
-            上一页
-          </Button>
-          <span class="text-sm">{{ logPageIndex + 1 }} / {{ logPageCount }}</span>
-          <Button
-            type="button"
-            variant="outline"
-            :disabled="logPageIndex + 1 >= logPageCount || logLoading"
-            @click="changeLogPage(logPageIndex + 1)"
-          >
-            下一页
+            详情
           </Button>
         </div>
-      </div>
-    </div>
+      </template>
+    </ProTable>
 
     <JobEditor
       v-model:open="editorOpen"
@@ -797,20 +771,20 @@ onMounted(() => {
       @saved="load()"
     />
 
-    <AlertDialog :open="deleteOpen" @update:open="onDeleteOpen">
+    <AlertDialog :open="deleteOpen" @update:open="setDeleteOpen">
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>删除定时任务</AlertDialogTitle>
-          <AlertDialogDescription
-            >将删除 {{ selectedIds.length }} 个任务，并停止它们的后续调度。</AlertDialogDescription
-          >
+          <AlertDialogDescription>
+            将删除 {{ selectedIds.length }} 个任务，并停止它们的后续调度。
+            <span v-if="deleteError" class="text-destructive mt-2 block">{{ deleteError }}</span>
+          </AlertDialogDescription>
         </AlertDialogHeader>
-        <p v-if="deleteError" role="alert" class="text-destructive text-sm">{{ deleteError }}</p>
         <AlertDialogFooter>
           <AlertDialogCancel :disabled="deleting">取消</AlertDialogCancel>
           <Button type="button" variant="destructive" :disabled="deleting" @click="confirmDelete">
             <Spinner v-if="deleting" />
-            {{ deleting ? '正在删除' : '删除' }}
+            删除
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -822,14 +796,14 @@ onMounted(() => {
           <AlertDialogTitle>立即执行</AlertDialogTitle>
           <AlertDialogDescription>
             将立即执行 {{ triggerJobRow?.jobName }}。停用的任务也可以手动执行。
+            <span v-if="triggerError" class="text-destructive mt-2 block">{{ triggerError }}</span>
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <p v-if="triggerError" role="alert" class="text-destructive text-sm">{{ triggerError }}</p>
         <AlertDialogFooter>
           <AlertDialogCancel :disabled="triggering">取消</AlertDialogCancel>
           <Button type="button" :disabled="triggering" @click="confirmTrigger">
             <Spinner v-if="triggering" />
-            {{ triggering ? '正在执行' : '执行' }}
+            执行
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -839,16 +813,16 @@ onMounted(() => {
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>清空全部日志</AlertDialogTitle>
-          <AlertDialogDescription
-            >将删除所有任务的执行日志，不能只清空当前任务。</AlertDialogDescription
-          >
+          <AlertDialogDescription>
+            将删除所有任务的执行日志，不能只清空当前任务。
+            <span v-if="cleanError" class="text-destructive mt-2 block">{{ cleanError }}</span>
+          </AlertDialogDescription>
         </AlertDialogHeader>
-        <p v-if="cleanError" role="alert" class="text-destructive text-sm">{{ cleanError }}</p>
         <AlertDialogFooter>
           <AlertDialogCancel :disabled="cleaning">取消</AlertDialogCancel>
           <Button type="button" variant="destructive" :disabled="cleaning" @click="confirmClean">
             <Spinner v-if="cleaning" />
-            {{ cleaning ? '正在清空' : '清空' }}
+            清空
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -858,7 +832,10 @@ onMounted(() => {
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>清理较早日志</AlertDialogTitle>
-          <AlertDialogDescription>将删除全部任务里早于保留天数的执行日志。</AlertDialogDescription>
+          <AlertDialogDescription>
+            将删除全部任务里早于保留天数的执行日志。
+            <span v-if="retainError" class="text-destructive mt-2 block">{{ retainError }}</span>
+          </AlertDialogDescription>
         </AlertDialogHeader>
         <Field>
           <FieldLabel for="job-retain-days">保留天数</FieldLabel>
@@ -869,43 +846,66 @@ onMounted(() => {
             :disabled="retaining"
           />
         </Field>
-        <p v-if="retainError" role="alert" class="text-destructive text-sm">{{ retainError }}</p>
         <AlertDialogFooter>
           <AlertDialogCancel :disabled="retaining">取消</AlertDialogCancel>
           <Button type="button" variant="destructive" :disabled="retaining" @click="confirmRetain">
             <Spinner v-if="retaining" />
-            {{ retaining ? '正在清理' : '清理' }}
+            清理
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
 
-    <Dialog :open="detailOpen" @update:open="detailOpen = $event">
-      <DialogContent class="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>执行详情</DialogTitle>
-          <DialogDescription>
-            {{ detail ? `${detail.beanName}.${detail.methodName}` : '正在读取这条日志' }}
-          </DialogDescription>
-        </DialogHeader>
-        <p v-if="detailLoading" class="text-muted-foreground flex items-center gap-2 text-sm">
-          <Spinner />
-          正在读取
-        </p>
-        <div v-else-if="detail" class="flex flex-col gap-2 text-sm">
-          <p>结果 {{ detail.success ? '成功' : '失败' }}，耗时 {{ detail.costTime ?? 0 }} 毫秒</p>
-          <p>开始 {{ formatDateTime(detail.startTime) }}</p>
-          <p class="break-words">
+    <FormDialog
+      :open="detailOpen"
+      title="执行详情"
+      :description="detail ? `${detail.beanName}.${detail.methodName}` : '正在读取这条日志'"
+      size="lg"
+      :error="detailError"
+      @update:open="onDetailOpen"
+      @submit="closeDetail"
+    >
+      <p
+        v-if="detailLoading"
+        class="text-muted-foreground flex min-h-32 items-center justify-center gap-2 text-sm"
+      >
+        <Spinner />
+        正在读取
+      </p>
+      <div v-else-if="detail" class="flex flex-col gap-4 text-sm">
+        <div class="grid gap-3 sm:grid-cols-2">
+          <div>
+            <p class="text-muted-foreground text-xs">结果</p>
+            <p>{{ detail.success ? '成功' : '失败' }}</p>
+          </div>
+          <div>
+            <p class="text-muted-foreground text-xs">耗时</p>
+            <p class="tabular-nums">{{ detail.costTime ?? 0 }} 毫秒</p>
+          </div>
+          <div class="sm:col-span-2">
+            <p class="text-muted-foreground text-xs">开始时间</p>
+            <p class="tabular-nums">{{ formatDateTime(detail.startTime) }}</p>
+          </div>
+        </div>
+        <div>
+          <p class="text-muted-foreground text-xs">说明</p>
+          <p class="break-words whitespace-pre-wrap">
             {{
               detail.success ? detail.result || '没有返回内容' : detail.errorMsg || '没有错误说明'
             }}
           </p>
         </div>
-        <p v-if="detailError" role="alert" class="text-destructive text-sm">{{ detailError }}</p>
-        <DialogFooter>
-          <Button type="button" variant="outline" @click="closeDetail">关闭</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      </div>
+      <div v-else class="flex min-h-32 flex-col items-center justify-center gap-2 text-center">
+        <p class="text-sm font-medium">没有读取到日志详情</p>
+        <Button type="button" variant="outline" size="sm" @click="retryDetail">重试</Button>
+      </div>
+
+      <template #footer>
+        <Button type="button" variant="outline" class="w-full sm:w-auto" @click="closeDetail">
+          关闭
+        </Button>
+      </template>
+    </FormDialog>
   </section>
 </template>
