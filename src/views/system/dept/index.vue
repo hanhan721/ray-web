@@ -7,7 +7,7 @@ import { useDeleteMany } from '@/composables/useDeleteMany'
 import { useRowStatus } from '@/composables/useRowStatus'
 import { useSelection } from '@/composables/useSelection'
 import { QUIET, failureMessage } from '@/utils/failure'
-import RayTable from '@/components/common/RayTable.vue'
+import RayTreeTable from '@/components/common/RayTreeTable.vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
@@ -35,7 +35,6 @@ import DeptEditor from './DeptEditor.vue'
 import {
   DEPT_DATA_COLUMNS,
   deptCellClass,
-  filterDeptRows,
   flattenDepts,
   toDeptWrite,
   type DeptRow,
@@ -52,8 +51,20 @@ const editorOpen = shallowRef(false)
 const editorDept = shallowRef<DeptRow | null>(null)
 let generation = 0
 
-const { selectedIds, clearSelection, toggleSelected, toggleAll } = useSelection<DeptRow>()
-const visibleRows = computed(() => filterDeptRows(rows.value, name.value))
+const { selectedIds, clearSelection } = useSelection<DeptRow>()
+type TreeRow = DeptRow & { children: TreeRow[] }
+const treeRows = computed(() => {
+  const nodes = rows.value.map(row => ({ ...row, children: [] as TreeRow[] }))
+  const byId = new Map(nodes.map(node => [node.id, node]))
+  const roots: TreeRow[] = []
+  for (const node of nodes) {
+    const parent = byId.get(node.parentId)
+    if (parent) parent.children.push(node)
+    else roots.push(node)
+  }
+  return roots
+})
+const matchDept = computed(() => name.value.trim() ? (row: TreeRow) => row.deptName.includes(name.value.trim()) : undefined)
 const rowLabel = (row: DeptRow) => row.deptName
 
 const {
@@ -123,21 +134,20 @@ onMounted(() => {
 </script>
 
 <template>
-  <RayTable
-    :paginated="false"
+  <RayTreeTable
     :columns="DEPT_DATA_COLUMNS"
-    :rows="visibleRows"
-    :total="visibleRows.length"
-    :page-index="0"
-    :page-size="visibleRows.length"
+    :rows="treeRows"
+    tree-column="deptName"
+    selection-mode="cascade"
+    :row-key="(row) => row.id"
+    :children="(row) => row.children"
+    :match="matchDept"
     :loading="loading"
     :error-message="errorMessage"
     :selected-ids="selectedIds"
-    selection-unit="个"
     :row-label="rowLabel"
     :cell-class="deptCellClass"
-    @toggle-row="toggleSelected"
-    @toggle-page="toggleAll(visibleRows, $event)"
+    @update:selected-ids="selectedIds = $event"
     @retry="load()"
   >
     <template #filters>
@@ -167,7 +177,7 @@ onMounted(() => {
           </Button>
         </div>
         <p class="text-muted-foreground w-full text-xs">
-          按名称在已加载的部门树里筛选；删除上级前要先处理下级和关联用户。
+          按名称在已加载的部门树里筛选；勾选上级会同时勾选所有下级，包括隐藏的部门。
         </p>
       </form>
     </template>
@@ -219,16 +229,6 @@ onMounted(() => {
       </Empty>
     </template>
 
-    <template #cell-deptName="{ row }">
-      <span
-        class="block max-w-72 truncate font-medium text-foreground"
-        :style="{ paddingLeft: `${row.depth * 16}px` }"
-        :title="row.deptName"
-      >
-        {{ row.deptName }}
-      </span>
-    </template>
-
     <template #cell-enabled="{ row }">
       <Switch
         v-if="can('system:dept:edit')"
@@ -255,7 +255,7 @@ onMounted(() => {
         </Button>
       </div>
     </template>
-  </RayTable>
+  </RayTreeTable>
 
   <DeptEditor
     :open="editorOpen"
