@@ -17,8 +17,8 @@ import { useDeleteMany } from '@/composables/useDeleteMany'
 import { usePagedList } from '@/composables/usePagedList'
 import { useRowStatus } from '@/composables/useRowStatus'
 import { QUIET } from '@/utils/failure'
-import ProTable from '@/components/common/ProTable.vue'
-import SingleSelect from '@/components/common/SingleSelect.vue'
+import RayTable from '@/components/common/RayTable.vue'
+import RaySelect from '@/components/common/RaySelect.vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
@@ -280,7 +280,7 @@ onMounted(() => {
 
 <template>
   <section class="flex flex-col gap-6">
-    <ProTable
+    <RayTable
       :columns="DICT_TYPE_COLUMNS"
       :rows="typeRows"
       :total="typeTotal"
@@ -337,9 +337,9 @@ onMounted(() => {
               class="w-8 shrink-0 whitespace-nowrap font-normal text-muted-foreground"
               >状态</FieldLabel
             >
-            <SingleSelect
+            <RaySelect
               id="filter-dict-enabled"
-              :model-value="typeEnabled"
+              :model-value="typeEnabled || null"
               :options="EnabledFilterOptions"
               placeholder="全部"
               size="lg"
@@ -454,10 +454,10 @@ onMounted(() => {
           </Button>
         </div>
       </template>
-    </ProTable>
+    </RayTable>
 
     <div v-if="selectedType" class="flex flex-col gap-3">
-      <ProTable
+      <RayTable
         :columns="DICT_DATA_COLUMNS"
         :rows="dataRows"
         :total="dataTotal"
@@ -507,9 +507,9 @@ onMounted(() => {
                 class="w-8 shrink-0 whitespace-nowrap font-normal text-muted-foreground"
                 >状态</FieldLabel
               >
-              <SingleSelect
+              <RaySelect
                 id="filter-dict-data-enabled"
-                :model-value="dataEnabled"
+                :model-value="dataEnabled || null"
                 :options="EnabledFilterOptions"
                 placeholder="全部"
                 size="lg"
@@ -618,7 +618,7 @@ onMounted(() => {
             </Button>
           </div>
         </template>
-      </ProTable>
+      </RayTable>
     </div>
   </section>
 

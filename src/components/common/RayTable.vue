@@ -11,7 +11,7 @@ import {
   type RowData,
 } from '@tanstack/vue-table'
 import type { ColumnSettingItem } from '@/components/common/column-settings'
-import DataTableColumnSettings from '@/components/common/DataTableColumnSettings.vue'
+import RayTableColumnSettings from '@/components/common/RayTableColumnSettings.vue'
 import { useColumnConfig } from '@/composables/useColumnConfig'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -427,7 +427,7 @@ function isEmptyValue(value: unknown): boolean {
       </CardFooter>
     </Card>
 
-    <DataTableColumnSettings
+    <RayTableColumnSettings
       v-if="pageKey"
       :open="dialogOpen"
       :columns="columns"

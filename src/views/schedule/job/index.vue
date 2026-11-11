@@ -20,9 +20,9 @@ import { useDeleteMany } from '@/composables/useDeleteMany'
 import { usePagedList } from '@/composables/usePagedList'
 import { useRowStatus } from '@/composables/useRowStatus'
 import { QUIET, failureMessage } from '@/utils/failure'
-import FormDialog from '@/components/common/FormDialog.vue'
-import ProTable from '@/components/common/ProTable.vue'
-import SingleSelect from '@/components/common/SingleSelect.vue'
+import RayFormDialog from '@/components/common/RayFormDialog.vue'
+import RayTable from '@/components/common/RayTable.vue'
+import RaySelect from '@/components/common/RaySelect.vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -427,7 +427,7 @@ onMounted(() => {
 
 <template>
   <section class="flex flex-col gap-6">
-    <ProTable
+    <RayTable
       :columns="JOB_DATA_COLUMNS"
       :rows="rows"
       :total="total"
@@ -495,9 +495,9 @@ onMounted(() => {
               class="w-8 shrink-0 whitespace-nowrap font-normal text-muted-foreground"
               >状态</FieldLabel
             >
-            <SingleSelect
+            <RaySelect
               id="filter-job-enabled"
-              :model-value="enabled"
+              :model-value="enabled || null"
               :options="EnabledFilterOptions"
               placeholder="全部"
               size="lg"
@@ -628,9 +628,9 @@ onMounted(() => {
           </Button>
         </div>
       </template>
-    </ProTable>
+    </RayTable>
 
-    <ProTable
+    <RayTable
       v-if="selectedLogJob"
       :columns="JOB_LOG_COLUMNS"
       :rows="logRows"
@@ -663,9 +663,9 @@ onMounted(() => {
               class="w-8 shrink-0 whitespace-nowrap font-normal text-muted-foreground"
               >结果</FieldLabel
             >
-            <SingleSelect
+            <RaySelect
               id="filter-log-success"
-              :model-value="logSuccess"
+              :model-value="logSuccess || null"
               :options="JOB_LOG_RESULT_OPTIONS"
               placeholder="全部"
               size="lg"
@@ -762,7 +762,7 @@ onMounted(() => {
           </Button>
         </div>
       </template>
-    </ProTable>
+    </RayTable>
 
     <JobEditor
       v-model:open="editorOpen"
@@ -856,7 +856,7 @@ onMounted(() => {
       </AlertDialogContent>
     </AlertDialog>
 
-    <FormDialog
+    <RayFormDialog
       :open="detailOpen"
       title="执行详情"
       :description="detail ? `${detail.beanName}.${detail.methodName}` : '正在读取这条日志'"
@@ -906,6 +906,6 @@ onMounted(() => {
           关闭
         </Button>
       </template>
-    </FormDialog>
+    </RayFormDialog>
   </section>
 </template>

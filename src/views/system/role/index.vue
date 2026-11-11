@@ -7,8 +7,8 @@ import { useSessionStore } from '@/stores/session'
 import { useDeleteMany } from '@/composables/useDeleteMany'
 import { useRowStatus } from '@/composables/useRowStatus'
 import { QUIET } from '@/utils/failure'
-import ProTable from '@/components/common/ProTable.vue'
-import SingleSelect from '@/components/common/SingleSelect.vue'
+import RayTable from '@/components/common/RayTable.vue'
+import RaySelect from '@/components/common/RaySelect.vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
@@ -110,7 +110,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <ProTable
+  <RayTable
     fill
     :columns="ROLE_DATA_COLUMNS"
     :rows="rows"
@@ -166,9 +166,9 @@ onMounted(() => {
             class="w-8 shrink-0 whitespace-nowrap font-normal text-muted-foreground"
             >状态</FieldLabel
           >
-          <SingleSelect
+          <RaySelect
             id="filter-role-enabled"
-            :model-value="enabled"
+            :model-value="enabled || null"
             :options="EnabledFilterOptions"
             placeholder="全部"
             size="lg"
@@ -266,7 +266,7 @@ onMounted(() => {
         </Button>
       </div>
     </template>
-  </ProTable>
+  </RayTable>
 
   <RoleEditor
     :open="editorOpen"

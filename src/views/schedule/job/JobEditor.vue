@@ -4,7 +4,7 @@ import { createJob, updateJob, validateCron, type ScheduleJob } from '@/api/sche
 import { RequestError } from '@/utils/request'
 import { QUIET, failureMessage } from '@/utils/failure'
 import { sameEditorSession } from '@/views/system/user/user-table'
-import FormDialog from '@/components/common/FormDialog.vue'
+import RayFormDialog from '@/components/common/RayFormDialog.vue'
 import { Button } from '@/components/ui/button'
 import { Field, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
@@ -178,7 +178,7 @@ async function onSubmit() {
 </script>
 
 <template>
-  <FormDialog
+  <RayFormDialog
     :open="open"
     :title="creating ? '新增定时任务' : '编辑定时任务'"
     description="同一分组内的任务名称不能重复。方法需要一个字符串参数时才填写参数，留空表示无参数。停用后不会按 Cron 执行。"
@@ -315,5 +315,5 @@ async function onSubmit() {
         {{ saving ? '正在提交' : '提交' }}
       </Button>
     </template>
-  </FormDialog>
+  </RayFormDialog>
 </template>

@@ -5,7 +5,7 @@ import { deleteFiles, uploadFile, uploadFiles, type FileUpload } from '@/api/fil
 import { useSessionStore } from '@/stores/session'
 import { useSelection } from '@/composables/useSelection'
 import { QUIET, failureMessage } from '@/utils/failure'
-import ProTable from '@/components/common/ProTable.vue'
+import RayTable from '@/components/common/RayTable.vue'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
@@ -137,7 +137,7 @@ async function confirmDelete() {
 </script>
 
 <template>
-  <ProTable
+  <RayTable
     :paginated="false"
     :columns="FILE_DATA_COLUMNS"
     :rows="rows"
@@ -241,7 +241,7 @@ async function confirmDelete() {
         </Button>
       </div>
     </template>
-  </ProTable>
+  </RayTable>
 
   <AlertDialog :open="deleteOpen" @update:open="onDeleteOpen">
     <AlertDialogContent>

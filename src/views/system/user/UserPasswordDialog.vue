@@ -2,7 +2,7 @@
 import { shallowRef, useTemplateRef, watch } from 'vue'
 import { resetUserPassword } from '@/api/user'
 import { QUIET, failureMessage } from '@/utils/failure'
-import FormDialog from '@/components/common/FormDialog.vue'
+import RayFormDialog from '@/components/common/RayFormDialog.vue'
 import { Button } from '@/components/ui/button'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
@@ -64,7 +64,7 @@ async function onSubmit() {
 </script>
 
 <template>
-  <FormDialog
+  <RayFormDialog
     :open="open"
     title="重置密码"
     :description="`为 ${username} 设置一个新密码。原密码不会保留。`"
@@ -105,5 +105,5 @@ async function onSubmit() {
         {{ saving ? '正在提交' : '提交' }}
       </Button>
     </template>
-  </FormDialog>
+  </RayFormDialog>
 </template>

@@ -5,7 +5,7 @@ import { getOnlineSessionPage, kickBySessionId, kickByUserId, type OnlineUser } 
 import { useSessionStore } from '@/stores/session'
 import { usePagedList } from '@/composables/usePagedList'
 import { QUIET, failureMessage } from '@/utils/failure'
-import ProTable from '@/components/common/ProTable.vue'
+import RayTable from '@/components/common/RayTable.vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -170,7 +170,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <ProTable
+  <RayTable
     fill
     :selectable="false"
     :columns="ONLINE_DATA_COLUMNS"
@@ -276,7 +276,7 @@ onMounted(() => {
         </Button>
       </div>
     </template>
-  </ProTable>
+  </RayTable>
 
   <AlertDialog :open="kickOpen" @update:open="onKickOpen">
     <AlertDialogContent>

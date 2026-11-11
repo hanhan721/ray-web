@@ -7,7 +7,7 @@ import { useDeleteMany } from '@/composables/useDeleteMany'
 import { useRowStatus } from '@/composables/useRowStatus'
 import { useSelection } from '@/composables/useSelection'
 import { QUIET, failureMessage } from '@/utils/failure'
-import ProTable from '@/components/common/ProTable.vue'
+import RayTable from '@/components/common/RayTable.vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
@@ -123,7 +123,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <ProTable
+  <RayTable
     :paginated="false"
     :columns="DEPT_DATA_COLUMNS"
     :rows="visibleRows"
@@ -255,7 +255,7 @@ onMounted(() => {
         </Button>
       </div>
     </template>
-  </ProTable>
+  </RayTable>
 
   <DeptEditor
     :open="editorOpen"

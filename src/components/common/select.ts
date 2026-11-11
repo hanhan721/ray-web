@@ -1,3 +1,18 @@
+export type SelectValue = string | number
+
+export interface SelectOption<T extends SelectValue = SelectValue> {
+  value: T
+  label: string
+  depth?: number
+  disabled?: boolean
+}
+
+/** 单选以 null 表示未选；多选始终使用数组，并保留选项值的原始类型。 */
+export type SelectModelValue<
+  T extends SelectValue,
+  Multiple extends boolean = false,
+> = Multiple extends true ? T[] : T | null
+
 /**
  * 多选展示时的折叠规则。
  *

@@ -12,7 +12,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 
-type FormDialogSize = 'md' | 'lg' | 'xl'
+type RayFormDialogSize = 'md' | 'lg' | 'xl'
 
 const props = withDefaults(
   defineProps<{
@@ -22,7 +22,7 @@ const props = withDefaults(
     /** 说明只给屏幕阅读器使用，视觉上不占位。 */
     hideDescription?: boolean
     /** md 适合短表单，lg 适合两列表单，xl 适合带长列表的编辑器。 */
-    size?: FormDialogSize
+    size?: RayFormDialogSize
     saving?: boolean
     /** 整体错误；字段级错误仍由页面用 FieldError 展示。 */
     error?: string

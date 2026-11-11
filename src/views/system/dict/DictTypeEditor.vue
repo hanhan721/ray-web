@@ -3,7 +3,7 @@ import { computed, nextTick, shallowRef, useTemplateRef, watch } from 'vue'
 import { createDictType, updateDictType, type DictTypeRecord } from '@/api/dict'
 import { QUIET, failureMessage } from '@/utils/failure'
 import { sameEditorSession } from '@/views/system/user/user-table'
-import FormDialog from '@/components/common/FormDialog.vue'
+import RayFormDialog from '@/components/common/RayFormDialog.vue'
 import { Button } from '@/components/ui/button'
 import { Field, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
@@ -89,7 +89,7 @@ async function onSubmit() {
 </script>
 
 <template>
-  <FormDialog
+  <RayFormDialog
     :open="open"
     :title="creating ? '新增字典类型' : '编辑字典类型'"
     description="修改类型编码后，该类型下的数据会改用新编码。"
@@ -165,5 +165,5 @@ async function onSubmit() {
         {{ saving ? '正在提交' : '提交' }}
       </Button>
     </template>
-  </FormDialog>
+  </RayFormDialog>
 </template>

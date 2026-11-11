@@ -2,8 +2,8 @@
 import { computed, nextTick, shallowRef, useTemplateRef, watch } from 'vue'
 import { createDept, updateDept } from '@/api/dept'
 import { QUIET, failureMessage } from '@/utils/failure'
-import FormDialog from '@/components/common/FormDialog.vue'
-import SingleSelect from '@/components/common/SingleSelect.vue'
+import RayFormDialog from '@/components/common/RayFormDialog.vue'
+import RaySelect from '@/components/common/RaySelect.vue'
 import { Button } from '@/components/ui/button'
 import { Field, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
@@ -132,7 +132,7 @@ async function onSubmit() {
 </script>
 
 <template>
-  <FormDialog
+  <RayFormDialog
     :open="open"
     :title="creating ? '新增部门' : '编辑部门'"
     description="顶级部门的上级留在「无」。不能把部门挂到自己或下级下面。"
@@ -159,15 +159,16 @@ async function onSubmit() {
           </Field>
           <Field>
             <FieldLabel for="dept-parent">上级</FieldLabel>
-            <SingleSelect
+            <RaySelect
               id="dept-parent"
-              v-model="parentId"
+              :model-value="parentId || null"
               :options="parentSelectOptions"
               placeholder="选择上级"
               size="lg"
               searchable
               :disabled="saving"
               class="w-full"
+              @update:model-value="parentId = $event ?? ''"
             />
           </Field>
           <Field>
@@ -240,5 +241,5 @@ async function onSubmit() {
         {{ saving ? '正在提交' : '提交' }}
       </Button>
     </template>
-  </FormDialog>
+  </RayFormDialog>
 </template>

@@ -5,9 +5,8 @@ import { getRoleList, type Role } from '@/api/role'
 import { assignUserDepts, assignUserRoles, createUser, getUserById, updateUser } from '@/api/user'
 import { GenderOptions, type Gender } from '@/types/enums'
 import { QUIET, failureMessage } from '@/utils/failure'
-import FormDialog from '@/components/common/FormDialog.vue'
-import MultiSelect from '@/components/common/MultiSelect.vue'
-import SingleSelect from '@/components/common/SingleSelect.vue'
+import RayFormDialog from '@/components/common/RayFormDialog.vue'
+import RaySelect from '@/components/common/RaySelect.vue'
 import { Button } from '@/components/ui/button'
 import { Field, FieldError, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
@@ -313,7 +312,7 @@ async function onSubmit() {
 </script>
 
 <template>
-  <FormDialog
+  <RayFormDialog
     :open="open"
     :title="creating ? '新增用户' : '编辑用户'"
     description="用户资料编辑"
@@ -384,9 +383,9 @@ async function onSubmit() {
           </Field>
           <Field>
             <FieldLabel for="user-gender">性别</FieldLabel>
-            <SingleSelect
+            <RaySelect
               id="user-gender"
-              :model-value="gender"
+              :model-value="gender || null"
               :options="GenderOptions"
               placeholder="未填写"
               size="lg"
@@ -446,8 +445,9 @@ async function onSubmit() {
         >
           <FieldSet v-if="canAssignRoles" class="gap-2">
             <FieldLegend variant="label" class="mb-0">角色</FieldLegend>
-            <MultiSelect
+            <RaySelect
               v-model="roleIds"
+              multiple
               :options="roleOptions"
               placeholder="选择角色"
               empty-text="没有可分配的角色"
@@ -459,8 +459,9 @@ async function onSubmit() {
 
           <FieldSet v-if="canAssignDepts" class="gap-2">
             <FieldLegend variant="label" class="mb-0">部门</FieldLegend>
-            <MultiSelect
+            <RaySelect
               v-model="deptIds"
+              multiple
               :options="deptOptions"
               placeholder="选择部门"
               empty-text="没有可分配的部门"
@@ -488,5 +489,5 @@ async function onSubmit() {
         {{ saving ? '正在提交' : '提交' }}
       </Button>
     </template>
-  </FormDialog>
+  </RayFormDialog>
 </template>

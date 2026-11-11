@@ -4,7 +4,7 @@ import { getPermissionTree, getRolePermissions, saveRolePermissions } from '@/ap
 import { createRole, getRoleById, updateRole } from '@/api/role'
 import type { PermissionTree } from '@/types/permission'
 import { QUIET, failureMessage } from '@/utils/failure'
-import FormDialog from '@/components/common/FormDialog.vue'
+import RayFormDialog from '@/components/common/RayFormDialog.vue'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Field, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
@@ -235,7 +235,7 @@ async function onSubmit() {
 </script>
 
 <template>
-  <FormDialog
+  <RayFormDialog
     :open="open"
     :title="creating ? '新增角色' : '编辑角色'"
     :description="creating ? '创建后可以再分配权限。' : '资料和权限分开保存。列表按顺序升序。'"
@@ -350,5 +350,5 @@ async function onSubmit() {
         {{ saving ? '正在提交' : '提交' }}
       </Button>
     </template>
-  </FormDialog>
+  </RayFormDialog>
 </template>

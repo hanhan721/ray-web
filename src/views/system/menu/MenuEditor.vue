@@ -4,8 +4,8 @@ import { createPermission, updatePermission } from '@/api/permission'
 import { PermissionTypeOptions, type PermissionType } from '@/types/enums'
 import { QUIET, failureMessage } from '@/utils/failure'
 import { sameEditorSession } from '@/views/system/user/user-table'
-import FormDialog from '@/components/common/FormDialog.vue'
-import SingleSelect from '@/components/common/SingleSelect.vue'
+import RayFormDialog from '@/components/common/RayFormDialog.vue'
+import RaySelect from '@/components/common/RaySelect.vue'
 import { Button } from '@/components/ui/button'
 import { Field, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
@@ -163,7 +163,7 @@ async function onSubmit() {
 </script>
 
 <template>
-  <FormDialog
+  <RayFormDialog
     :open="open"
     :title="creating ? '新增菜单' : '编辑菜单'"
     description="菜单要填写路由，按钮要填写权限标识。已有标识不能清空。编辑按钮，或更改启用、标识后，需要重新登录。"
@@ -190,7 +190,7 @@ async function onSubmit() {
           </Field>
           <Field>
             <FieldLabel for="menu-type">类型</FieldLabel>
-            <SingleSelect
+            <RaySelect
               id="menu-type"
               :model-value="type"
               :options="PermissionTypeOptions"
@@ -203,15 +203,16 @@ async function onSubmit() {
           </Field>
           <Field>
             <FieldLabel for="menu-parent">上级</FieldLabel>
-            <SingleSelect
+            <RaySelect
               id="menu-parent"
-              v-model="parentId"
+              :model-value="parentId || null"
               :options="parentSelectOptions"
               placeholder="选择上级"
               size="lg"
               searchable
               :disabled="saving"
               class="w-full"
+              @update:model-value="parentId = $event ?? ''"
             />
           </Field>
           <Field>
@@ -301,5 +302,5 @@ async function onSubmit() {
         {{ saving ? '正在提交' : '提交' }}
       </Button>
     </template>
-  </FormDialog>
+  </RayFormDialog>
 </template>

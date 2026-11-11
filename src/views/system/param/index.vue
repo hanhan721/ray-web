@@ -2,13 +2,13 @@
 import { Plus, RotateCcw, Search, SlidersHorizontal, Trash2 } from '@lucide/vue'
 import { onMounted, shallowRef } from 'vue'
 import { deleteParams, getParamPage, type SystemParam } from '@/api/param'
-import { ParamTypeOptions } from '@/types/enums'
+import { ParamTypeOptions, type ParamType } from '@/types/enums'
 import { useSessionStore } from '@/stores/session'
 import { useDeleteMany } from '@/composables/useDeleteMany'
 import { usePagedList } from '@/composables/usePagedList'
 import { QUIET } from '@/utils/failure'
-import ProTable from '@/components/common/ProTable.vue'
-import SingleSelect from '@/components/common/SingleSelect.vue'
+import RayTable from '@/components/common/RayTable.vue'
+import RaySelect from '@/components/common/RaySelect.vue'
 import { Button } from '@/components/ui/button'
 import {
   AlertDialog,
@@ -43,7 +43,7 @@ const session = useSessionStore()
 const can = (code: string) => session.can(code)
 
 const bizType = shallowRef('')
-const paramType = shallowRef('')
+const paramType = shallowRef<ParamType | ''>('')
 const editorOpen = shallowRef(false)
 const editorId = shallowRef<number | null>(null)
 
@@ -121,7 +121,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <ProTable
+  <RayTable
     fill
     :columns="PARAM_DATA_COLUMNS"
     :rows="rows"
@@ -147,15 +147,16 @@ onMounted(() => {
             class="w-8 shrink-0 whitespace-nowrap font-normal text-muted-foreground"
             >分类</FieldLabel
           >
-          <SingleSelect
+          <RaySelect
             id="filter-param-biz"
-            v-model="bizType"
+            :model-value="bizType || null"
             :options="PARAM_BIZ_SELECT_OPTIONS"
             placeholder="全部"
             size="lg"
             searchable
             clearable
             class="w-40"
+            @update:model-value="bizType = $event ?? ''"
           />
         </Field>
         <Field orientation="horizontal" class="w-auto">
@@ -164,15 +165,16 @@ onMounted(() => {
             class="w-8 shrink-0 whitespace-nowrap font-normal text-muted-foreground"
             >类型</FieldLabel
           >
-          <SingleSelect
+          <RaySelect
             id="filter-param-type"
-            v-model="paramType"
+            :model-value="paramType || null"
             :options="ParamTypeOptions"
             placeholder="全部"
             size="lg"
             searchable
             clearable
             class="w-36"
+            @update:model-value="paramType = $event ?? ''"
           />
         </Field>
         <div class="flex items-center gap-2">
@@ -264,7 +266,7 @@ onMounted(() => {
         </Button>
       </div>
     </template>
-  </ProTable>
+  </RayTable>
 
   <ParamEditor v-model:open="editorOpen" :param-id="editorId" @saved="onSaved" />
 

@@ -4,8 +4,8 @@ import { createParam, getParamById, updateParam } from '@/api/param'
 import { QUIET, failureMessage } from '@/utils/failure'
 import { ParamTypeOptions, type ParamType } from '@/types/enums'
 import { sameEditorSession } from '@/views/system/user/user-table'
-import FormDialog from '@/components/common/FormDialog.vue'
-import SingleSelect from '@/components/common/SingleSelect.vue'
+import RayFormDialog from '@/components/common/RayFormDialog.vue'
+import RaySelect from '@/components/common/RaySelect.vue'
 import { Button } from '@/components/ui/button'
 import { Field, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
@@ -206,7 +206,7 @@ async function onSubmit() {
 </script>
 
 <template>
-  <FormDialog
+  <RayFormDialog
     :open="open"
     :title="creating ? '新增系统参数' : '编辑系统参数'"
     description="键、类型和分类在创建后不能修改。列表中的加密值显示为 ****，这里读取原文。已填写的描述不能清空。"
@@ -250,7 +250,7 @@ async function onSubmit() {
           </Field>
           <Field>
             <FieldLabel for="param-type">类型</FieldLabel>
-            <SingleSelect
+            <RaySelect
               id="param-type"
               :model-value="paramType"
               :options="typeOptions"
@@ -263,14 +263,15 @@ async function onSubmit() {
           </Field>
           <Field>
             <FieldLabel for="param-biz">分类</FieldLabel>
-            <SingleSelect
+            <RaySelect
               id="param-biz"
-              v-model="bizType"
+              :model-value="bizType || null"
               :options="bizOptions"
               size="lg"
               searchable
               :disabled="saving || loading || !creating"
               class="w-full"
+              @update:model-value="bizType = $event ?? ''"
             />
           </Field>
         </div>
@@ -330,5 +331,5 @@ async function onSubmit() {
         {{ saving ? '正在提交' : '提交' }}
       </Button>
     </template>
-  </FormDialog>
+  </RayFormDialog>
 </template>

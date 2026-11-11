@@ -43,7 +43,7 @@
 ## 组件与代码边界
 
 - Vue 使用 `<script setup lang="ts">`，明确 Props、Emits 与接口数据类型；跨页面共享状态使用 Pinia，页面临时状态留在页面。
-- `src/components/ui/` 存放 shadcn-vue 基础组件源码；`common/` 存放 ProTable、SearchForm 等通用组合；`business/` 存放业务组件；页面专用组件放在页面同级 `components/`。
+- `src/components/ui/` 存放 shadcn-vue 基础组件源码并保留原名；`common/` 存放以 `Ray` 为统一前缀的通用组合，如 RayTable、RaySelect、RayFormDialog、RayTableColumnSettings；`business/` 存放业务组件；页面专用组件放在页面同级 `components/`。
 - 优先通过组合、参数和插槽扩展已有组件；修改公共组件前检查调用方，不为尚未出现的需求设计抽象。
 - API 定义放在 `src/api/`，统一使用 `src/utils/request.ts` 的 Axios 封装；组件不另建请求实例。
 
