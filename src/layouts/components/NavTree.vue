@@ -1,16 +1,18 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
+import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import { ChevronRight } from '@lucide/vue'
 import type { NavNode } from '@/router/menu-routes'
 
-defineProps<{
+const props = defineProps<{
   nodes: NavNode[]
   open: Set<number>
   activeAncestors: Set<number>
   icons: Record<string, Component>
   depth: number
 }>()
+const hasIcons = computed(() => props.nodes.some((node) => node.icon && props.icons[node.icon]))
 const emit = defineEmits<{ toggle: [id: number] }>()
 </script>
 
@@ -22,10 +24,12 @@ const emit = defineEmits<{ toggle: [id: number] }>()
         :to="node.to"
         :title="node.title"
         class="nav-link"
-        :style="{ paddingLeft: `${0.75 + depth * 0.75}rem` }"
+        :style="{ paddingLeft: `${0.75 + depth * 0.625}rem` }"
         exact-active-class="nav-link-active"
       >
-        <component :is="icons[node.icon]" v-if="depth === 0 && node.icon && icons[node.icon]" class="size-4 shrink-0" />
+        <span v-if="hasIcons" class="size-4 shrink-0" aria-hidden="true">
+          <component :is="icons[node.icon]" v-if="node.icon && icons[node.icon]" class="size-4" />
+        </span>
         <span class="flex-1 whitespace-nowrap">{{ node.title }}</span>
       </RouterLink>
       <template v-else>
@@ -33,13 +37,15 @@ const emit = defineEmits<{ toggle: [id: number] }>()
           type="button"
           class="nav-link nav-directory"
           :class="{ 'nav-ancestor': activeAncestors.has(node.id) }"
-          :style="{ paddingLeft: `${0.75 + depth * 0.75}rem`, '--ancestor-strength': `${Math.min(30 + depth * 20, 80)}%` }"
+          :style="{ paddingLeft: `${0.75 + depth * 0.625}rem`, '--ancestor-strength': `${Math.min(30 + depth * 20, 80)}%` }"
           :title="node.title"
           :aria-expanded="open.has(node.id)"
           :aria-controls="`nav-group-${node.id}`"
           @click="emit('toggle', node.id)"
         >
-          <component :is="icons[node.icon]" v-if="depth === 0 && node.icon && icons[node.icon]" class="size-4 shrink-0" />
+          <span v-if="hasIcons" class="size-4 shrink-0" aria-hidden="true">
+            <component :is="icons[node.icon]" v-if="node.icon && icons[node.icon]" class="size-4" />
+          </span>
           <span class="flex-1 whitespace-nowrap">{{ node.title }}</span>
           <ChevronRight class="size-4 shrink-0 transition-transform" :class="{ 'rotate-90': open.has(node.id) }" />
         </button>
