@@ -6,6 +6,8 @@ import { storeToRefs } from 'pinia'
 import { Calendar, FileText, LayoutGrid, List, Settings, Shield, Users } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import ThemeToggle from '@/components/ThemeToggle.vue'
+import NavTree from './components/NavTree.vue'
+import type { NavNode } from '@/router/menu-routes'
 import { removeRouteNames } from '@/router/menu-install'
 import { useSessionStore } from '@/stores/session'
 
@@ -24,6 +26,35 @@ const route = useRoute()
 const session = useSessionStore()
 const { displayName, navigation } = storeToRefs(session)
 const navOpen = shallowRef(false)
+const openGroups = shallowRef<Set<number>>(new Set())
+
+function toggleGroup(id: number) {
+  const next = new Set(openGroups.value)
+  if (next.has(id)) next.delete(id)
+  else next.add(id)
+  openGroups.value = next
+}
+
+function findAncestors(nodes: NavNode[], path: string, parents: number[] = []): number[] | null {
+  for (const node of nodes) {
+    if (node.kind === 'item' && node.to === path) return parents
+    if (node.kind === 'group') {
+      const found = findAncestors(node.items, path, [...parents, node.id])
+      if (found) return found
+    }
+  }
+  return null
+}
+
+watch([navigation, () => route.path], ([nodes, path]) => {
+  const ancestors = findAncestors(nodes, path)
+  if (!ancestors) return
+  const next = new Set(openGroups.value)
+  ancestors.forEach((id) => next.add(id))
+  openGroups.value = next
+}, { immediate: true })
+
+const activeAncestors = computed(() => new Set(findAncestors(navigation.value, route.path) ?? []))
 
 const sectionTitle = computed(() => {
   const matched = [...route.matched]
@@ -43,11 +74,6 @@ watch(
   },
 )
 
-function iconFor(name?: string): Component | null {
-  if (!name) return null
-  return icons[name] ?? null
-}
-
 async function onLogout() {
   const names = await session.logout()
   removeRouteNames(router, names)
@@ -63,7 +89,7 @@ async function onLogout() {
     >
       跳到主要内容
     </a>
-    <aside class="app-sidebar md:min-h-svh md:border-r">
+    <aside class="app-sidebar md:sticky md:top-0 md:flex md:h-svh md:flex-col md:self-start md:border-r">
       <div class="flex items-center justify-between px-5 py-5">
         <RouterLink
           to="/"
@@ -84,50 +110,8 @@ async function onLogout() {
           菜单
         </Button>
       </div>
-      <nav id="app-nav" :class="navOpen ? 'block' : 'hidden md:block'" aria-label="主导航">
-        <ul class="flex flex-col gap-1 px-3 pb-4">
-          <li v-for="node in navigation" :key="`${node.kind}-${node.id}`">
-            <RouterLink
-              v-if="node.kind === 'item'"
-              :to="node.to"
-              class="nav-link"
-              exact-active-class="nav-link-active"
-            >
-              <component
-                :is="iconFor(node.icon)"
-                v-if="iconFor(node.icon)"
-                class="size-4 shrink-0"
-              />
-              <span class="truncate">{{ node.title }}</span>
-            </RouterLink>
-            <div v-else class="pt-2">
-              <p class="nav-heading flex items-center gap-2 px-3 py-2">
-                <component
-                  :is="iconFor(node.icon)"
-                  v-if="iconFor(node.icon)"
-                  class="size-3.5 shrink-0"
-                />
-                <span class="truncate">{{ node.title }}</span>
-              </p>
-              <ul class="flex flex-col gap-0.5">
-                <li v-for="item in node.items" :key="item.id">
-                  <RouterLink
-                    :to="item.to"
-                    class="nav-link"
-                    exact-active-class="nav-link-active"
-                  >
-                    <component
-                      :is="iconFor(item.icon)"
-                      v-if="iconFor(item.icon)"
-                      class="size-4 shrink-0"
-                    />
-                    <span class="truncate">{{ item.title }}</span>
-                  </RouterLink>
-                </li>
-              </ul>
-            </div>
-          </li>
-        </ul>
+      <nav id="app-nav" class="max-h-[calc(100svh-5rem)] overflow-auto md:min-h-0 md:max-h-none md:flex-1" :class="navOpen ? 'block' : 'hidden md:block'" aria-label="主导航">
+        <NavTree class="px-3 pb-4" :nodes="navigation" :open="openGroups" :active-ancestors="activeAncestors" :icons="icons" :depth="0" @toggle="toggleGroup" />
       </nav>
     </aside>
     <div class="flex min-w-0 flex-col">
@@ -157,10 +141,5 @@ async function onLogout() {
 .app-sidebar { background: var(--sidebar); color: var(--sidebar-foreground); border-color: var(--sidebar-border); }
 .brand-mark { display: grid; width: 2rem; height: 2rem; place-items: center; border-radius: 0.55rem; background: var(--sidebar-accent); color: var(--sidebar-primary); font-weight: 700; }
 .brand-subtitle { color: var(--muted-foreground); font-size: 0.75rem; font-weight: 400; }
-.nav-heading { color: var(--muted-foreground); font-size: 0.75rem; }
-.nav-link { display: flex; align-items: center; gap: 0.75rem; min-height: 2.5rem; padding: 0.5rem 0.75rem; border-radius: 0.5rem; color: var(--sidebar-foreground); font-size: 0.875rem; outline: none; }
-.nav-link:hover { background: var(--muted); }
-.nav-link:focus-visible { outline: 2px solid var(--sidebar-primary); outline-offset: 2px; }
-.nav-link-active, .nav-link-active:hover { background: var(--sidebar-accent); color: var(--sidebar-primary); font-weight: 600; }
 .app-header { background: var(--card); border-bottom: 1px solid var(--border); }
 </style>

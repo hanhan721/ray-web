@@ -13,7 +13,7 @@ export interface NavGroup {
   id: number
   title: string
   icon?: string
-  items: NavLink[]
+  items: NavNode[]
 }
 
 export type NavNode = ({ kind: 'item' } & NavLink) | ({ kind: 'group' } & NavGroup)
@@ -112,19 +112,20 @@ export function buildNavigation(
   menus: PermissionVO[],
   loaders: Record<string, ViewLoader>,
 ): NavNode[] {
-  const nodes: NavNode[] = []
-  const visitLinks = (nodesToRead: PermissionVO[], parents: string[]): NavLink[] => {
-    const links: NavLink[] = []
+  const visitLinks = (nodesToRead: PermissionVO[], parents: string[]): NavNode[] => {
+    const links: NavNode[] = []
     for (const node of ordered(nodesToRead)) {
       if (!node.enabled || node.hidden || node.type === 'BUTTON') continue
       const segment = segmentOf(node.url)
       if (!segment) continue
       if (node.type === 'DIRECTORY') {
-        links.push(...visitLinks(node.children ?? [], [...parents, segment]))
+        const items = visitLinks(node.children ?? [], [...parents, segment])
+        if (items.length) links.push({ kind: 'group', id: node.id, title: node.name, icon: textOrUndefined(node.icon), items })
         continue
       }
       if (!node.component || !loaders[node.component]) continue
       links.push({
+        kind: 'item',
         id: node.id,
         title: node.name,
         to: joinPath(parents, segment),
@@ -133,30 +134,5 @@ export function buildNavigation(
     }
     return links
   }
-  for (const node of ordered(menus)) {
-    if (!node.enabled || node.hidden || node.type === 'BUTTON') continue
-    const segment = segmentOf(node.url)
-    if (!segment) continue
-    if (node.type === 'DIRECTORY') {
-      const items = visitLinks(node.children ?? [], [segment])
-      if (items.length === 0) continue
-      nodes.push({
-        kind: 'group',
-        id: node.id,
-        title: node.name,
-        icon: textOrUndefined(node.icon),
-        items,
-      })
-      continue
-    }
-    if (!node.component || !loaders[node.component]) continue
-    nodes.push({
-      kind: 'item',
-      id: node.id,
-      title: node.name,
-      to: joinPath([], segment),
-      icon: textOrUndefined(node.icon),
-    })
-  }
-  return nodes
+  return visitLinks(menus, [])
 }
