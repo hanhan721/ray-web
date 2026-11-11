@@ -12,6 +12,7 @@ import {
   ComboboxGroup,
   ComboboxItem,
   ComboboxList,
+  ComboboxTrigger,
   ComboboxViewport,
 } from '@/components/ui/combobox'
 import { selectItemClass, selectTriggerVariants } from '@/components/ui/select/select-styles'
@@ -123,9 +124,15 @@ function commit(next: readonly number[]) {
   emit('change', unique)
 }
 
-function focusInput() {
-  if (props.disabled) return
-  inputElement.value?.focus()
+function onAnchorClick(event: MouseEvent) {
+  if (props.disabled || event.target === inputElement.value) return
+  const next = !open.value
+  focusInputWithoutOpening()
+  open.value = next
+}
+
+function onAnchorPointerDown(event: PointerEvent) {
+  if (event.target === event.currentTarget) event.preventDefault()
 }
 
 function focusInputWithoutOpening() {
@@ -202,7 +209,8 @@ function onEnter(event: KeyboardEvent) {
       :class="
         cn(selectTriggerVariants({ size }), 'h-auto flex-wrap pr-11', anchorSizeClass, props.class)
       "
-      @click="focusInput"
+      @click="onAnchorClick"
+      @pointerdown="onAnchorPointerDown"
     >
       <Badge
         v-for="option in visibleSelected.visible"
@@ -263,11 +271,17 @@ function onEnter(event: KeyboardEvent) {
         >
           <XIcon class="size-3.5" aria-hidden="true" />
         </button>
-        <ChevronDownIcon
-          class="text-muted-foreground size-3.5 shrink-0 transition-transform duration-150"
-          :class="open && 'rotate-180'"
-          aria-hidden="true"
-        />
+        <ComboboxTrigger
+          aria-label="切换选项"
+          class="text-muted-foreground focus-visible:ring-ring/30 flex size-5 shrink-0 items-center justify-center rounded-sm outline-none focus-visible:ring-2"
+          @click.stop
+        >
+          <ChevronDownIcon
+            class="size-3.5 transition-transform duration-150"
+            :class="open && 'rotate-180'"
+            aria-hidden="true"
+          />
+        </ComboboxTrigger>
       </span>
     </ComboboxAnchor>
 
