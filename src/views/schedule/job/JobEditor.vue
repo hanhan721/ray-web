@@ -2,20 +2,15 @@
 import { computed, nextTick, shallowRef, useTemplateRef, watch } from 'vue'
 import { createJob, updateJob, validateCron, type ScheduleJob } from '@/api/schedule-job'
 import { RequestError } from '@/utils/request'
+import { QUIET, failureMessage } from '@/utils/failure'
 import { sameEditorSession } from '@/views/system/user/user-table'
+import FormDialog from '@/components/common/FormDialog.vue'
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
+import { Field, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
+import { Textarea } from '@/components/ui/textarea'
 import { formatDateTime, jobFormError, toJobWrite } from './job-form'
 
 const props = defineProps<{
@@ -45,11 +40,6 @@ const saving = shallowRef(false)
 const checking = shallowRef(false)
 const nameInput = useTemplateRef<{ $el?: unknown }>('nameInput')
 let session = 0
-
-function failureMessage(error: unknown, fallback: string): string {
-  if (error instanceof RequestError && error.message) return error.message
-  return fallback
-}
 
 function resetForm() {
   session += 1
@@ -98,7 +88,7 @@ async function checkCron() {
   }
   checking.value = true
   try {
-    const result = await validateCron(expression, { showErrorMessage: false })
+    const result = await validateCron(expression, QUIET)
     if (!stillHere()) return
     if (!result.valid) {
       formError.value = `Cron 表达式 [${expression}] 不合法`
@@ -142,7 +132,7 @@ async function onSubmit() {
   if (props.canValidate) {
     checking.value = true
     try {
-      const result = await validateCron(cron, { showErrorMessage: false })
+      const result = await validateCron(cron, QUIET)
       if (!stillHere()) return
       if (!result.valid) {
         formError.value = `Cron 表达式 [${cron}] 不合法`
@@ -175,8 +165,8 @@ async function onSubmit() {
   })
   saving.value = true
   try {
-    if (jobId === null) await createJob(body, { showErrorMessage: false })
-    else await updateJob({ ...body, id: jobId }, { showErrorMessage: false })
+    if (jobId === null) await createJob(body, QUIET)
+    else await updateJob({ ...body, id: jobId }, QUIET)
     emit('saved')
     if (stillHere()) emit('update:open', false)
   } catch (error) {
@@ -188,17 +178,20 @@ async function onSubmit() {
 </script>
 
 <template>
-  <Dialog :open="open" @update:open="emit('update:open', $event)">
-    <DialogContent class="sm:max-w-lg">
-      <DialogHeader>
-        <DialogTitle>{{ creating ? '新增定时任务' : '编辑定时任务' }}</DialogTitle>
-        <DialogDescription>
-          同一分组内的任务名称不能重复。方法需要一个字符串参数时才填写参数，留空表示无参数。停用后不会按
-          Cron 执行。
-        </DialogDescription>
-      </DialogHeader>
-      <form class="flex flex-col gap-4" novalidate @submit.prevent="onSubmit">
-        <FieldGroup>
+  <FormDialog
+    :open="open"
+    :title="creating ? '新增定时任务' : '编辑定时任务'"
+    description="同一分组内的任务名称不能重复。方法需要一个字符串参数时才填写参数，留空表示无参数。停用后不会按 Cron 执行。"
+    size="lg"
+    :saving="saving"
+    :error="formError"
+    @update:open="emit('update:open', $event)"
+    @submit="onSubmit"
+  >
+    <div class="flex flex-col gap-6">
+      <FieldSet class="gap-3">
+        <FieldLegend class="mb-0">基本资料</FieldLegend>
+        <div class="grid gap-4 sm:grid-cols-2">
           <Field>
             <FieldLabel for="job-name">任务名称</FieldLabel>
             <Input
@@ -206,32 +199,64 @@ async function onSubmit() {
               ref="nameInput"
               v-model="jobName"
               name="jobName"
+              class="h-9"
               :disabled="saving"
             />
           </Field>
           <Field>
             <FieldLabel for="job-group">任务分组</FieldLabel>
-            <Input id="job-group" v-model="jobGroup" name="jobGroup" :disabled="saving" />
+            <Input
+              id="job-group"
+              v-model="jobGroup"
+              name="jobGroup"
+              class="h-9"
+              :disabled="saving"
+            />
           </Field>
+        </div>
+      </FieldSet>
+
+      <FieldSet class="gap-3">
+        <FieldLegend class="mb-0">调用目标</FieldLegend>
+        <div class="grid gap-4 sm:grid-cols-2">
           <Field>
             <FieldLabel for="job-bean">Bean 名称</FieldLabel>
-            <Input id="job-bean" v-model="beanName" name="beanName" :disabled="saving" />
+            <Input
+              id="job-bean"
+              v-model="beanName"
+              name="beanName"
+              class="h-9"
+              :disabled="saving"
+            />
           </Field>
           <Field>
             <FieldLabel for="job-method">方法名称</FieldLabel>
-            <Input id="job-method" v-model="methodName" name="methodName" :disabled="saving" />
+            <Input
+              id="job-method"
+              v-model="methodName"
+              name="methodName"
+              class="h-9"
+              :disabled="saving"
+            />
           </Field>
-          <Field>
+          <Field class="sm:col-span-2">
             <FieldLabel for="job-params">方法参数</FieldLabel>
-            <Input id="job-params" v-model="methodParams" name="methodParams" :disabled="saving" />
+            <Input
+              id="job-params"
+              v-model="methodParams"
+              name="methodParams"
+              class="h-9"
+              :disabled="saving"
+            />
           </Field>
-          <Field>
+          <Field class="sm:col-span-2">
             <FieldLabel for="job-cron">Cron 表达式</FieldLabel>
             <div class="flex items-center gap-2">
               <Input
                 id="job-cron"
                 v-model="cronExpression"
                 name="cronExpression"
+                class="h-9"
                 :disabled="saving"
               />
               <Button
@@ -241,40 +266,54 @@ async function onSubmit() {
                 :disabled="saving || checking"
                 @click="checkCron"
               >
+                <Spinner v-if="checking" />
                 检查
               </Button>
             </div>
             <p v-if="cronHint" class="text-muted-foreground text-xs">{{ cronHint }}</p>
           </Field>
-          <Field orientation="horizontal">
+        </div>
+      </FieldSet>
+
+      <FieldSet class="gap-3">
+        <FieldLegend class="mb-0">运行与备注</FieldLegend>
+        <div class="grid gap-4 sm:grid-cols-2">
+          <Field orientation="horizontal" class="rounded-lg border bg-muted/20 px-3 py-2">
             <FieldLabel for="job-concurrent">允许并发</FieldLabel>
             <Switch id="job-concurrent" v-model="concurrent" :disabled="saving" />
           </Field>
-          <Field orientation="horizontal">
+          <Field orientation="horizontal" class="rounded-lg border bg-muted/20 px-3 py-2">
             <FieldLabel for="job-enabled">启用</FieldLabel>
             <Switch id="job-enabled" v-model="enabled" :disabled="saving" />
           </Field>
-          <Field>
+          <Field class="sm:col-span-2">
             <FieldLabel for="job-remark">备注</FieldLabel>
-            <Input id="job-remark" v-model="remark" name="remark" :disabled="saving" />
+            <Textarea
+              id="job-remark"
+              v-model="remark"
+              name="remark"
+              placeholder="补充说明（可选）"
+              :disabled="saving"
+            />
           </Field>
-        </FieldGroup>
-        <FieldError v-if="formError">{{ formError }}</FieldError>
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            :disabled="saving"
-            @click="emit('update:open', false)"
-          >
-            取消
-          </Button>
-          <Button type="submit" :disabled="saving || checking">
-            <Spinner v-if="saving" />
-            {{ saving ? '正在保存' : '保存' }}
-          </Button>
-        </DialogFooter>
-      </form>
-    </DialogContent>
-  </Dialog>
+        </div>
+      </FieldSet>
+    </div>
+
+    <template #footer>
+      <Button
+        type="button"
+        variant="outline"
+        class="w-full sm:w-auto"
+        :disabled="saving"
+        @click="emit('update:open', false)"
+      >
+        取消
+      </Button>
+      <Button type="submit" class="w-full sm:w-auto" :disabled="saving || checking">
+        <Spinner v-if="saving" />
+        {{ saving ? '正在提交' : '提交' }}
+      </Button>
+    </template>
+  </FormDialog>
 </template>

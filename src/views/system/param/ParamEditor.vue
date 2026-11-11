@@ -4,19 +4,14 @@ import { createParam, getParamById, updateParam } from '@/api/param'
 import { failureMessage } from '@/utils/failure'
 import { ParamTypeOptions, type ParamType } from '@/types/enums'
 import { sameEditorSession } from '@/views/system/user/user-table'
+import FormDialog from '@/components/common/FormDialog.vue'
+import SingleSelect from '@/components/common/SingleSelect.vue'
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
+import { Field, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
+import { Textarea } from '@/components/ui/textarea'
 import {
   PARAM_BIZ_OPTIONS,
   isParamType,
@@ -48,13 +43,25 @@ const saving = shallowRef(false)
 const loading = shallowRef(false)
 const detailReady = shallowRef(false)
 const keyInput = useTemplateRef<{ $el?: unknown }>('keyInput')
-const valueInput = useTemplateRef<HTMLTextAreaElement>('valueInput')
+const valueInput = useTemplateRef<{ $el?: unknown }>('valueInput')
 let session = 0
 
 const knownBiz = computed(() =>
   PARAM_BIZ_OPTIONS.some((item) => String(item.value) === bizType.value),
 )
-const knownType = computed(() => isParamType(paramType.value))
+const typeOptions = ParamTypeOptions.map((item) => ({ value: item.value, label: item.label }))
+const bizOptions = computed<Array<{ value: string; label: string }>>(() => {
+  const options: Array<{ value: string; label: string }> = PARAM_BIZ_OPTIONS.map((item) => ({
+    value: String(item.value),
+    label: item.label,
+  }))
+  if (!knownBiz.value) options.unshift({ value: bizType.value, label: bizType.value })
+  return options
+})
+
+function setParamType(value: unknown) {
+  if (typeof value === 'string' && isParamType(value)) paramType.value = value
+}
 
 function focusField() {
   void nextTick(() => {
@@ -63,7 +70,8 @@ function focusField() {
       if (element instanceof HTMLInputElement) element.focus()
       return
     }
-    valueInput.value?.focus()
+    const element = valueInput.value?.$el
+    if (element instanceof HTMLTextAreaElement) element.focus()
   })
 }
 
@@ -105,13 +113,25 @@ async function loadDetail(sessionId: number, id: number) {
     description.value = row.description ?? ''
     originalDescription.value = row.description ?? ''
     detailReady.value = true
-    focusField()
   } catch (error) {
     if (!sameEditorSession(sessionId, session, id, props.paramId)) return
     formError.value = failureMessage(error, '保存失败，请稍后重试')
   } finally {
-    if (sameEditorSession(sessionId, session, id, props.paramId)) loading.value = false
+    if (sameEditorSession(sessionId, session, id, props.paramId)) {
+      loading.value = false
+      if (detailReady.value) focusField()
+    }
   }
+}
+
+function retryLoad() {
+  const id = props.paramId
+  if (id === null) {
+    resetCreate()
+    return
+  }
+  session += 1
+  void loadDetail(session, id)
 }
 
 watch(
@@ -186,21 +206,37 @@ async function onSubmit() {
 </script>
 
 <template>
-  <Dialog :open="open" @update:open="emit('update:open', $event)">
-    <DialogContent class="sm:max-w-lg">
-      <DialogHeader>
-        <DialogTitle>{{ creating ? '新增系统参数' : '编辑系统参数' }}</DialogTitle>
-        <DialogDescription>
-          键、类型和分类在创建后不能修改。列表中的加密值显示为
-          ****，这里读取原文。已填写的描述不能清空。
-        </DialogDescription>
-      </DialogHeader>
-      <form class="flex flex-col gap-4" novalidate @submit.prevent="onSubmit">
-        <p v-if="loading" class="text-muted-foreground flex items-center gap-2 text-sm">
-          <Spinner />
-          正在读取参数
-        </p>
-        <FieldGroup>
+  <FormDialog
+    :open="open"
+    :title="creating ? '新增系统参数' : '编辑系统参数'"
+    description="键、类型和分类在创建后不能修改。列表中的加密值显示为 ****，这里读取原文。已填写的描述不能清空。"
+    size="lg"
+    :saving="saving"
+    :error="formError"
+    @update:open="emit('update:open', $event)"
+    @submit="onSubmit"
+  >
+    <p
+      v-if="loading"
+      class="text-muted-foreground flex min-h-48 items-center justify-center gap-2 text-sm"
+    >
+      <Spinner />
+      正在读取参数
+    </p>
+
+    <div
+      v-else-if="!detailReady"
+      class="flex min-h-48 flex-col items-center justify-center gap-2 text-center"
+    >
+      <p class="text-sm font-medium">没有读取到参数</p>
+      <p class="text-muted-foreground text-xs">检查网络后重试，或关闭窗口稍后再试。</p>
+      <Button type="button" variant="outline" size="sm" @click="retryLoad">重试</Button>
+    </div>
+
+    <div v-else class="flex flex-col gap-6">
+      <FieldSet class="gap-3">
+        <FieldLegend class="mb-0">基本资料</FieldLegend>
+        <div class="grid gap-4 sm:grid-cols-2">
           <Field>
             <FieldLabel for="param-key">参数键</FieldLabel>
             <Input
@@ -208,53 +244,52 @@ async function onSubmit() {
               ref="keyInput"
               v-model="paramKey"
               name="paramKey"
+              class="h-9"
               :disabled="saving || loading || !creating"
             />
           </Field>
           <Field>
             <FieldLabel for="param-type">类型</FieldLabel>
-            <select
+            <SingleSelect
               id="param-type"
-              v-model="paramType"
-              class="border-input bg-input/20 h-7 w-full rounded-md border px-2 text-sm outline-none focus-visible:ring-2"
+              :model-value="paramType"
+              :options="typeOptions"
+              size="lg"
+              :searchable="false"
               :disabled="saving || loading || !creating"
-            >
-              <option v-if="!knownType" :value="paramType">{{ paramType }}</option>
-              <option v-for="item in ParamTypeOptions" :key="item.value" :value="item.value">
-                {{ item.label }}
-              </option>
-            </select>
+              class="w-full"
+              @update:model-value="setParamType"
+            />
           </Field>
           <Field>
             <FieldLabel for="param-biz">分类</FieldLabel>
-            <select
+            <SingleSelect
               id="param-biz"
               v-model="bizType"
-              class="border-input bg-input/20 h-7 w-full rounded-md border px-2 text-sm outline-none focus-visible:ring-2"
+              :options="bizOptions"
+              size="lg"
+              searchable
               :disabled="saving || loading || !creating"
-            >
-              <option v-if="!knownBiz" :value="bizType">{{ bizType }}</option>
-              <option
-                v-for="item in PARAM_BIZ_OPTIONS"
-                :key="item.value"
-                :value="String(item.value)"
-              >
-                {{ item.label }}
-              </option>
-            </select>
+              class="w-full"
+            />
           </Field>
+        </div>
+      </FieldSet>
+
+      <FieldSet class="gap-3">
+        <FieldLegend class="mb-0">参数内容</FieldLegend>
+        <div class="grid gap-4">
           <Field>
             <FieldLabel for="param-value">参数值</FieldLabel>
-            <textarea
+            <Textarea
               id="param-value"
               ref="valueInput"
               v-model="paramValue"
               rows="4"
-              class="border-input bg-input/20 w-full rounded-md border px-2 py-1 text-sm outline-none focus-visible:ring-2"
               :disabled="saving || loading || !detailReady"
             />
           </Field>
-          <Field orientation="horizontal">
+          <Field orientation="horizontal" class="rounded-lg border bg-muted/20 px-3 py-2">
             <FieldLabel for="param-encrypted">加密存储</FieldLabel>
             <Switch
               id="param-encrypted"
@@ -262,32 +297,38 @@ async function onSubmit() {
               :disabled="saving || loading || !detailReady"
             />
           </Field>
-          <Field>
-            <FieldLabel for="param-description">描述</FieldLabel>
-            <Input
-              id="param-description"
-              v-model="description"
-              name="description"
-              :disabled="saving || loading || !detailReady"
-            />
-          </Field>
-        </FieldGroup>
-        <FieldError v-if="formError">{{ formError }}</FieldError>
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            :disabled="saving"
-            @click="emit('update:open', false)"
-          >
-            取消
-          </Button>
-          <Button type="submit" :disabled="saving || loading || !detailReady">
-            <Spinner v-if="saving" />
-            {{ saving ? '正在保存' : '保存' }}
-          </Button>
-        </DialogFooter>
-      </form>
-    </DialogContent>
-  </Dialog>
+        </div>
+      </FieldSet>
+
+      <FieldSet class="gap-3">
+        <FieldLegend class="mb-0">描述</FieldLegend>
+        <Field>
+          <FieldLabel for="param-description">描述</FieldLabel>
+          <Textarea
+            id="param-description"
+            v-model="description"
+            name="description"
+            placeholder="补充说明（可选）"
+            :disabled="saving || loading || !detailReady"
+          />
+        </Field>
+      </FieldSet>
+    </div>
+
+    <template #footer>
+      <Button
+        type="button"
+        variant="outline"
+        class="w-full sm:w-auto"
+        :disabled="saving"
+        @click="emit('update:open', false)"
+      >
+        取消
+      </Button>
+      <Button type="submit" class="w-full sm:w-auto" :disabled="saving || loading || !detailReady">
+        <Spinner v-if="saving" />
+        {{ saving ? '正在提交' : '提交' }}
+      </Button>
+    </template>
+  </FormDialog>
 </template>
