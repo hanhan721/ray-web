@@ -240,15 +240,15 @@ onMounted(() => {
     </template>
 
     <template #cell-paramType="{ row }">
-      {{ paramTypeLabel(row.paramType) }}
+      <span :class="paramCellClass('paramType')">{{ paramTypeLabel(row.paramType) }}</span>
     </template>
 
     <template #cell-bizType="{ row }">
-      {{ paramBizLabel(row.bizType) }}
+      <span :class="paramCellClass('bizType')">{{ paramBizLabel(row.bizType) }}</span>
     </template>
 
     <template #cell-encrypted="{ row }">
-      <span class="text-muted-foreground">{{ row.encrypted ? '是' : '否' }}</span>
+      <span :class="paramCellClass('encrypted')">{{ row.encrypted ? '是' : '否' }}</span>
     </template>
 
     <template #cell-actions="{ row }">

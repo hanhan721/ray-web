@@ -457,11 +457,6 @@ onMounted(() => {
     </ProTable>
 
     <div v-if="selectedType" class="flex flex-col gap-3">
-      <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <h2 class="text-base font-medium">{{ selectedType.dictName }} 的数据</h2>
-        <span class="text-muted-foreground text-sm">类型编码 {{ selectedType.dictType }}</span>
-      </div>
-
       <ProTable
         :columns="DICT_DATA_COLUMNS"
         :rows="dataRows"
@@ -480,6 +475,13 @@ onMounted(() => {
         @toggle-page="toggleDataPage"
         @retry="loadDataPage()"
       >
+        <template #caption>
+          <div class="flex flex-col">
+            <span class="text-sm font-medium">{{ selectedType.dictName }} 的数据</span>
+            <span class="text-muted-foreground text-xs">类型编码 {{ selectedType.dictType }}</span>
+          </div>
+        </template>
+
         <template #filters>
           <form
             class="flex flex-wrap items-center gap-x-4 gap-y-3"

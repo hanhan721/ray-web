@@ -105,6 +105,7 @@ const emit = defineEmits<{
 
 defineSlots<{
   filters?: () => unknown
+  caption?: () => unknown
   actions?: () => unknown
   toolbar?: () => unknown
   empty?: (props: { errorMessage: string }) => unknown
@@ -213,10 +214,11 @@ function isEmptyValue(value: unknown): boolean {
 
     <Card :class="fill ? 'flex min-h-0 flex-1 flex-col overflow-hidden' : 'flex flex-col'">
       <CardHeader
-        v-if="$slots.actions || $slots.toolbar || pageKey"
+        v-if="$slots.caption || $slots.actions || $slots.toolbar || pageKey"
         class="shrink-0 flex-row items-center justify-between gap-3"
       >
         <div class="flex flex-wrap items-center gap-2">
+          <slot name="caption" />
           <slot name="actions" />
         </div>
         <CardAction class="flex items-center gap-2">

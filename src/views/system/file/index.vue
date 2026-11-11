@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { FileText, Trash2, Upload } from '@lucide/vue'
+import { FileText, OctagonX, Trash2, Upload } from '@lucide/vue'
 import { shallowRef, useTemplateRef } from 'vue'
 import { deleteFiles, uploadFile, uploadFiles, type FileUpload } from '@/api/file'
 import { useSessionStore } from '@/stores/session'
 import { useSelection } from '@/composables/useSelection'
 import { QUIET, failureMessage } from '@/utils/failure'
 import ProTable from '@/components/common/ProTable.vue'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
   AlertDialog,
@@ -180,15 +181,22 @@ async function confirmDelete() {
         </Button>
       </form>
 
-      <p v-if="actionError" role="alert" class="text-destructive mt-3 w-full text-sm">
-        {{ actionError }}
-      </p>
-      <ul
-        v-if="failures.length > 0"
-        class="text-destructive mt-3 flex w-full flex-col gap-1 text-sm"
-      >
-        <li v-for="(item, index) in failures" :key="index">{{ item.name }}：{{ item.reason }}</li>
-      </ul>
+      <Alert v-if="actionError" variant="destructive" class="mt-3">
+        <OctagonX />
+        <AlertTitle>上传失败</AlertTitle>
+        <AlertDescription>{{ actionError }}</AlertDescription>
+      </Alert>
+      <Alert v-if="failures.length > 0" variant="destructive" class="mt-3">
+        <OctagonX />
+        <AlertTitle>部分文件没有上传</AlertTitle>
+        <AlertDescription>
+          <ul class="flex flex-col gap-1">
+            <li v-for="(item, index) in failures" :key="index">
+              {{ item.name }}：{{ item.reason }}
+            </li>
+          </ul>
+        </AlertDescription>
+      </Alert>
       <p class="text-muted-foreground mt-3 w-full text-xs">
         服务端没有文件列表。这里只保留这次页面里上传成功的未绑定文件，刷新后不再显示。
       </p>
@@ -223,19 +231,14 @@ async function confirmDelete() {
     </template>
 
     <template #cell-size="{ row }">
-      {{ formatFileSize(row.size) }}
+      <span :class="fileCellClass('size')">{{ formatFileSize(row.size) }}</span>
     </template>
 
     <template #cell-actions="{ row }">
       <div class="flex min-w-16 flex-nowrap gap-1">
-        <a
-          :href="row.url"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="text-sm underline underline-offset-4"
-        >
-          打开
-        </a>
+        <Button as-child variant="ghost" size="sm">
+          <a :href="row.url" target="_blank" rel="noopener noreferrer">打开</a>
+        </Button>
       </div>
     </template>
   </ProTable>

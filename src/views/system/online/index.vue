@@ -251,7 +251,7 @@ onMounted(() => {
     </template>
 
     <template #cell-loginTime="{ row }">
-      <span class="text-muted-foreground tabular-nums">{{ formatLoginTime(row.loginTime) }}</span>
+      <span :class="onlineCellClass('loginTime')">{{ formatLoginTime(row.loginTime) }}</span>
     </template>
 
     <template #cell-actions="{ row }">

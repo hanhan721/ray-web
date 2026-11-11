@@ -157,13 +157,13 @@ onMounted(() => {
           />
         </Field>
         <div class="flex items-center gap-2">
+          <Button type="submit" :disabled="loading">
+            <RefreshCw data-icon="inline-start" />
+            刷新
+          </Button>
           <Button type="button" variant="ghost" :disabled="loading" @click="resetFilters()">
             <RotateCcw data-icon="inline-start" />
             重置
-          </Button>
-          <Button type="submit" variant="outline" :disabled="loading">
-            <RefreshCw data-icon="inline-start" />
-            刷新
           </Button>
         </div>
         <p class="text-muted-foreground w-full text-xs">
