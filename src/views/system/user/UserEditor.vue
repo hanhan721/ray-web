@@ -1,23 +1,14 @@
 <script setup lang="ts">
-import { OctagonX, TriangleAlert, XIcon } from '@lucide/vue'
 import { computed, nextTick, shallowRef, useTemplateRef, watch } from 'vue'
 import { getDeptTree, type DeptTree } from '@/api/dept'
 import { getRoleList, type Role } from '@/api/role'
 import { assignUserDepts, assignUserRoles, createUser, getUserById, updateUser } from '@/api/user'
 import { GenderOptions, type Gender } from '@/types/enums'
 import { QUIET, failureMessage } from '@/utils/failure'
+import FormDialog from '@/components/common/FormDialog.vue'
 import MultiSelect from '@/components/common/MultiSelect.vue'
 import SingleSelect from '@/components/common/SingleSelect.vue'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
 import { Field, FieldError, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
@@ -234,11 +225,6 @@ function close() {
   emit('update:open', false)
 }
 
-function onOpenChange(open: boolean) {
-  if (!open && saving.value) return
-  emit('update:open', open)
-}
-
 async function onSubmit() {
   const sessionId = session
   const userId = props.userId
@@ -327,215 +313,180 @@ async function onSubmit() {
 </script>
 
 <template>
-  <Dialog :open="open" @update:open="onOpenChange">
-    <DialogContent
-      :show-close-button="false"
-      class="grid max-h-[calc(100svh-2rem)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 sm:max-w-3xl"
+  <FormDialog
+    :open="open"
+    :title="creating ? '新增用户' : '编辑用户'"
+    description="用户资料编辑"
+    hide-description
+    size="xl"
+    :saving="saving"
+    :error="formError"
+    :step-note="stepNote"
+    @update:open="emit('update:open', $event)"
+    @submit="onSubmit"
+  >
+    <div
+      v-if="loading"
+      class="flex min-h-48 flex-col items-center justify-center gap-3 text-center"
     >
-      <DialogHeader class="border-b px-6 pt-6 pr-12 pb-4">
-        <DialogTitle class="text-lg font-semibold">
-          {{ creating ? '新增用户' : '编辑用户' }}
-        </DialogTitle>
-        <DialogDescription class="sr-only">用户资料编辑</DialogDescription>
-      </DialogHeader>
+      <Spinner class="size-5" />
+      <p class="text-muted-foreground text-sm">正在读取用户资料…</p>
+    </div>
 
-      <DialogClose as-child>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          class="absolute top-4 right-4"
-          :disabled="saving"
-          aria-label="关闭"
-        >
-          <XIcon />
-        </Button>
-      </DialogClose>
+    <div
+      v-else-if="!detailReady"
+      class="flex min-h-48 flex-col items-center justify-center gap-2 text-center"
+    >
+      <p class="text-sm font-medium">没有读取到用户资料</p>
+      <p class="text-muted-foreground text-xs">检查网络后重试，或关闭窗口稍后再试。</p>
+      <Button type="button" variant="outline" size="sm" @click="resetForm">重试</Button>
+    </div>
 
-      <form class="contents" novalidate @submit.prevent="onSubmit">
-        <div class="min-h-0 overflow-y-auto px-6 py-5">
-          <div
-            v-if="loading"
-            class="flex min-h-48 flex-col items-center justify-center gap-3 text-center"
-          >
-            <Spinner class="size-5" />
-            <p class="text-muted-foreground text-sm">正在读取用户资料…</p>
-          </div>
-
-          <div
-            v-else-if="!detailReady"
-            class="flex min-h-48 flex-col items-center justify-center gap-2 text-center"
-          >
-            <p class="text-sm font-medium">没有读取到用户资料</p>
-            <p class="text-muted-foreground text-xs">检查网络后重试，或关闭窗口稍后再试。</p>
-            <Button type="button" variant="outline" size="sm" @click="resetForm">重试</Button>
-          </div>
-
-          <div v-else class="flex flex-col gap-6">
-            <FieldSet class="gap-3">
-              <FieldLegend class="mb-0">基本资料</FieldLegend>
-              <div class="grid gap-4 sm:grid-cols-2">
-                <Field :data-invalid="formError && !username.trim() ? true : undefined">
-                  <FieldLabel for="user-username">账号</FieldLabel>
-                  <Input
-                    id="user-username"
-                    ref="usernameInput"
-                    v-model="username"
-                    name="username"
-                    autocomplete="off"
-                    class="h-9"
-                    :disabled="saving"
-                    :aria-invalid="formError && !username.trim() ? true : undefined"
-                  />
-                  <FieldError v-if="formError && !username.trim()">请填写账号</FieldError>
-                </Field>
-                <Field>
-                  <FieldLabel for="user-nickname">昵称</FieldLabel>
-                  <Input id="user-nickname" v-model="nickname" class="h-9" :disabled="saving" />
-                </Field>
-                <Field
-                  v-if="creating"
-                  class="sm:col-span-2"
-                  :data-invalid="formError && !password ? true : undefined"
-                >
-                  <FieldLabel for="user-password">密码</FieldLabel>
-                  <Input
-                    id="user-password"
-                    v-model="password"
-                    name="password"
-                    type="password"
-                    autocomplete="new-password"
-                    class="h-9"
-                    :disabled="saving"
-                    :aria-invalid="formError && !password ? true : undefined"
-                  />
-                  <FieldError v-if="formError && !password">请填写密码</FieldError>
-                </Field>
-                <Field>
-                  <FieldLabel for="user-gender">性别</FieldLabel>
-                  <SingleSelect
-                    id="user-gender"
-                    :model-value="gender"
-                    :options="GenderOptions"
-                    placeholder="未填写"
-                    size="lg"
-                    :searchable="false"
-                    :clearable="!originalGender"
-                    :disabled="saving"
-                    class="w-full"
-                    @update:model-value="setGender"
-                  />
-                </Field>
-                <Field>
-                  <FieldLabel for="user-phone">手机</FieldLabel>
-                  <Input
-                    id="user-phone"
-                    v-model="phone"
-                    autocomplete="off"
-                    class="h-9"
-                    :disabled="saving"
-                  />
-                </Field>
-                <Field class="sm:col-span-2">
-                  <FieldLabel for="user-email">邮箱</FieldLabel>
-                  <Input
-                    id="user-email"
-                    v-model="email"
-                    type="email"
-                    autocomplete="off"
-                    class="h-9"
-                    :disabled="saving"
-                  />
-                </Field>
-                <Field
-                  orientation="horizontal"
-                  class="rounded-lg border bg-muted/20 px-3 py-2 sm:col-span-2"
-                >
-                  <FieldLabel for="user-enabled">启用账号</FieldLabel>
-                  <Switch id="user-enabled" v-model="enabled" :disabled="saving" />
-                </Field>
-                <Field class="sm:col-span-2">
-                  <FieldLabel for="user-remark">备注</FieldLabel>
-                  <Textarea
-                    id="user-remark"
-                    v-model="remark"
-                    placeholder="补充说明（可选）"
-                    :disabled="saving"
-                  />
-                </Field>
-              </div>
-            </FieldSet>
-
-            <FieldSet v-if="showPermissionSection" class="gap-3">
-              <FieldLegend class="mb-0">权限与归属</FieldLegend>
-              <div
-                :class="
-                  canAssignRoles && canAssignDepts
-                    ? 'grid gap-4 md:grid-cols-2'
-                    : 'flex flex-col gap-4'
-                "
-              >
-                <FieldSet v-if="canAssignRoles" class="gap-2">
-                  <FieldLegend variant="label" class="mb-0">角色</FieldLegend>
-                  <MultiSelect
-                    v-model="roleIds"
-                    :options="roleOptions"
-                    placeholder="选择角色"
-                    empty-text="没有可分配的角色"
-                    no-results-text="没有匹配的角色"
-                    aria-label="角色"
-                    :disabled="saving"
-                  />
-                </FieldSet>
-
-                <FieldSet v-if="canAssignDepts" class="gap-2">
-                  <FieldLegend variant="label" class="mb-0">部门</FieldLegend>
-                  <MultiSelect
-                    v-model="deptIds"
-                    :options="deptOptions"
-                    placeholder="选择部门"
-                    empty-text="没有可分配的部门"
-                    no-results-text="没有匹配的部门"
-                    aria-label="部门"
-                    :disabled="saving"
-                  />
-                </FieldSet>
-              </div>
-            </FieldSet>
-          </div>
-        </div>
-
-        <div class="flex flex-col gap-3 border-t px-6 py-4">
-          <Alert v-if="formError" :variant="stepNote ? 'default' : 'destructive'">
-            <TriangleAlert v-if="stepNote" />
-            <OctagonX v-else />
-            <AlertTitle>{{ stepNote ? '部分内容未保存' : '没有保存成功' }}</AlertTitle>
-            <AlertDescription>
-              {{ formError }}
-              <span v-if="stepNote" class="mt-1 block">{{ stepNote }}</span>
-            </AlertDescription>
-          </Alert>
-          <div class="flex flex-col gap-2 sm:flex-row sm:justify-end">
-            <Button
-              type="button"
-              variant="outline"
-              class="w-full sm:w-auto"
+    <div v-else class="flex flex-col gap-6">
+      <FieldSet class="gap-3">
+        <FieldLegend class="mb-0">基本资料</FieldLegend>
+        <div class="grid gap-4 sm:grid-cols-2">
+          <Field :data-invalid="formError && !username.trim() ? true : undefined">
+            <FieldLabel for="user-username">账号</FieldLabel>
+            <Input
+              id="user-username"
+              ref="usernameInput"
+              v-model="username"
+              name="username"
+              autocomplete="off"
+              class="h-9"
               :disabled="saving"
-              @click="close"
-            >
-              取消
-            </Button>
-            <Button
-              type="submit"
-              class="w-full sm:w-auto"
-              :disabled="saving || loading || !detailReady"
-            >
-              <Spinner v-if="saving" />
-              {{ saving ? '正在提交' : '提交' }}
-            </Button>
-          </div>
+              :aria-invalid="formError && !username.trim() ? true : undefined"
+            />
+            <FieldError v-if="formError && !username.trim()">请填写账号</FieldError>
+          </Field>
+          <Field>
+            <FieldLabel for="user-nickname">昵称</FieldLabel>
+            <Input id="user-nickname" v-model="nickname" class="h-9" :disabled="saving" />
+          </Field>
+          <Field
+            v-if="creating"
+            class="sm:col-span-2"
+            :data-invalid="formError && !password ? true : undefined"
+          >
+            <FieldLabel for="user-password">密码</FieldLabel>
+            <Input
+              id="user-password"
+              v-model="password"
+              name="password"
+              type="password"
+              autocomplete="new-password"
+              class="h-9"
+              :disabled="saving"
+              :aria-invalid="formError && !password ? true : undefined"
+            />
+            <FieldError v-if="formError && !password">请填写密码</FieldError>
+          </Field>
+          <Field>
+            <FieldLabel for="user-gender">性别</FieldLabel>
+            <SingleSelect
+              id="user-gender"
+              :model-value="gender"
+              :options="GenderOptions"
+              placeholder="未填写"
+              size="lg"
+              :searchable="false"
+              :clearable="!originalGender"
+              :disabled="saving"
+              class="w-full"
+              @update:model-value="setGender"
+            />
+          </Field>
+          <Field>
+            <FieldLabel for="user-phone">手机</FieldLabel>
+            <Input
+              id="user-phone"
+              v-model="phone"
+              autocomplete="off"
+              class="h-9"
+              :disabled="saving"
+            />
+          </Field>
+          <Field class="sm:col-span-2">
+            <FieldLabel for="user-email">邮箱</FieldLabel>
+            <Input
+              id="user-email"
+              v-model="email"
+              type="email"
+              autocomplete="off"
+              class="h-9"
+              :disabled="saving"
+            />
+          </Field>
+          <Field
+            orientation="horizontal"
+            class="rounded-lg border bg-muted/20 px-3 py-2 sm:col-span-2"
+          >
+            <FieldLabel for="user-enabled">启用账号</FieldLabel>
+            <Switch id="user-enabled" v-model="enabled" :disabled="saving" />
+          </Field>
+          <Field class="sm:col-span-2">
+            <FieldLabel for="user-remark">备注</FieldLabel>
+            <Textarea
+              id="user-remark"
+              v-model="remark"
+              placeholder="补充说明（可选）"
+              :disabled="saving"
+            />
+          </Field>
         </div>
-      </form>
-    </DialogContent>
-  </Dialog>
+      </FieldSet>
+
+      <FieldSet v-if="showPermissionSection" class="gap-3">
+        <FieldLegend class="mb-0">权限与归属</FieldLegend>
+        <div
+          :class="
+            canAssignRoles && canAssignDepts ? 'grid gap-4 md:grid-cols-2' : 'flex flex-col gap-4'
+          "
+        >
+          <FieldSet v-if="canAssignRoles" class="gap-2">
+            <FieldLegend variant="label" class="mb-0">角色</FieldLegend>
+            <MultiSelect
+              v-model="roleIds"
+              :options="roleOptions"
+              placeholder="选择角色"
+              empty-text="没有可分配的角色"
+              no-results-text="没有匹配的角色"
+              aria-label="角色"
+              :disabled="saving"
+            />
+          </FieldSet>
+
+          <FieldSet v-if="canAssignDepts" class="gap-2">
+            <FieldLegend variant="label" class="mb-0">部门</FieldLegend>
+            <MultiSelect
+              v-model="deptIds"
+              :options="deptOptions"
+              placeholder="选择部门"
+              empty-text="没有可分配的部门"
+              no-results-text="没有匹配的部门"
+              aria-label="部门"
+              :disabled="saving"
+            />
+          </FieldSet>
+        </div>
+      </FieldSet>
+    </div>
+
+    <template #footer>
+      <Button
+        type="button"
+        variant="outline"
+        class="w-full sm:w-auto"
+        :disabled="saving"
+        @click="close"
+      >
+        取消
+      </Button>
+      <Button type="submit" class="w-full sm:w-auto" :disabled="saving || loading || !detailReady">
+        <Spinner v-if="saving" />
+        {{ saving ? '正在提交' : '提交' }}
+      </Button>
+    </template>
+  </FormDialog>
 </template>

@@ -2,16 +2,9 @@
 import { shallowRef, useTemplateRef, watch } from 'vue'
 import { resetUserPassword } from '@/api/user'
 import { QUIET, failureMessage } from '@/utils/failure'
+import FormDialog from '@/components/common/FormDialog.vue'
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 
@@ -71,45 +64,46 @@ async function onSubmit() {
 </script>
 
 <template>
-  <Dialog :open="open" @update:open="emit('update:open', $event)">
-    <DialogContent>
-      <DialogHeader>
-        <DialogTitle>重置密码</DialogTitle>
-        <DialogDescription>为 {{ username }} 设置一个新密码。原密码不会保留。</DialogDescription>
-      </DialogHeader>
-      <form class="flex flex-col gap-4" novalidate @submit.prevent="onSubmit">
-        <FieldGroup>
-          <Field :data-invalid="formError ? true : undefined">
-            <FieldLabel for="reset-password">新密码</FieldLabel>
-            <Input
-              id="reset-password"
-              ref="passwordInput"
-              v-model="password"
-              type="password"
-              name="password"
-              autocomplete="new-password"
-              :disabled="saving"
-              :aria-invalid="formError ? true : undefined"
-              aria-describedby="reset-password-error"
-            />
-          </Field>
-        </FieldGroup>
-        <FieldError v-if="formError" id="reset-password-error">{{ formError }}</FieldError>
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            :disabled="saving"
-            @click="emit('update:open', false)"
-          >
-            取消
-          </Button>
-          <Button type="submit" :disabled="saving">
-            <Spinner v-if="saving" />
-            {{ saving ? '正在保存' : '保存' }}
-          </Button>
-        </DialogFooter>
-      </form>
-    </DialogContent>
-  </Dialog>
+  <FormDialog
+    :open="open"
+    title="重置密码"
+    :description="`为 ${username} 设置一个新密码。原密码不会保留。`"
+    size="md"
+    :saving="saving"
+    :error="formError"
+    @update:open="emit('update:open', $event)"
+    @submit="onSubmit"
+  >
+    <FieldGroup>
+      <Field :data-invalid="formError ? true : undefined">
+        <FieldLabel for="reset-password">新密码</FieldLabel>
+        <Input
+          id="reset-password"
+          ref="passwordInput"
+          v-model="password"
+          type="password"
+          name="password"
+          autocomplete="new-password"
+          :disabled="saving"
+          :aria-invalid="formError ? true : undefined"
+        />
+      </Field>
+    </FieldGroup>
+
+    <template #footer>
+      <Button
+        type="button"
+        variant="outline"
+        class="w-full sm:w-auto"
+        :disabled="saving"
+        @click="emit('update:open', false)"
+      >
+        取消
+      </Button>
+      <Button type="submit" class="w-full sm:w-auto" :disabled="saving">
+        <Spinner v-if="saving" />
+        {{ saving ? '正在提交' : '提交' }}
+      </Button>
+    </template>
+  </FormDialog>
 </template>
