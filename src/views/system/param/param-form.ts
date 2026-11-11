@@ -26,20 +26,20 @@ export const PARAM_DATA_COLUMNS: ColumnSettingItem[] = [
   { key: 'description', label: '描述' },
 ]
 
-const CELL_MIN_WIDTH: Record<string, string> = {
-  paramKey: 'min-w-40',
-  paramValue: 'min-w-40',
-  paramType: 'min-w-20',
-  bizType: 'min-w-20',
-  encrypted: 'min-w-12',
-  description: 'min-w-40',
+const CELL_SIZE: Record<string, string> = {
+  paramKey: 'min-w-40 max-w-56',
+  paramValue: 'min-w-40 max-w-52',
+  paramType: 'min-w-20 max-w-24',
+  bizType: 'min-w-20 max-w-24',
+  encrypted: 'min-w-12 max-w-16',
+  description: 'min-w-40 max-w-64',
 }
 
 /** 单元格文本样式：参数键加重，其余只做截断。 */
 export function paramCellClass(columnId: string): string {
-  const minWidth = CELL_MIN_WIDTH[columnId] ?? 'min-w-16'
-  if (columnId === 'paramKey') return `block truncate font-medium text-foreground ${minWidth}`
-  return `block truncate ${minWidth}`
+  const size = CELL_SIZE[columnId] ?? 'min-w-16'
+  if (columnId === 'paramKey') return `block truncate font-medium text-foreground ${size}`
+  return `block truncate ${size}`
 }
 
 const PARAM_TYPES = new Set<string>(ParamTypeOptions.map((item) => item.value))
