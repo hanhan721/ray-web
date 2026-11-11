@@ -56,20 +56,21 @@ async function onLogout() {
 </script>
 
 <template>
-  <div class="bg-background text-foreground min-h-svh md:grid md:grid-cols-[15rem_minmax(0,1fr)]">
+  <div class="app-shell bg-background text-foreground min-h-svh md:grid md:grid-cols-[15rem_minmax(0,1fr)]">
     <a
       href="#main"
       class="bg-background sr-only rounded-md px-3 py-2 focus:not-sr-only focus:absolute focus:top-3 focus:left-3 focus:z-50 focus-visible:ring-2"
     >
       跳到主要内容
     </a>
-    <aside class="border-border bg-sidebar md:min-h-svh md:border-r">
-      <div class="flex items-center justify-between px-3 py-3 md:py-4">
+    <aside class="app-sidebar md:min-h-svh">
+      <div class="flex items-center justify-between px-5 py-5">
         <RouterLink
           to="/"
-          class="text-sm font-medium focus-visible:ring-ring rounded-md outline-none focus-visible:ring-2"
+          class="flex items-center gap-3 rounded-md text-base font-semibold outline-none focus-visible:ring-2"
         >
-          Ray
+          <span class="brand-mark" aria-hidden="true">R</span>
+          <span>Ray <span class="brand-subtitle">管理平台</span></span>
         </RouterLink>
         <Button
           class="md:hidden"
@@ -84,13 +85,13 @@ async function onLogout() {
         </Button>
       </div>
       <nav id="app-nav" :class="navOpen ? 'block' : 'hidden md:block'" aria-label="主导航">
-        <ul class="flex flex-col gap-1 px-2 pb-4">
+        <ul class="flex flex-col gap-1 px-3 pb-4">
           <li v-for="node in navigation" :key="`${node.kind}-${node.id}`">
             <RouterLink
               v-if="node.kind === 'item'"
               :to="node.to"
-              class="text-sidebar-foreground focus-visible:ring-ring flex items-center gap-2 rounded-md px-2 py-1.5 text-xs outline-none focus-visible:ring-2"
-              exact-active-class="bg-sidebar-accent text-sidebar-accent-foreground"
+              class="nav-link"
+              exact-active-class="nav-link-active"
             >
               <component
                 :is="iconFor(node.icon)"
@@ -100,7 +101,7 @@ async function onLogout() {
               <span class="truncate">{{ node.title }}</span>
             </RouterLink>
             <div v-else class="pt-2">
-              <p class="text-muted-foreground flex items-center gap-2 px-2 py-1 text-[0.75rem]">
+              <p class="nav-heading flex items-center gap-2 px-3 py-2">
                 <component
                   :is="iconFor(node.icon)"
                   v-if="iconFor(node.icon)"
@@ -112,8 +113,8 @@ async function onLogout() {
                 <li v-for="item in node.items" :key="item.id">
                   <RouterLink
                     :to="item.to"
-                    class="text-sidebar-foreground focus-visible:ring-ring flex items-center gap-2 rounded-md px-2 py-1.5 text-xs outline-none focus-visible:ring-2"
-                    exact-active-class="bg-sidebar-accent text-sidebar-accent-foreground"
+                    class="nav-link"
+                    exact-active-class="nav-link-active"
                   >
                     <component
                       :is="iconFor(item.icon)"
@@ -131,16 +132,16 @@ async function onLogout() {
     </aside>
     <div class="flex min-w-0 flex-col">
       <header
-        class="border-border bg-background sticky top-0 z-10 flex h-12 items-center justify-between gap-3 border-b px-4"
+        class="app-header sticky top-0 z-10 flex h-16 items-center justify-between gap-3 px-5 md:px-8"
       >
-        <p class="truncate text-sm font-medium">{{ sectionTitle }}</p>
+        <p class="truncate text-sm font-semibold">{{ sectionTitle }}</p>
         <div class="flex items-center gap-1">
           <p class="text-muted-foreground max-w-40 truncate text-sm">{{ displayName }}</p>
           <ThemeToggle />
           <Button type="button" variant="outline" size="sm" @click="onLogout">退出</Button>
         </div>
       </header>
-      <main id="main" tabindex="-1" class="min-w-0 flex-1 p-4 outline-none">
+      <main id="main" tabindex="-1" class="min-w-0 flex-1 p-4 outline-none md:p-6">
         <RouterView v-slot="{ Component: view, route: matched }">
           <KeepAlive>
             <component :is="view" v-if="matched.meta.keepAlive" :key="String(matched.name)" />
@@ -151,3 +152,15 @@ async function onLogout() {
     </div>
   </div>
 </template>
+
+<style scoped>
+.app-sidebar { background: #182b3b; color: #e6eef3; }
+.brand-mark { display: grid; width: 2rem; height: 2rem; place-items: center; border-radius: 0.55rem; background: #54c3ad; color: #102d32; font-weight: 700; }
+.brand-subtitle { color: #b7c8d2; font-size: 0.75rem; font-weight: 400; }
+.nav-heading { color: #afc1cb; font-size: 0.75rem; }
+.nav-link { display: flex; align-items: center; gap: 0.75rem; min-height: 2.5rem; padding: 0.5rem 0.75rem; border-radius: 0.5rem; color: #d3e0e6; font-size: 0.875rem; outline: none; }
+.nav-link:hover { background: #294354; color: white; }
+.nav-link:focus-visible { outline: 2px solid #70ddc5; outline-offset: 2px; }
+.nav-link-active { background: #355867; color: white; font-weight: 600; }
+.app-header { background: var(--card); border-bottom: 1px solid var(--border); }
+</style>

@@ -68,8 +68,8 @@ function onOpenChange(open: boolean) {
         props.contentClass,
       ]"
     >
-      <DialogHeader class="shrink-0 border-b px-6 pt-6 pr-12 pb-4">
-        <DialogTitle class="text-lg font-semibold">{{ title }}</DialogTitle>
+      <DialogHeader class="shrink-0 border-b bg-muted/40 px-6 pt-6 pr-12 pb-5">
+        <DialogTitle class="text-xl font-semibold">{{ title }}</DialogTitle>
         <DialogDescription v-if="description && !hideDescription">
           {{ description }}
         </DialogDescription>

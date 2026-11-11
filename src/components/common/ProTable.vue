@@ -202,7 +202,7 @@ function isEmptyValue(value: unknown): boolean {
   <section
     :class="
       fill
-        ? 'flex w-full min-w-0 flex-col gap-4 md:h-[calc(100svh-5rem)]'
+        ? 'flex w-full min-w-0 flex-col gap-4 md:min-h-[calc(100svh-12rem)]'
         : 'flex w-full min-w-0 flex-col gap-4'
     "
   >
@@ -254,7 +254,7 @@ function isEmptyValue(value: unknown): boolean {
         >
           <Table>
             <TableHeader
-              class="bg-card/95 supports-[backdrop-filter]:bg-card/85 sticky top-0 z-10 backdrop-blur"
+              class="bg-muted sticky top-0 z-10"
             >
               <TableRow
                 v-for="headerGroup in table.getHeaderGroups()"
