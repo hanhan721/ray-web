@@ -150,6 +150,7 @@ async function confirmDelete() {
     :row-label="rowLabel"
     :cell-class="fileCellClass"
     @toggle-row="toggleSelected"
+    @row-click="(row) => toggleSelected(row.fileId, !selectedIds.includes(row.fileId))"
     @toggle-page="toggleAll(rows, $event)"
   >
     <template #filters>

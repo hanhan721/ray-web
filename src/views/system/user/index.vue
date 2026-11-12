@@ -135,6 +135,7 @@ onMounted(() => {
     @update:page-index="changePage"
     @update:page-size="changePageSize"
     @toggle-row="toggleSelected"
+      @row-click="(row) => toggleSelected(row.id, !selectedIds.includes(row.id))"
     @toggle-page="togglePage"
     @retry="load()"
   >

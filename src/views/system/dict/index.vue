@@ -295,6 +295,7 @@ onMounted(() => {
       @update:page-index="changeTypePage"
       @update:page-size="changeTypePageSize"
       @toggle-row="toggleType"
+      @row-click="(row) => toggleType(row.id, !typeSelectedIds.includes(row.id))"
       @toggle-page="toggleTypes"
       @retry="loadTypes()"
     >
@@ -472,13 +473,13 @@ onMounted(() => {
         @update:page-index="changeDataPage"
         @update:page-size="changeDataPageSize"
         @toggle-row="toggleData"
+        @row-click="(row) => toggleData(row.id, !dataSelectedIds.includes(row.id))"
         @toggle-page="toggleDataPage"
         @retry="loadDataPage()"
       >
         <template #caption>
           <div class="flex flex-col">
             <span class="text-sm font-medium">{{ selectedType.dictName }} 的数据</span>
-            <span class="text-muted-foreground text-xs">类型编码 {{ selectedType.dictType }}</span>
           </div>
         </template>
 

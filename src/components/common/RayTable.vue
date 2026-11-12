@@ -1,6 +1,6 @@
 <script setup lang="ts" generic="T extends RowData, TId extends string | number = number">
 import { Columns3 } from '@lucide/vue'
-import { computed, useId, useSlots } from 'vue'
+import { computed, getCurrentInstance, useId, useSlots } from 'vue'
 import {
   columnOrderingFeature,
   columnVisibilityFeature,
@@ -100,6 +100,7 @@ const emit = defineEmits<{
   'update:pageSize': [size: number]
   'toggle-row': [id: TId, checked: boolean]
   'toggle-page': [checked: boolean]
+  'row-click': [row: T]
   retry: []
 }>()
 
@@ -114,6 +115,18 @@ defineSlots<{
 
 const pageSizeId = useId()
 const slots = useSlots()
+const instance = getCurrentInstance()
+
+function rowClickable() {
+  return Boolean(instance?.vnode.props?.onRowClick)
+}
+
+function onRowClick(row: T, event: MouseEvent) {
+  const target = event.target
+  if (target instanceof Element && target.closest('button, a, input, select, textarea, label, [role="button"], [role="checkbox"], [role="switch"], [contenteditable]:not([contenteditable="false"])')) return
+  if (window.getSelection()?.toString()) return
+  emit('row-click', row)
+}
 
 const {
   order,
@@ -312,11 +325,13 @@ function isEmptyValue(value: unknown): boolean {
                 <TableRow
                   v-for="row in table.getRowModel().rows"
                   :key="row.id"
+                  :class="rowClickable() ? 'cursor-pointer' : undefined"
                   :data-state="
                     selectable && selectedIds.includes(rowKeyOf(row.original))
                       ? 'selected'
                       : undefined
                   "
+                  @click="onRowClick(row.original, $event)"
                 >
                   <TableCell v-for="cell in row.getVisibleCells()" :key="cell.id">
                     <Checkbox

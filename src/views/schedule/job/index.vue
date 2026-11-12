@@ -442,6 +442,7 @@ onMounted(() => {
       @update:page-index="changePage"
       @update:page-size="changePageSize"
       @toggle-row="toggleSelected"
+      @row-click="(row) => toggleSelected(row.id, !selectedIds.includes(row.id))"
       @toggle-page="togglePage"
       @retry="load()"
     >
@@ -642,6 +643,7 @@ onMounted(() => {
       :selectable="false"
       :row-label="logRowLabel"
       :cell-class="jobLogCellClass"
+      v-on="can('schedule:job-log:query') ? { rowClick: openDetail } : {}"
       @update:page-index="changeLogPage"
       @update:page-size="changeLogPageSize"
       @retry="loadLogPage()"

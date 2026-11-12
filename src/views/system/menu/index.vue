@@ -8,7 +8,7 @@ import { useDeleteMany } from '@/composables/useDeleteMany'
 import { useRowStatus } from '@/composables/useRowStatus'
 import { useSelection } from '@/composables/useSelection'
 import { QUIET, failureMessage } from '@/utils/failure'
-import RayTable from '@/components/common/RayTable.vue'
+import RayTreeTable from '@/components/common/RayTreeTable.vue'
 import RaySelect from '@/components/common/RaySelect.vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -55,8 +55,20 @@ const editorOpen = shallowRef(false)
 const editorMenu = shallowRef<MenuRow | null>(null)
 let generation = 0
 
-const { selectedIds, clearSelection, toggleSelected, toggleAll } = useSelection<MenuRow>()
+const { selectedIds, clearSelection } = useSelection<MenuRow>()
 const visibleRows = computed(() => filterMenuRows(rows.value, name.value, typeFilter.value))
+type TreeRow = MenuRow & { children: TreeRow[] }
+const treeRows = computed(() => {
+  const nodes = visibleRows.value.map((row) => ({ ...row, children: [] as TreeRow[] }))
+  const byId = new Map(nodes.map((node) => [node.id, node]))
+  const roots: TreeRow[] = []
+  for (const node of nodes) {
+    const parent = byId.get(node.parentId)
+    if (parent) parent.children.push(node)
+    else roots.push(node)
+  }
+  return roots
+})
 const rowLabel = (row: MenuRow) => row.name
 
 const {
@@ -131,21 +143,19 @@ onMounted(() => {
 </script>
 
 <template>
-  <RayTable
-    :paginated="false"
+  <RayTreeTable
+    expand-on-row-click
     :columns="MENU_DATA_COLUMNS"
-    :rows="visibleRows"
-    :total="visibleRows.length"
-    :page-index="0"
-    :page-size="visibleRows.length"
+    :rows="treeRows"
+    tree-column="name"
+    :row-key="(row) => row.id"
+    :children="(row) => row.children"
     :loading="loading"
     :error-message="errorMessage"
     :selected-ids="selectedIds"
-    selection-unit="个"
     :row-label="rowLabel"
     :cell-class="menuCellClass"
-    @toggle-row="toggleSelected"
-    @toggle-page="toggleAll(visibleRows, $event)"
+    @update:selected-ids="selectedIds = $event"
     @retry="load()"
   >
     <template #filters>
@@ -192,9 +202,6 @@ onMounted(() => {
             重置
           </Button>
         </div>
-        <p class="text-muted-foreground w-full text-xs">
-          按名称和类型在已加载的权限树里筛选；改权限标识或启用状态后需要重新登录。
-        </p>
       </form>
     </template>
 
@@ -248,7 +255,6 @@ onMounted(() => {
     <template #cell-name="{ row }">
       <span
         class="block max-w-72 truncate font-medium text-foreground"
-        :style="{ paddingLeft: `${row.depth * 16}px` }"
         :title="row.name"
       >
         {{ row.name }}
@@ -285,7 +291,7 @@ onMounted(() => {
         </Button>
       </div>
     </template>
-  </RayTable>
+  </RayTreeTable>
 
   <MenuEditor
     :open="editorOpen"

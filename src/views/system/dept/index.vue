@@ -135,6 +135,7 @@ onMounted(() => {
 
 <template>
   <RayTreeTable
+    expand-on-row-click
     :columns="DEPT_DATA_COLUMNS"
     :rows="treeRows"
     tree-column="deptName"
@@ -176,9 +177,6 @@ onMounted(() => {
             重置
           </Button>
         </div>
-        <p class="text-muted-foreground w-full text-xs">
-          按名称在已加载的部门树里筛选；勾选上级会同时勾选所有下级，包括隐藏的部门。
-        </p>
       </form>
     </template>
 
