@@ -3,7 +3,7 @@ import type { Component } from 'vue'
 import { computed, nextTick, shallowRef, watch } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
-import { Calendar, FileText, LayoutGrid, List, Settings, Shield, Users } from '@lucide/vue'
+import { Activity, BookOpen, Building2, Calendar, FileText, LayoutGrid, List, Menu, Settings, Shield, SlidersHorizontal, Users } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import ThemeToggle from '@/components/ThemeToggle.vue'
 import NavTree from './components/NavTree.vue'
@@ -17,6 +17,11 @@ const icons: Record<string, Component> = {
   ShieldOutline: Shield,
   AppsOutline: LayoutGrid,
   ListOutline: List,
+  MenuOutline: Menu,
+  DeptOutline: Building2,
+  DictOutline: BookOpen,
+  ParamOutline: SlidersHorizontal,
+  OnlineOutline: Activity,
   DocumentOutline: FileText,
   CalendarOutline: Calendar,
 }
