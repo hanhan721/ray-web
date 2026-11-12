@@ -3,11 +3,25 @@ import type { Component } from 'vue'
 import { computed, nextTick, shallowRef, watch } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
-import { Activity, BookOpen, Building2, Calendar, FileText, LayoutGrid, List, Menu, Settings, Shield, SlidersHorizontal, Users } from '@lucide/vue'
+import {
+  Activity,
+  BookOpen,
+  Building2,
+  Calendar,
+  FileText,
+  LayoutGrid,
+  List,
+  Menu,
+  Settings,
+  Shield,
+  SlidersHorizontal,
+  Users,
+} from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import ThemeToggle from '@/components/ThemeToggle.vue'
 import NavTree from './components/NavTree.vue'
-import type { NavNode } from '@/router/menu-routes'
+import TopNav from './components/TopNav.vue'
+import { findNavigationTrail } from './navigation'
 import { removeRouteNames } from '@/router/menu-install'
 import { useSessionStore } from '@/stores/session'
 
@@ -32,6 +46,14 @@ const session = useSessionStore()
 const { displayName, navigation } = storeToRefs(session)
 const navOpen = shallowRef(false)
 const openGroups = shallowRef<Set<number>>(new Set())
+const activeTrail = computed(() => findNavigationTrail(navigation.value, route.path))
+const activeModule = computed(() => activeTrail.value[0])
+const secondaryNodes = computed(() =>
+  activeModule.value?.kind === 'group' ? activeModule.value.items : [],
+)
+const activeAncestors = computed(
+  () => new Set(activeTrail.value.filter((node) => node.kind === 'group').map((node) => node.id)),
+)
 
 function toggleGroup(id: number) {
   const next = new Set(openGroups.value)
@@ -40,44 +62,22 @@ function toggleGroup(id: number) {
   openGroups.value = next
 }
 
-function findAncestors(nodes: NavNode[], path: string, parents: number[] = []): number[] | null {
-  for (const node of nodes) {
-    if (node.kind === 'item' && node.to === path) return parents
-    if (node.kind === 'group') {
-      const found = findAncestors(node.items, path, [...parents, node.id])
-      if (found) return found
-    }
-  }
-  return null
+watch(
+  activeAncestors,
+  (ancestors) => {
+    openGroups.value = new Set([...openGroups.value, ...ancestors])
+  },
+  { immediate: true },
+)
+
+async function closeMobileNav() {
+  if (!navOpen.value) return
+  navOpen.value = false
+  await nextTick()
+  document.getElementById('main')?.focus()
 }
 
-watch([navigation, () => route.path], ([nodes, path]) => {
-  const ancestors = findAncestors(nodes, path)
-  if (!ancestors) return
-  const next = new Set(openGroups.value)
-  ancestors.forEach((id) => next.add(id))
-  openGroups.value = next
-}, { immediate: true })
-
-const activeAncestors = computed(() => new Set(findAncestors(navigation.value, route.path) ?? []))
-
-const sectionTitle = computed(() => {
-  const matched = [...route.matched]
-    .reverse()
-    .find((record) => typeof record.meta.title === 'string')
-  return matched?.meta.title ?? '工作台'
-})
-
-watch(
-  () => route.fullPath,
-  async () => {
-    const menuWasOpen = navOpen.value
-    navOpen.value = false
-    if (!menuWasOpen) return
-    await nextTick()
-    document.getElementById('main')?.focus()
-  },
-)
+watch(() => route.fullPath, closeMobileNav)
 
 async function onLogout() {
   const names = await session.logout()
@@ -87,49 +87,73 @@ async function onLogout() {
 </script>
 
 <template>
-  <div class="app-shell bg-background text-foreground min-h-svh md:grid md:grid-cols-[15rem_minmax(0,1fr)]">
+  <div class="app-shell bg-background text-foreground min-h-svh">
     <a
       href="#main"
-      class="bg-background sr-only rounded-md px-3 py-2 focus:not-sr-only focus:absolute focus:top-3 focus:left-3 focus:z-50 focus-visible:ring-2"
+      class="bg-background sr-only rounded-md px-3 py-2 focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus-visible:ring-2"
     >
       跳到主要内容
     </a>
-    <aside class="app-sidebar md:sticky md:top-0 md:flex md:h-svh md:flex-col md:self-start md:border-r">
-      <div class="flex items-center justify-between px-5 py-5">
+    <header class="app-header">
+      <div class="brand-region">
         <RouterLink
           to="/"
-          class="flex items-center gap-3 rounded-md text-base font-semibold outline-none focus-visible:ring-2"
+          class="app-brand flex items-center gap-3 rounded-md text-base font-semibold outline-none focus-visible:ring-2"
         >
           <span class="brand-mark" aria-hidden="true">R</span>
           <span>Ray <span class="brand-subtitle">管理平台</span></span>
         </RouterLink>
-        <Button
-          class="md:hidden"
-          type="button"
-          variant="outline"
-          size="sm"
-          :aria-expanded="navOpen"
-          aria-controls="app-nav"
-          @click="navOpen = !navOpen"
-        >
-          菜单
-        </Button>
       </div>
-      <nav id="app-nav" class="max-h-[calc(100svh-5rem)] overflow-auto md:min-h-0 md:max-h-none md:flex-1" :class="navOpen ? 'block' : 'hidden md:block'" aria-label="主导航">
-        <NavTree class="px-3 pb-4" :nodes="navigation" :open="openGroups" :active-ancestors="activeAncestors" :icons="icons" :depth="0" @toggle="toggleGroup" />
-      </nav>
-    </aside>
-    <div class="flex min-w-0 flex-col">
-      <header
-        class="app-header sticky top-0 z-10 flex h-16 items-center justify-between gap-3 px-5 md:px-8"
-      >
-        <p class="truncate text-sm font-semibold">{{ sectionTitle }}</p>
-        <div class="flex items-center gap-1">
-          <p class="text-muted-foreground max-w-40 truncate text-sm">{{ displayName }}</p>
-          <ThemeToggle />
-          <Button type="button" variant="outline" size="sm" @click="onLogout">退出</Button>
+      <TopNav
+        class="app-top-nav"
+        :nodes="navigation"
+        :active-id="activeModule?.id"
+        :home-active="route.name === 'home'"
+        :icons="icons"
+      />
+      <div class="app-user flex items-center gap-1">
+        <p class="app-user-name text-muted-foreground truncate text-sm" :title="displayName">
+          {{ displayName }}
+        </p>
+        <ThemeToggle />
+        <Button type="button" variant="outline" size="sm" @click="onLogout">退出</Button>
+      </div>
+    </header>
+    <div class="app-body" :class="{ 'has-sidebar': secondaryNodes.length > 0 }">
+      <aside v-if="secondaryNodes.length" class="app-sidebar" aria-label="子菜单">
+        <div class="flex items-center justify-between gap-3 px-4 py-3 md:hidden">
+          <span class="truncate text-sm font-medium">{{ activeModule?.title }}</span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            :aria-expanded="navOpen"
+            aria-controls="app-nav"
+            @click="navOpen = !navOpen"
+          >
+            <Menu aria-hidden="true" />
+            {{ navOpen ? '收起子菜单' : '展开子菜单' }}
+          </Button>
         </div>
-      </header>
+        <nav
+          id="app-nav"
+          class="secondary-nav"
+          :class="navOpen ? 'block' : 'hidden md:block'"
+          :aria-label="`${activeModule?.title}子菜单`"
+          @keydown.esc="closeMobileNav"
+        >
+          <NavTree
+            class="px-3 pb-4 md:pt-4"
+            :nodes="secondaryNodes"
+            :open="openGroups"
+            :active-ancestors="activeAncestors"
+            :icons="icons"
+            :depth="0"
+            @toggle="toggleGroup"
+            @navigate="closeMobileNav"
+          />
+        </nav>
+      </aside>
       <main id="main" tabindex="-1" class="min-w-0 flex-1 p-4 outline-none md:p-6">
         <RouterView v-slot="{ Component: view, route: matched }">
           <KeepAlive>
@@ -143,8 +167,136 @@ async function onLogout() {
 </template>
 
 <style scoped>
-.app-sidebar { background: var(--sidebar); color: var(--sidebar-foreground); border-color: var(--sidebar-border); }
-.brand-mark { display: grid; width: 2rem; height: 2rem; place-items: center; border-radius: 0.55rem; background: var(--sidebar-accent); color: var(--sidebar-primary); font-weight: 700; }
-.brand-subtitle { color: var(--muted-foreground); font-size: 0.75rem; font-weight: 400; }
-.app-header { background: var(--card); border-bottom: 1px solid var(--border); }
+.app-shell {
+  --app-header-height: 4rem;
+}
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 2rem;
+  height: var(--app-header-height);
+  padding-inline: 1.5rem;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+}
+.app-brand {
+  white-space: nowrap;
+}
+.app-user-name {
+  max-width: 10rem;
+  margin-right: 0.5rem;
+}
+.app-body {
+  min-height: calc(100svh - var(--app-header-height));
+}
+.app-sidebar {
+  min-width: 0;
+  background: var(--sidebar);
+  color: var(--sidebar-foreground);
+  border-bottom: 1px solid var(--sidebar-border);
+}
+.secondary-nav {
+  max-height: calc(100svh - var(--app-header-height) - 4rem);
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.brand-mark {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border-radius: 0.55rem;
+  background: var(--sidebar-accent);
+  color: var(--sidebar-primary);
+  font-weight: 700;
+}
+.brand-subtitle {
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
+@media (min-width: 768px) {
+  .app-header {
+    grid-template-columns: 13rem minmax(0, 1fr) auto;
+    gap: 0;
+    padding-left: 0;
+  }
+  .brand-region {
+    position: relative;
+    display: flex;
+    height: calc(100% + 1px);
+    align-items: center;
+    padding-inline: 1.5rem;
+    background: var(--sidebar);
+    border-right: 1px solid var(--sidebar-border);
+  }
+  .app-top-nav {
+    margin-left: 1rem;
+  }
+  .app-user {
+    margin-left: 1rem;
+  }
+  .app-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .app-body.has-sidebar {
+    grid-template-columns: 13rem minmax(0, 1fr);
+  }
+  .app-sidebar {
+    position: sticky;
+    top: var(--app-header-height);
+    height: calc(100svh - var(--app-header-height));
+    align-self: start;
+    border-right: 1px solid var(--sidebar-border);
+    border-bottom: 0;
+  }
+  .secondary-nav {
+    max-height: 100%;
+  }
+}
+
+@media (max-width: 1023px) {
+  .app-header {
+    gap: 1rem;
+    padding-right: 1rem;
+  }
+  .brand-subtitle {
+    display: none;
+  }
+  .app-user-name {
+    max-width: 5rem;
+  }
+}
+
+@media (max-width: 767px) {
+  .app-shell {
+    --app-header-height: 7rem;
+  }
+  .app-header {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: 4rem minmax(0, 1fr);
+    gap: 0;
+    padding-left: 1rem;
+  }
+  .brand-region {
+    justify-self: start;
+  }
+  .app-user {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .app-top-nav {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    align-self: stretch;
+  }
+}
 </style>

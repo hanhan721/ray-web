@@ -13,7 +13,13 @@ const props = defineProps<{
   depth: number
 }>()
 const hasIcons = computed(() => props.nodes.some((node) => node.icon && props.icons[node.icon]))
-const emit = defineEmits<{ toggle: [id: number] }>()
+const emit = defineEmits<{ toggle: [id: number]; navigate: [] }>()
+
+function onNavigate(event: MouseEvent) {
+  if (event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) {
+    emit('navigate')
+  }
+}
 </script>
 
 <template>
@@ -26,6 +32,7 @@ const emit = defineEmits<{ toggle: [id: number] }>()
         class="nav-link"
         :style="{ paddingLeft: `${0.75 + depth * 0.625}rem` }"
         exact-active-class="nav-link-active"
+        @click="onNavigate"
       >
         <span v-if="hasIcons" class="size-4 shrink-0" aria-hidden="true">
           <component :is="icons[node.icon]" v-if="node.icon && icons[node.icon]" class="size-4" />
@@ -37,7 +44,10 @@ const emit = defineEmits<{ toggle: [id: number] }>()
           type="button"
           class="nav-link nav-directory"
           :class="{ 'nav-ancestor': activeAncestors.has(node.id) }"
-          :style="{ paddingLeft: `${0.75 + depth * 0.625}rem`, '--ancestor-strength': `${Math.min(30 + depth * 20, 80)}%` }"
+          :style="{
+            paddingLeft: `${0.75 + depth * 0.625}rem`,
+            '--ancestor-strength': `${Math.min(30 + depth * 20, 80)}%`,
+          }"
           :title="node.title"
           :aria-expanded="open.has(node.id)"
           :aria-controls="`nav-group-${node.id}`"
@@ -47,12 +57,23 @@ const emit = defineEmits<{ toggle: [id: number] }>()
             <component :is="icons[node.icon]" v-if="node.icon && icons[node.icon]" class="size-4" />
           </span>
           <span class="flex-1 whitespace-nowrap">{{ node.title }}</span>
-          <ChevronRight class="size-4 shrink-0 transition-transform" :class="{ 'rotate-90': open.has(node.id) }" />
+          <ChevronRight
+            class="size-4 shrink-0 transition-transform"
+            :class="{ 'rotate-90': open.has(node.id) }"
+          />
         </button>
         <Transition name="nav-expand">
-          <div :id="`nav-group-${node.id}`" v-show="open.has(node.id)" class="nav-group">
+          <div v-show="open.has(node.id)" :id="`nav-group-${node.id}`" class="nav-group">
             <div class="nav-group-content">
-              <NavTree :nodes="node.items" :open="open" :active-ancestors="activeAncestors" :icons="icons" :depth="depth + 1" @toggle="(id) => emit('toggle', id)" />
+              <NavTree
+                :nodes="node.items"
+                :open="open"
+                :active-ancestors="activeAncestors"
+                :icons="icons"
+                :depth="depth + 1"
+                @toggle="(id) => emit('toggle', id)"
+                @navigate="emit('navigate')"
+              />
             </div>
           </div>
         </Transition>
@@ -62,15 +83,64 @@ const emit = defineEmits<{ toggle: [id: number] }>()
 </template>
 
 <style scoped>
-.nav-tree { display: flex; flex-direction: column; gap: 0.125rem; width: max-content; min-width: 100%; }
-.nav-link { display: flex; align-items: center; gap: 0.75rem; min-height: 2.5rem; padding: 0.5rem 0.75rem; border-radius: 0.5rem; color: var(--sidebar-foreground); font-size: 0.875rem; outline: none; }
-.nav-directory { width: 100%; text-align: left; }
-.nav-link:hover { background: var(--muted); }
-.nav-link:focus-visible { outline: 2px solid var(--sidebar-primary); outline-offset: -2px; }
-.nav-link-active, .nav-link-active:hover { background: var(--sidebar-accent); color: var(--sidebar-primary); font-weight: 600; }
-.nav-ancestor, .nav-ancestor:hover { color: var(--sidebar-primary); font-weight: 500; background: color-mix(in oklch, var(--sidebar-accent) var(--ancestor-strength), var(--sidebar)); }
-.nav-group { display: grid; grid-template-rows: 1fr; }
-.nav-group-content { min-height: 0; overflow: hidden; }
-.nav-expand-enter-active, .nav-expand-leave-active { transition: grid-template-rows 200ms ease, opacity 200ms ease; }
-.nav-expand-enter-from, .nav-expand-leave-to { grid-template-rows: 0fr; opacity: 0; }
+.nav-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  width: max-content;
+  min-width: 100%;
+}
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 2.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  color: var(--sidebar-foreground);
+  font-size: 0.875rem;
+  outline: none;
+}
+.nav-directory {
+  width: 100%;
+  text-align: left;
+}
+.nav-link:hover {
+  background: var(--muted);
+}
+.nav-link:focus-visible {
+  outline: 2px solid var(--sidebar-primary);
+  outline-offset: -2px;
+}
+.nav-link-active,
+.nav-link-active:hover {
+  background: var(--sidebar-accent);
+  color: var(--sidebar-primary);
+  font-weight: 600;
+}
+.nav-ancestor,
+.nav-ancestor:hover {
+  color: var(--sidebar-primary);
+  font-weight: 500;
+  background: color-mix(in oklch, var(--sidebar-accent) var(--ancestor-strength), var(--sidebar));
+}
+.nav-group {
+  display: grid;
+  grid-template-rows: 1fr;
+}
+.nav-group-content {
+  min-height: 0;
+  overflow: hidden;
+}
+.nav-expand-enter-active,
+.nav-expand-leave-active {
+  transition:
+    grid-template-rows 200ms ease,
+    opacity 200ms ease;
+}
+.nav-expand-enter-from,
+.nav-expand-leave-to {
+  grid-template-rows: 0fr;
+  opacity: 0;
+}
 </style>
