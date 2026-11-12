@@ -3,7 +3,7 @@ import { computed, nextTick, shallowRef, useTemplateRef, watch } from 'vue'
 import { createDept, updateDept } from '@/api/dept'
 import { QUIET, failureMessage } from '@/utils/failure'
 import RayFormDialog from '@/components/common/RayFormDialog.vue'
-import RaySelect from '@/components/common/RaySelect.vue'
+import RayTreeSelect, { type TreeSelectOption } from '@/components/common/RayTreeSelect.vue'
 import { Button } from '@/components/ui/button'
 import { Field, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
@@ -42,13 +42,19 @@ const parentOptions = computed(() => {
   const excluded = props.dept ? excludedParentIds(props.rows, props.dept.id) : new Set<number>()
   return props.rows.filter((row) => !excluded.has(row.id))
 })
-const parentSelectOptions = computed(() => [
-  { value: '0', label: '无' },
-  ...parentOptions.value.map((row) => ({
-    value: String(row.id),
-    label: `${'· '.repeat(row.depth)}${row.deptName}`,
-  })),
-])
+const parentSelectOptions = computed(() => {
+  const nodes = parentOptions.value.map((row) => ({
+    value: String(row.id), label: row.deptName, children: [] as TreeSelectOption<string>[], parentId: row.parentId,
+  }))
+  const lookup = new Map(nodes.map((node) => [node.value, node]))
+  const roots: TreeSelectOption<string>[] = [{ value: '0', label: '无' }]
+  for (const node of nodes) {
+    const parent = lookup.get(String(node.parentId))
+    if (parent) parent.children.push(node)
+    else roots.push(node)
+  }
+  return roots
+})
 
 function resetForm() {
   session += 1
@@ -159,13 +165,12 @@ async function onSubmit() {
           </Field>
           <Field>
             <FieldLabel for="dept-parent">上级</FieldLabel>
-            <RaySelect
+            <RayTreeSelect
               id="dept-parent"
               :model-value="parentId || null"
               :options="parentSelectOptions"
               placeholder="选择上级"
               size="lg"
-              searchable
               :disabled="saving"
               class="w-full"
               @update:model-value="parentId = $event ?? ''"

@@ -1,7 +1,7 @@
 <script setup lang="ts" generic="T extends SelectValue, Multiple extends boolean = false">
 import type { HTMLAttributes } from 'vue'
 import { CheckIcon, ChevronDownIcon, XIcon } from '@lucide/vue'
-import { computed, nextTick, shallowRef, useTemplateRef, watch } from 'vue'
+import { computed, nextTick, shallowRef, useTemplateRef, useSlots, watch } from 'vue'
 import { cn } from 'cn'
 import { ComboboxInput, VisuallyHidden } from 'reka-ui'
 import { Badge } from '@/components/ui/badge'
@@ -68,6 +68,7 @@ const emit = defineEmits<{
 
 defineOptions({ inheritAttrs: false })
 
+const slots = useSlots()
 const open = shallowRef(false)
 const searchText = shallowRef('')
 const values = computed<T[]>(() =>
@@ -102,7 +103,7 @@ const limitReached = computed(
 
 const inputPlaceholder = computed(() => {
   if (!props.multiple) {
-    return open.value && selectedOption.value ? selectedOption.value.label : props.placeholder
+    return selectedOption.value?.label ?? props.placeholder
   }
   if (props.options.length === 0) return props.emptyText
   return hasValue.value ? '' : props.placeholder
@@ -199,6 +200,14 @@ function onOpenChange(next: boolean) {
   open.value = next
 }
 
+function closeAndFocus() {
+  open.value = false
+  nextTick(() => {
+    searchText.value = props.multiple ? '' : (selectedOption.value?.label ?? '')
+    focusInputWithoutOpening()
+  })
+}
+
 function removeOption(value: T) {
   if (props.disabled) return
   commit(values.value.filter((item) => item !== value))
@@ -208,6 +217,7 @@ function removeOption(value: T) {
 function clear() {
   if (!showClear.value) return
   commit(props.multiple ? [] : null)
+  searchText.value = ''
   emit('clear')
   open.value = false
   nextTick(() => focusInputWithoutOpening())
@@ -247,6 +257,14 @@ function displayValue(current: unknown): string {
 watch(open, (next) => {
   if (next && props.searchable) searchText.value = ''
 })
+
+function onArrowDown(event: KeyboardEvent) {
+  if (!slots.list || !open.value) return
+  event.preventDefault()
+  const id = inputElement.value?.getAttribute('aria-controls')
+  const tree = id ? document.getElementById(id) : null
+  tree?.querySelector<HTMLElement>('[role="treeitem"]:not([data-disabled])')?.focus()
+}
 
 function onEnter(event: KeyboardEvent) {
   // 菜单打开时 Enter 只负责选中，不能把外层表单一起提交。
@@ -342,6 +360,7 @@ function onEnter(event: KeyboardEvent) {
         "
         autocomplete="off"
         @keydown.delete="onDelete"
+        @keydown.down="onArrowDown"
         @keydown.enter="onEnter"
       />
 
@@ -377,36 +396,38 @@ function onEnter(event: KeyboardEvent) {
     </ComboboxAnchor>
 
     <ComboboxList align="start">
-      <ComboboxEmpty class="py-5 text-sm">
-        {{ options.length === 0 ? emptyText : noResultsText }}
-      </ComboboxEmpty>
-      <ComboboxViewport>
-        <ComboboxGroup>
-          <ComboboxItem
-            v-for="option in options"
-            :key="option.value"
-            :value="option"
-            :text-value="option.label"
-            :disabled="isOptionDisabled(option)"
-            :aria-disabled="isOptionDisabled(option) || undefined"
-            :class="selectItemClass"
-          >
-            <slot name="option" :option="option" :selected="isSelected(option.value)">
-              <span
-                class="min-w-0 flex-1 truncate"
-                :style="option.depth ? { paddingLeft: `${option.depth * 14}px` } : undefined"
-              >
-                {{ option.label }}
-              </span>
-            </slot>
-            <CheckIcon
-              v-if="isSelected(option.value)"
-              class="text-muted-foreground size-3.5 shrink-0"
-              aria-hidden="true"
-            />
-          </ComboboxItem>
-        </ComboboxGroup>
-      </ComboboxViewport>
+      <slot name="list" :query="searchText" :commit="commit" :close="closeAndFocus">
+        <ComboboxEmpty class="py-5 text-sm">
+          {{ options.length === 0 ? emptyText : noResultsText }}
+        </ComboboxEmpty>
+        <ComboboxViewport>
+          <ComboboxGroup>
+            <ComboboxItem
+              v-for="option in options"
+              :key="option.value"
+              :value="option"
+              :text-value="option.label"
+              :disabled="isOptionDisabled(option)"
+              :aria-disabled="isOptionDisabled(option) || undefined"
+              :class="selectItemClass"
+            >
+              <slot name="option" :option="option" :selected="isSelected(option.value)">
+                <span
+                  class="min-w-0 flex-1 truncate"
+                  :style="option.depth ? { paddingLeft: `${option.depth * 14}px` } : undefined"
+                >
+                  {{ option.label }}
+                </span>
+              </slot>
+              <CheckIcon
+                v-if="isSelected(option.value)"
+                class="text-muted-foreground size-3.5 shrink-0"
+                aria-hidden="true"
+              />
+            </ComboboxItem>
+          </ComboboxGroup>
+        </ComboboxViewport>
+      </slot>
     </ComboboxList>
   </Combobox>
 </template>
