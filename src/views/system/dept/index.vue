@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import RaySearchForm from '@/components/common/RaySearchForm.vue'
 import { Building, Plus, RefreshCw, RotateCcw, Trash2 } from '@lucide/vue'
 import { computed, onMounted, shallowRef, watch } from 'vue'
 import { deleteDepts, getDeptTree, updateDept } from '@/api/dept'
@@ -54,8 +55,8 @@ let generation = 0
 const { selectedIds, clearSelection } = useSelection<DeptRow>()
 type TreeRow = DeptRow & { children: TreeRow[] }
 const treeRows = computed(() => {
-  const nodes = rows.value.map(row => ({ ...row, children: [] as TreeRow[] }))
-  const byId = new Map(nodes.map(node => [node.id, node]))
+  const nodes = rows.value.map((row) => ({ ...row, children: [] as TreeRow[] }))
+  const byId = new Map(nodes.map((node) => [node.id, node]))
   const roots: TreeRow[] = []
   for (const node of nodes) {
     const parent = byId.get(node.parentId)
@@ -64,7 +65,9 @@ const treeRows = computed(() => {
   }
   return roots
 })
-const matchDept = computed(() => name.value.trim() ? (row: TreeRow) => row.deptName.includes(name.value.trim()) : undefined)
+const matchDept = computed(() =>
+  name.value.trim() ? (row: TreeRow) => row.deptName.includes(name.value.trim()) : undefined,
+)
 const rowLabel = (row: DeptRow) => row.deptName
 
 const {
@@ -152,22 +155,12 @@ onMounted(() => {
     @retry="load()"
   >
     <template #filters>
-      <form class="flex flex-wrap items-center gap-x-4 gap-y-3" @submit.prevent="load()">
-        <Field orientation="horizontal" class="w-auto">
-          <FieldLabel
-            for="filter-dept-name"
-            class="w-8 shrink-0 whitespace-nowrap font-normal text-muted-foreground"
-            >名称</FieldLabel
-          >
-          <Input
-            id="filter-dept-name"
-            v-model="name"
-            name="deptName"
-            placeholder="输入部门名称"
-            class="h-9 w-48"
-          />
+      <RaySearchForm @submit="load()">
+        <Field orientation="horizontal">
+          <FieldLabel for="filter-dept-name">名称</FieldLabel>
+          <Input id="filter-dept-name" v-model="name" name="deptName" placeholder="输入部门名称" />
         </Field>
-        <div class="flex items-center gap-2">
+        <template #actions>
           <Button type="submit" :disabled="loading">
             <RefreshCw data-icon="inline-start" />
             刷新
@@ -176,8 +169,8 @@ onMounted(() => {
             <RotateCcw data-icon="inline-start" />
             重置
           </Button>
-        </div>
-      </form>
+        </template>
+      </RaySearchForm>
     </template>
 
     <template #actions>

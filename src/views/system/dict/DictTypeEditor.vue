@@ -5,7 +5,14 @@ import { QUIET, failureMessage } from '@/utils/failure'
 import { sameEditorSession } from '@/views/system/user/user-table'
 import RayFormDialog from '@/components/common/RayFormDialog.vue'
 import { Button } from '@/components/ui/button'
-import { Field, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
+import {
+  Field,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+  FieldGroup,
+  FieldError,
+} from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
@@ -102,42 +109,51 @@ async function onSubmit() {
     <div class="flex flex-col gap-6">
       <FieldSet class="gap-3">
         <FieldLegend class="mb-0">基本资料</FieldLegend>
-        <div class="grid gap-4 sm:grid-cols-2">
-          <Field>
-            <FieldLabel for="dict-type-name">名称</FieldLabel>
+        <FieldGroup class="ray-form-grid">
+          <Field :data-invalid="formError && !dictName.trim() ? true : undefined">
+            <FieldLabel for="dict-type-name" required>名称</FieldLabel>
             <Input
               id="dict-type-name"
               ref="nameInput"
               v-model="dictName"
               name="dictName"
-              class="h-9"
               :disabled="saving"
+              required
+              :aria-invalid="formError && !dictName.trim() ? true : undefined"
+              :aria-describedby="formError && !dictName.trim() ? 'dict-type-name-error' : undefined"
             />
+
+            <FieldError v-if="formError && !dictName.trim()" id="dict-type-name-error"
+              >请填写名称</FieldError
+            >
           </Field>
-          <Field>
-            <FieldLabel for="dict-type-code">类型编码</FieldLabel>
+          <Field :data-invalid="formError && !typeCode.trim() ? true : undefined">
+            <FieldLabel for="dict-type-code" required>类型编码</FieldLabel>
             <Input
               id="dict-type-code"
               v-model="typeCode"
               name="dictType"
-              class="h-9"
               :disabled="saving"
+              required
+              :aria-invalid="formError && !typeCode.trim() ? true : undefined"
+              :aria-describedby="formError && !typeCode.trim() ? 'dict-type-code-error' : undefined"
             />
+
+            <FieldError v-if="formError && !typeCode.trim()" id="dict-type-code-error"
+              >请填写类型编码</FieldError
+            >
           </Field>
-        </div>
+        </FieldGroup>
       </FieldSet>
 
       <FieldSet class="gap-3">
         <FieldLegend class="mb-0">状态与备注</FieldLegend>
-        <div class="grid gap-4 sm:grid-cols-2">
-          <Field
-            orientation="horizontal"
-            class="rounded-lg border bg-muted/20 px-3 py-2 sm:col-span-2"
-          >
+        <FieldGroup class="ray-form-grid">
+          <Field class="ray-form-span-full">
             <FieldLabel for="dict-type-enabled">启用</FieldLabel>
             <Switch id="dict-type-enabled" v-model="enabled" :disabled="saving" />
           </Field>
-          <details class="sm:col-span-2">
+          <details class="ray-form-span-full">
             <summary class="cursor-pointer text-sm font-medium">
               更多设置 <span v-if="remark" class="text-muted-foreground font-normal">· 已配置</span>
             </summary>
@@ -151,7 +167,7 @@ async function onSubmit() {
               />
             </Field>
           </details>
-        </div>
+        </FieldGroup>
       </FieldSet>
     </div>
 

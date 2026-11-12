@@ -75,7 +75,7 @@ async function onSubmit() {
         </p>
         <FieldGroup class="mt-6">
           <Field :data-invalid="formError ? true : undefined">
-            <FieldLabel for="login-account">账号</FieldLabel>
+            <FieldLabel for="login-account" required>账号</FieldLabel>
             <Input
               id="login-account"
               ref="account"
@@ -84,19 +84,21 @@ async function onSubmit() {
               autocomplete="username"
               autocapitalize="off"
               spellcheck="false"
+              required
               :disabled="submitting"
               :aria-invalid="formError ? true : undefined"
               :aria-describedby="formError ? 'login-error' : undefined"
             />
           </Field>
           <Field :data-invalid="formError ? true : undefined">
-            <FieldLabel for="login-password">密码</FieldLabel>
+            <FieldLabel for="login-password" required>密码</FieldLabel>
             <Input
               id="login-password"
               v-model="password"
               name="password"
               type="password"
               autocomplete="current-password"
+              required
               :disabled="submitting"
               :aria-invalid="formError ? true : undefined"
               :aria-describedby="formError ? 'login-error' : undefined"

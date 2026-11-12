@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import RaySearchForm from '@/components/common/RaySearchForm.vue'
 import { RotateCcw, Search, Trash2, UserRoundPlus, UsersRound } from '@lucide/vue'
 import { onMounted, shallowRef } from 'vue'
 import { deleteUsers, updateUserStatus, type SysUser } from '@/api/user'
@@ -135,46 +136,32 @@ onMounted(() => {
     @update:page-index="changePage"
     @update:page-size="changePageSize"
     @toggle-row="toggleSelected"
-      @row-click="(row) => toggleSelected(row.id, !selectedIds.includes(row.id))"
+    @row-click="(row) => toggleSelected(row.id, !selectedIds.includes(row.id))"
     @toggle-page="togglePage"
     @retry="load()"
   >
     <template #filters>
-      <form class="flex flex-wrap items-center gap-x-4 gap-y-3" @submit.prevent="search()">
-        <Field orientation="horizontal" class="w-auto">
-          <FieldLabel
-            for="filter-username"
-            class="w-8 shrink-0 whitespace-nowrap font-normal text-muted-foreground"
-            >账号</FieldLabel
-          >
+      <RaySearchForm @submit="search()">
+        <Field orientation="horizontal">
+          <FieldLabel for="filter-username">账号</FieldLabel>
           <Input
             id="filter-username"
             v-model="username"
             name="username"
             placeholder="输入账号关键字"
-            class="h-9 w-44"
           />
         </Field>
-        <Field orientation="horizontal" class="w-auto">
-          <FieldLabel
-            for="filter-nickname"
-            class="w-8 shrink-0 whitespace-nowrap font-normal text-muted-foreground"
-            >昵称</FieldLabel
-          >
+        <Field orientation="horizontal">
+          <FieldLabel for="filter-nickname">昵称</FieldLabel>
           <Input
             id="filter-nickname"
             v-model="nickname"
             name="nickname"
             placeholder="输入昵称关键字"
-            class="h-9 w-44"
           />
         </Field>
-        <Field orientation="horizontal" class="w-auto">
-          <FieldLabel
-            for="filter-enabled"
-            class="w-8 shrink-0 whitespace-nowrap font-normal text-muted-foreground"
-            >状态</FieldLabel
-          >
+        <Field orientation="horizontal" class="ray-search-field-short">
+          <FieldLabel for="filter-enabled">状态</FieldLabel>
           <RaySelect
             id="filter-enabled"
             :model-value="enabled || null"
@@ -183,11 +170,10 @@ onMounted(() => {
             size="lg"
             searchable
             clearable
-            class="w-36"
             @update:model-value="setEnabledFilter"
           />
         </Field>
-        <div class="flex items-center gap-2">
+        <template #actions>
           <Button type="submit" :disabled="loading">
             <Search data-icon="inline-start" />
             查询
@@ -196,8 +182,8 @@ onMounted(() => {
             <RotateCcw data-icon="inline-start" />
             重置
           </Button>
-        </div>
-      </form>
+        </template>
+      </RaySearchForm>
     </template>
 
     <template #actions>

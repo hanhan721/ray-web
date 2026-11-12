@@ -7,7 +7,14 @@ import { sameEditorSession } from '@/views/system/user/user-table'
 import RayFormDialog from '@/components/common/RayFormDialog.vue'
 import RaySelect from '@/components/common/RaySelect.vue'
 import { Button } from '@/components/ui/button'
-import { Field, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
+import {
+  Field,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+  FieldGroup,
+  FieldError,
+} from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
@@ -236,17 +243,25 @@ async function onSubmit() {
     <div v-else class="flex flex-col gap-6">
       <FieldSet class="gap-3">
         <FieldLegend class="mb-0">基本资料</FieldLegend>
-        <div class="grid gap-4 sm:grid-cols-2">
-          <Field>
-            <FieldLabel for="param-key">参数键</FieldLabel>
+        <FieldGroup class="ray-form-grid">
+          <Field :data-invalid="formError && creating && !paramKey.trim() ? true : undefined">
+            <FieldLabel for="param-key" :required="creating">参数键</FieldLabel>
             <Input
               id="param-key"
               ref="keyInput"
               v-model="paramKey"
               name="paramKey"
-              class="h-9"
               :disabled="saving || loading || !creating"
+              :required="creating"
+              :aria-invalid="formError && creating && !paramKey.trim() ? true : undefined"
+              :aria-describedby="
+                formError && creating && !paramKey.trim() ? 'param-key-error' : undefined
+              "
             />
+
+            <FieldError v-if="formError && creating && !paramKey.trim()" id="param-key-error"
+              >请填写参数键</FieldError
+            >
           </Field>
           <Field>
             <FieldLabel for="param-type">类型</FieldLabel>
@@ -274,23 +289,30 @@ async function onSubmit() {
               @update:model-value="bizType = $event ?? ''"
             />
           </Field>
-        </div>
+        </FieldGroup>
       </FieldSet>
 
       <FieldSet class="gap-3">
         <FieldLegend class="mb-0">参数内容</FieldLegend>
-        <div class="grid gap-4">
-          <Field>
-            <FieldLabel for="param-value">参数值</FieldLabel>
+        <FieldGroup>
+          <Field :data-invalid="formError && !paramValue.trim() ? true : undefined">
+            <FieldLabel for="param-value" required>参数值</FieldLabel>
             <Textarea
               id="param-value"
               ref="valueInput"
               v-model="paramValue"
               rows="4"
               :disabled="saving || loading || !detailReady"
+              required
+              :aria-invalid="formError && !paramValue.trim() ? true : undefined"
+              :aria-describedby="formError && !paramValue.trim() ? 'param-value-error' : undefined"
             />
+
+            <FieldError v-if="formError && !paramValue.trim()" id="param-value-error"
+              >请填写参数值</FieldError
+            >
           </Field>
-          <Field orientation="horizontal" class="rounded-lg border bg-muted/20 px-3 py-2">
+          <Field>
             <FieldLabel for="param-encrypted">加密存储</FieldLabel>
             <Switch
               id="param-encrypted"
@@ -298,20 +320,41 @@ async function onSubmit() {
               :disabled="saving || loading || !detailReady"
             />
           </Field>
-        </div>
+        </FieldGroup>
       </FieldSet>
 
       <FieldSet class="gap-3">
         <FieldLegend class="mb-0">描述</FieldLegend>
-        <Field>
-          <FieldLabel for="param-description">描述</FieldLabel>
+        <Field
+          :data-invalid="
+            formError && Boolean(originalDescription) && !description.trim() ? true : undefined
+          "
+        >
+          <FieldLabel for="param-description" :required="Boolean(originalDescription)"
+            >描述</FieldLabel
+          >
           <Textarea
             id="param-description"
             v-model="description"
             name="description"
             placeholder="补充说明（可选）"
             :disabled="saving || loading || !detailReady"
+            :required="Boolean(originalDescription)"
+            :aria-invalid="
+              formError && Boolean(originalDescription) && !description.trim() ? true : undefined
+            "
+            :aria-describedby="
+              formError && Boolean(originalDescription) && !description.trim()
+                ? 'param-description-error'
+                : undefined
+            "
           />
+
+          <FieldError
+            v-if="formError && Boolean(originalDescription) && !description.trim()"
+            id="param-description-error"
+            >描述暂时不能清空。</FieldError
+          >
         </Field>
       </FieldSet>
     </div>

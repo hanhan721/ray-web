@@ -7,7 +7,14 @@ import { sameEditorSession } from '@/views/system/user/user-table'
 import RayFormDialog from '@/components/common/RayFormDialog.vue'
 import RaySelect from '@/components/common/RaySelect.vue'
 import { Button } from '@/components/ui/button'
-import { Field, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
+import {
+  Field,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+  FieldGroup,
+  FieldError,
+} from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
@@ -176,17 +183,23 @@ async function onSubmit() {
     <div class="flex flex-col gap-6">
       <FieldSet class="gap-3">
         <FieldLegend class="mb-0">基本资料</FieldLegend>
-        <div class="grid gap-4 sm:grid-cols-2">
-          <Field>
-            <FieldLabel for="menu-name">名称</FieldLabel>
+        <FieldGroup class="ray-form-grid">
+          <Field :data-invalid="formError && !name.trim() ? true : undefined">
+            <FieldLabel for="menu-name" required>名称</FieldLabel>
             <Input
               id="menu-name"
               ref="nameInput"
               v-model="name"
               name="name"
-              class="h-9"
               :disabled="saving"
+              required
+              :aria-invalid="formError && !name.trim() ? true : undefined"
+              :aria-describedby="formError && !name.trim() ? 'menu-name-error' : undefined"
             />
+
+            <FieldError v-if="formError && !name.trim()" id="menu-name-error"
+              >请填写名称</FieldError
+            >
           </Field>
           <Field>
             <FieldLabel for="menu-type">类型</FieldLabel>
@@ -217,40 +230,82 @@ async function onSubmit() {
           </Field>
           <Field>
             <FieldLabel for="menu-icon">图标</FieldLabel>
-            <Input id="menu-icon" v-model="icon" class="h-9" :disabled="saving" />
+            <Input id="menu-icon" v-model="icon" :disabled="saving" />
           </Field>
-        </div>
+        </FieldGroup>
       </FieldSet>
 
       <FieldSet class="gap-3">
         <FieldLegend class="mb-0">路由与标识</FieldLegend>
-        <div class="grid gap-4 sm:grid-cols-2">
-          <Field>
-            <FieldLabel for="menu-url">路由</FieldLabel>
-            <Input id="menu-url" v-model="url" class="h-9" :disabled="saving" />
+        <FieldGroup class="ray-form-grid">
+          <Field :data-invalid="formError && type === 'MENU' && !url.trim() ? true : undefined">
+            <FieldLabel for="menu-url" :required="type === 'MENU'">路由</FieldLabel>
+            <Input
+              id="menu-url"
+              v-model="url"
+              :disabled="saving"
+              :required="type === 'MENU'"
+              :aria-invalid="formError && type === 'MENU' && !url.trim() ? true : undefined"
+              :aria-describedby="
+                formError && type === 'MENU' && !url.trim() ? 'menu-url-error' : undefined
+              "
+            />
+
+            <FieldError v-if="formError && type === 'MENU' && !url.trim()" id="menu-url-error"
+              >请填写路由</FieldError
+            >
           </Field>
-          <Field>
-            <FieldLabel for="menu-code">权限标识</FieldLabel>
-            <Input id="menu-code" v-model="code" class="h-9" :disabled="saving" />
+          <Field
+            :data-invalid="
+              formError && (type === 'BUTTON' || Boolean(originalCode)) && !code.trim()
+                ? true
+                : undefined
+            "
+          >
+            <FieldLabel for="menu-code" :required="type === 'BUTTON' || Boolean(originalCode)"
+              >权限标识</FieldLabel
+            >
+            <Input
+              id="menu-code"
+              v-model="code"
+              :disabled="saving"
+              :required="type === 'BUTTON' || Boolean(originalCode)"
+              :aria-invalid="
+                formError && (type === 'BUTTON' || Boolean(originalCode)) && !code.trim()
+                  ? true
+                  : undefined
+              "
+              :aria-describedby="
+                formError && (type === 'BUTTON' || Boolean(originalCode)) && !code.trim()
+                  ? 'menu-code-error'
+                  : undefined
+              "
+            />
+
+            <FieldError
+              v-if="formError && (type === 'BUTTON' || Boolean(originalCode)) && !code.trim()"
+              id="menu-code-error"
+              >请填写权限标识</FieldError
+            >
           </Field>
           <Field>
             <FieldLabel for="menu-component">组件</FieldLabel>
-            <Input id="menu-component" v-model="component" class="h-9" :disabled="saving" />
+            <Input id="menu-component" v-model="component" :disabled="saving" />
           </Field>
           <Field>
             <FieldLabel for="menu-route-name">路由名称</FieldLabel>
-            <Input id="menu-route-name" v-model="routeName" class="h-9" :disabled="saving" />
+            <Input id="menu-route-name" v-model="routeName" :disabled="saving" />
           </Field>
-          <Field class="sm:col-span-2">
+          <Field class="ray-form-span-full">
             <FieldLabel for="menu-redirect">重定向</FieldLabel>
-            <Input id="menu-redirect" v-model="redirect" class="h-9" :disabled="saving" />
+            <Input id="menu-redirect" v-model="redirect" :disabled="saving" />
           </Field>
-        </div>
+        </FieldGroup>
       </FieldSet>
 
       <FieldSet class="gap-3">
         <FieldLegend class="mb-0">显示与状态</FieldLegend>
-        <div class="grid gap-4 sm:grid-cols-2">
+        <FieldGroup class="ray-form-grid">
           <Field>
             <FieldLabel for="menu-sort">顺序</FieldLabel>
             <Input
@@ -258,23 +313,22 @@ async function onSubmit() {
               v-model="sortText"
               name="sort"
               inputmode="numeric"
-              class="h-9"
               :disabled="saving"
             />
           </Field>
-          <Field orientation="horizontal" class="rounded-lg border bg-muted/20 px-3 py-2">
+          <Field>
             <FieldLabel for="menu-enabled">启用</FieldLabel>
             <Switch id="menu-enabled" v-model="enabled" :disabled="saving" />
           </Field>
-          <Field orientation="horizontal" class="rounded-lg border bg-muted/20 px-3 py-2">
+          <Field>
             <FieldLabel for="menu-hidden">隐藏</FieldLabel>
             <Switch id="menu-hidden" v-model="hidden" :disabled="saving" />
           </Field>
-          <Field orientation="horizontal" class="rounded-lg border bg-muted/20 px-3 py-2">
+          <Field>
             <FieldLabel for="menu-keep-alive">缓存</FieldLabel>
             <Switch id="menu-keep-alive" v-model="keepAlive" :disabled="saving" />
           </Field>
-          <Field class="sm:col-span-2">
+          <Field class="ray-form-span-full">
             <FieldLabel for="menu-description">描述</FieldLabel>
             <Textarea
               id="menu-description"
@@ -283,7 +337,7 @@ async function onSubmit() {
               :disabled="saving"
             />
           </Field>
-        </div>
+        </FieldGroup>
       </FieldSet>
     </div>
 

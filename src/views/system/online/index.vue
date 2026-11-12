@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import RaySearchForm from '@/components/common/RaySearchForm.vue'
 import { MonitorSmartphone, RotateCcw, Search } from '@lucide/vue'
 import { computed, onMounted, shallowRef } from 'vue'
 import { getOnlineSessionPage, kickBySessionId, kickByUserId, type OnlineUser } from '@/api/online'
@@ -18,7 +19,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
-import { Field, FieldLabel } from '@/components/ui/field'
+import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import {
@@ -187,29 +188,36 @@ onMounted(() => {
     @retry="load()"
   >
     <template #filters>
-      <form class="flex flex-wrap items-center gap-x-4 gap-y-3" @submit.prevent="applySearch()">
-        <Field orientation="horizontal" class="w-auto">
-          <FieldLabel
-            for="filter-online-start"
-            class="w-16 shrink-0 whitespace-nowrap font-normal text-muted-foreground"
-            >起始时间</FieldLabel
-          >
+      <RaySearchForm @submit="applySearch()">
+        <Field
+          orientation="horizontal"
+          class="ray-search-field-date"
+          :data-invalid="filterError ? true : undefined"
+        >
+          <FieldLabel for="filter-online-start">起始时间</FieldLabel>
           <Input
             id="filter-online-start"
             v-model="draftStart"
             type="datetime-local"
-            class="h-9 w-52"
+            :aria-invalid="filterError ? true : undefined"
+            :aria-describedby="filterError ? 'filter-online-error' : undefined"
           />
         </Field>
-        <Field orientation="horizontal" class="w-auto">
-          <FieldLabel
-            for="filter-online-end"
-            class="w-16 shrink-0 whitespace-nowrap font-normal text-muted-foreground"
-            >结束时间</FieldLabel
-          >
-          <Input id="filter-online-end" v-model="draftEnd" type="datetime-local" class="h-9 w-52" />
+        <Field
+          orientation="horizontal"
+          class="ray-search-field-date"
+          :data-invalid="filterError ? true : undefined"
+        >
+          <FieldLabel for="filter-online-end">结束时间</FieldLabel>
+          <Input
+            id="filter-online-end"
+            v-model="draftEnd"
+            type="datetime-local"
+            :aria-invalid="filterError ? true : undefined"
+            :aria-describedby="filterError ? 'filter-online-error' : undefined"
+          />
         </Field>
-        <div class="flex items-center gap-2">
+        <template #actions>
           <Button type="submit" :disabled="loading">
             <Search data-icon="inline-start" />
             查询
@@ -218,11 +226,13 @@ onMounted(() => {
             <RotateCcw data-icon="inline-start" />
             重置
           </Button>
-        </div>
-        <p v-if="filterError" role="alert" class="text-destructive w-full text-sm">
-          {{ filterError }}
-        </p>
-      </form>
+        </template>
+        <template v-if="filterError" #feedback>
+          <FieldError id="filter-online-error">
+            {{ filterError }}
+          </FieldError>
+        </template>
+      </RaySearchForm>
     </template>
 
     <template #empty="{ errorMessage: loadError }">

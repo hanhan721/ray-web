@@ -8,7 +8,14 @@ import { QUIET, failureMessage } from '@/utils/failure'
 import RayFormDialog from '@/components/common/RayFormDialog.vue'
 import RaySelect from '@/components/common/RaySelect.vue'
 import { Button } from '@/components/ui/button'
-import { Field, FieldError, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
+import {
+  Field,
+  FieldError,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+  FieldGroup,
+} from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
@@ -344,42 +351,50 @@ async function onSubmit() {
     <div v-else class="flex flex-col gap-6">
       <FieldSet class="gap-3">
         <FieldLegend class="mb-0">基本资料</FieldLegend>
-        <div class="grid gap-4 sm:grid-cols-2">
+        <FieldGroup class="ray-form-grid">
           <Field :data-invalid="formError && !username.trim() ? true : undefined">
-            <FieldLabel for="user-username">账号</FieldLabel>
+            <FieldLabel for="user-username" required>账号</FieldLabel>
             <Input
               id="user-username"
               ref="usernameInput"
               v-model="username"
               name="username"
               autocomplete="off"
-              class="h-9"
               :disabled="saving"
+              required
               :aria-invalid="formError && !username.trim() ? true : undefined"
+              :aria-describedby="formError && !username.trim() ? 'user-username-error' : undefined"
             />
-            <FieldError v-if="formError && !username.trim()">请填写账号</FieldError>
+
+            <FieldError v-if="formError && !username.trim()" id="user-username-error"
+              >请填写账号</FieldError
+            >
           </Field>
           <Field>
             <FieldLabel for="user-nickname">昵称</FieldLabel>
-            <Input id="user-nickname" v-model="nickname" class="h-9" :disabled="saving" />
+            <Input id="user-nickname" v-model="nickname" :disabled="saving" />
           </Field>
           <Field
             v-if="creating"
-            class="sm:col-span-2"
+            class="ray-form-span-full"
             :data-invalid="formError && !password ? true : undefined"
           >
-            <FieldLabel for="user-password">密码</FieldLabel>
+            <FieldLabel for="user-password" required>密码</FieldLabel>
             <Input
               id="user-password"
               v-model="password"
               name="password"
               type="password"
               autocomplete="new-password"
-              class="h-9"
               :disabled="saving"
+              required
               :aria-invalid="formError && !password ? true : undefined"
+              :aria-describedby="formError && !password ? 'user-password-error' : undefined"
             />
-            <FieldError v-if="formError && !password">请填写密码</FieldError>
+
+            <FieldError v-if="formError && !password" id="user-password-error"
+              >请填写密码</FieldError
+            >
           </Field>
           <Field>
             <FieldLabel for="user-gender">性别</FieldLabel>
@@ -398,33 +413,23 @@ async function onSubmit() {
           </Field>
           <Field>
             <FieldLabel for="user-phone">手机</FieldLabel>
-            <Input
-              id="user-phone"
-              v-model="phone"
-              autocomplete="off"
-              class="h-9"
-              :disabled="saving"
-            />
+            <Input id="user-phone" v-model="phone" autocomplete="off" :disabled="saving" />
           </Field>
-          <Field class="sm:col-span-2">
+          <Field class="ray-form-span-full">
             <FieldLabel for="user-email">邮箱</FieldLabel>
             <Input
               id="user-email"
               v-model="email"
               type="email"
               autocomplete="off"
-              class="h-9"
               :disabled="saving"
             />
           </Field>
-          <Field
-            orientation="horizontal"
-            class="rounded-lg border bg-muted/20 px-3 py-2 sm:col-span-2"
-          >
+          <Field class="ray-form-span-full">
             <FieldLabel for="user-enabled">启用账号</FieldLabel>
             <Switch id="user-enabled" v-model="enabled" :disabled="saving" />
           </Field>
-          <Field class="sm:col-span-2">
+          <Field class="ray-form-span-full">
             <FieldLabel for="user-remark">备注</FieldLabel>
             <Textarea
               id="user-remark"
@@ -433,19 +438,16 @@ async function onSubmit() {
               :disabled="saving"
             />
           </Field>
-        </div>
+        </FieldGroup>
       </FieldSet>
 
       <FieldSet v-if="showPermissionSection" class="gap-3">
         <FieldLegend class="mb-0">权限与归属</FieldLegend>
-        <div
-          :class="
-            canAssignRoles && canAssignDepts ? 'grid gap-4 md:grid-cols-2' : 'flex flex-col gap-4'
-          "
-        >
-          <FieldSet v-if="canAssignRoles" class="gap-2">
-            <FieldLegend variant="label" class="mb-0">角色</FieldLegend>
+        <FieldGroup class="ray-form-grid">
+          <Field v-if="canAssignRoles">
+            <FieldLabel for="user-roles">角色</FieldLabel>
             <RaySelect
+              id="user-roles"
               v-model="roleIds"
               multiple
               :options="roleOptions"
@@ -455,11 +457,12 @@ async function onSubmit() {
               aria-label="角色"
               :disabled="saving"
             />
-          </FieldSet>
+          </Field>
 
-          <FieldSet v-if="canAssignDepts" class="gap-2">
-            <FieldLegend variant="label" class="mb-0">部门</FieldLegend>
+          <Field v-if="canAssignDepts">
+            <FieldLabel for="user-depts">部门</FieldLabel>
             <RaySelect
+              id="user-depts"
               v-model="deptIds"
               multiple
               :options="deptOptions"
@@ -469,8 +472,8 @@ async function onSubmit() {
               aria-label="部门"
               :disabled="saving"
             />
-          </FieldSet>
-        </div>
+          </Field>
+        </FieldGroup>
       </FieldSet>
     </div>
 

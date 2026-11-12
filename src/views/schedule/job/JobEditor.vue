@@ -6,7 +6,14 @@ import { QUIET, failureMessage } from '@/utils/failure'
 import { sameEditorSession } from '@/views/system/user/user-table'
 import RayFormDialog from '@/components/common/RayFormDialog.vue'
 import { Button } from '@/components/ui/button'
-import { Field, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
+import {
+  Field,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+  FieldGroup,
+  FieldError,
+} from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
@@ -191,73 +198,98 @@ async function onSubmit() {
     <div class="flex flex-col gap-6">
       <FieldSet class="gap-3">
         <FieldLegend class="mb-0">基本资料</FieldLegend>
-        <div class="grid gap-4 sm:grid-cols-2">
-          <Field>
-            <FieldLabel for="job-name">任务名称</FieldLabel>
+        <FieldGroup class="ray-form-grid">
+          <Field :data-invalid="formError && !jobName.trim() ? true : undefined">
+            <FieldLabel for="job-name" required>任务名称</FieldLabel>
             <Input
               id="job-name"
               ref="nameInput"
               v-model="jobName"
               name="jobName"
-              class="h-9"
               :disabled="saving"
+              required
+              :aria-invalid="formError && !jobName.trim() ? true : undefined"
+              :aria-describedby="formError && !jobName.trim() ? 'job-name-error' : undefined"
             />
+
+            <FieldError v-if="formError && !jobName.trim()" id="job-name-error"
+              >请填写任务名称</FieldError
+            >
           </Field>
-          <Field>
-            <FieldLabel for="job-group">任务分组</FieldLabel>
+          <Field :data-invalid="formError && !jobGroup.trim() ? true : undefined">
+            <FieldLabel for="job-group" required>任务分组</FieldLabel>
             <Input
               id="job-group"
               v-model="jobGroup"
               name="jobGroup"
-              class="h-9"
               :disabled="saving"
+              required
+              :aria-invalid="formError && !jobGroup.trim() ? true : undefined"
+              :aria-describedby="formError && !jobGroup.trim() ? 'job-group-error' : undefined"
             />
+
+            <FieldError v-if="formError && !jobGroup.trim()" id="job-group-error"
+              >请填写任务分组</FieldError
+            >
           </Field>
-        </div>
+        </FieldGroup>
       </FieldSet>
 
       <FieldSet class="gap-3">
         <FieldLegend class="mb-0">调用目标</FieldLegend>
-        <div class="grid gap-4 sm:grid-cols-2">
-          <Field>
-            <FieldLabel for="job-bean">Bean 名称</FieldLabel>
+        <FieldGroup class="ray-form-grid">
+          <Field :data-invalid="formError && !beanName.trim() ? true : undefined">
+            <FieldLabel for="job-bean" required>Bean 名称</FieldLabel>
             <Input
               id="job-bean"
               v-model="beanName"
               name="beanName"
-              class="h-9"
               :disabled="saving"
+              required
+              :aria-invalid="formError && !beanName.trim() ? true : undefined"
+              :aria-describedby="formError && !beanName.trim() ? 'job-bean-error' : undefined"
             />
+
+            <FieldError v-if="formError && !beanName.trim()" id="job-bean-error"
+              >请填写 Bean 名称</FieldError
+            >
           </Field>
-          <Field>
-            <FieldLabel for="job-method">方法名称</FieldLabel>
+          <Field :data-invalid="formError && !methodName.trim() ? true : undefined">
+            <FieldLabel for="job-method" required>方法名称</FieldLabel>
             <Input
               id="job-method"
               v-model="methodName"
               name="methodName"
-              class="h-9"
               :disabled="saving"
+              required
+              :aria-invalid="formError && !methodName.trim() ? true : undefined"
+              :aria-describedby="formError && !methodName.trim() ? 'job-method-error' : undefined"
             />
+
+            <FieldError v-if="formError && !methodName.trim()" id="job-method-error"
+              >请填写方法名称</FieldError
+            >
           </Field>
-          <Field class="sm:col-span-2">
+          <Field class="ray-form-span-full">
             <FieldLabel for="job-params">方法参数</FieldLabel>
-            <Input
-              id="job-params"
-              v-model="methodParams"
-              name="methodParams"
-              class="h-9"
-              :disabled="saving"
-            />
+            <Input id="job-params" v-model="methodParams" name="methodParams" :disabled="saving" />
           </Field>
-          <Field class="sm:col-span-2">
-            <FieldLabel for="job-cron">Cron 表达式</FieldLabel>
+          <Field
+            class="ray-form-span-full"
+            :data-invalid="formError && !cronExpression.trim() ? true : undefined"
+          >
+            <FieldLabel for="job-cron" required>Cron 表达式</FieldLabel>
             <div class="flex items-center gap-2">
               <Input
                 id="job-cron"
                 v-model="cronExpression"
                 name="cronExpression"
-                class="h-9"
                 :disabled="saving"
+                required
+                :aria-invalid="formError && !cronExpression.trim() ? true : undefined"
+                :aria-describedby="
+                  formError && !cronExpression.trim() ? 'job-cron-error' : undefined
+                "
               />
               <Button
                 v-if="canValidate"
@@ -271,22 +303,26 @@ async function onSubmit() {
               </Button>
             </div>
             <p v-if="cronHint" class="text-muted-foreground text-xs">{{ cronHint }}</p>
+
+            <FieldError v-if="formError && !cronExpression.trim()" id="job-cron-error"
+              >请填写 Cron 表达式</FieldError
+            >
           </Field>
-        </div>
+        </FieldGroup>
       </FieldSet>
 
       <FieldSet class="gap-3">
         <FieldLegend class="mb-0">运行与备注</FieldLegend>
-        <div class="grid gap-4 sm:grid-cols-2">
-          <Field orientation="horizontal" class="rounded-lg border bg-muted/20 px-3 py-2">
+        <FieldGroup class="ray-form-grid">
+          <Field>
             <FieldLabel for="job-concurrent">允许并发</FieldLabel>
             <Switch id="job-concurrent" v-model="concurrent" :disabled="saving" />
           </Field>
-          <Field orientation="horizontal" class="rounded-lg border bg-muted/20 px-3 py-2">
+          <Field>
             <FieldLabel for="job-enabled">启用</FieldLabel>
             <Switch id="job-enabled" v-model="enabled" :disabled="saving" />
           </Field>
-          <Field class="sm:col-span-2">
+          <Field class="ray-form-span-full">
             <FieldLabel for="job-remark">备注</FieldLabel>
             <Textarea
               id="job-remark"
@@ -296,7 +332,7 @@ async function onSubmit() {
               :disabled="saving"
             />
           </Field>
-        </div>
+        </FieldGroup>
       </FieldSet>
     </div>
 

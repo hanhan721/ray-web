@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import RaySearchForm from '@/components/common/RaySearchForm.vue'
 import { CalendarClock, Plus, RotateCcw, Search, ScrollText, Trash2 } from '@lucide/vue'
 import { onMounted, shallowRef, watch } from 'vue'
 import {
@@ -447,55 +448,36 @@ onMounted(() => {
       @retry="load()"
     >
       <template #filters>
-        <form class="flex flex-wrap items-center gap-x-4 gap-y-3" @submit.prevent="searchJobs()">
-          <Field orientation="horizontal" class="w-auto">
-            <FieldLabel
-              for="filter-job-name"
-              class="w-20 shrink-0 whitespace-nowrap font-normal text-muted-foreground"
-              >任务名称</FieldLabel
-            >
+        <RaySearchForm @submit="searchJobs()">
+          <Field orientation="horizontal">
+            <FieldLabel for="filter-job-name">任务名称</FieldLabel>
             <Input
               id="filter-job-name"
               v-model="jobName"
               name="jobName"
               placeholder="输入任务名称"
-              class="h-9 w-40"
             />
           </Field>
-          <Field orientation="horizontal" class="w-auto">
-            <FieldLabel
-              for="filter-job-group"
-              class="w-20 shrink-0 whitespace-nowrap font-normal text-muted-foreground"
-              >任务分组</FieldLabel
-            >
+          <Field orientation="horizontal">
+            <FieldLabel for="filter-job-group">任务分组</FieldLabel>
             <Input
               id="filter-job-group"
               v-model="jobGroup"
               name="jobGroup"
               placeholder="输入任务分组"
-              class="h-9 w-32"
             />
           </Field>
-          <Field orientation="horizontal" class="w-auto">
-            <FieldLabel
-              for="filter-job-bean"
-              class="w-20 shrink-0 whitespace-nowrap font-normal text-muted-foreground"
-              >Bean 名称</FieldLabel
-            >
+          <Field orientation="horizontal">
+            <FieldLabel for="filter-job-bean">Bean 名称</FieldLabel>
             <Input
               id="filter-job-bean"
               v-model="beanName"
               name="beanName"
               placeholder="输入 Bean 名称"
-              class="h-9 w-40"
             />
           </Field>
-          <Field orientation="horizontal" class="w-auto">
-            <FieldLabel
-              for="filter-job-enabled"
-              class="w-8 shrink-0 whitespace-nowrap font-normal text-muted-foreground"
-              >状态</FieldLabel
-            >
+          <Field orientation="horizontal" class="ray-search-field-short">
+            <FieldLabel for="filter-job-enabled">状态</FieldLabel>
             <RaySelect
               id="filter-job-enabled"
               :model-value="enabled || null"
@@ -504,11 +486,10 @@ onMounted(() => {
               size="lg"
               searchable
               clearable
-              class="w-36"
               @update:model-value="setEnabledFilter"
             />
           </Field>
-          <div class="flex items-center gap-2">
+          <template #actions>
             <Button type="submit" :disabled="loading">
               <Search data-icon="inline-start" />
               查询
@@ -517,8 +498,8 @@ onMounted(() => {
               <RotateCcw data-icon="inline-start" />
               重置
             </Button>
-          </div>
-        </form>
+          </template>
+        </RaySearchForm>
       </template>
 
       <template #actions>
@@ -658,13 +639,9 @@ onMounted(() => {
       </template>
 
       <template #filters>
-        <form class="flex flex-wrap items-center gap-x-4 gap-y-3" @submit.prevent="searchLogs()">
-          <Field orientation="horizontal" class="w-auto">
-            <FieldLabel
-              for="filter-log-success"
-              class="w-8 shrink-0 whitespace-nowrap font-normal text-muted-foreground"
-              >结果</FieldLabel
-            >
+        <RaySearchForm @submit="searchLogs()">
+          <Field orientation="horizontal" class="ray-search-field-short">
+            <FieldLabel for="filter-log-success">结果</FieldLabel>
             <RaySelect
               id="filter-log-success"
               :model-value="logSuccess || null"
@@ -673,11 +650,10 @@ onMounted(() => {
               size="lg"
               searchable
               clearable
-              class="w-36"
               @update:model-value="setLogSuccessFilter"
             />
           </Field>
-          <div class="flex items-center gap-2">
+          <template #actions>
             <Button type="submit" :disabled="logLoading">
               <Search data-icon="inline-start" />
               查询
@@ -686,9 +662,11 @@ onMounted(() => {
               <RotateCcw data-icon="inline-start" />
               重置
             </Button>
-          </div>
-          <p v-if="logNotice" class="text-muted-foreground w-full text-sm">{{ logNotice }}</p>
-        </form>
+          </template>
+          <template v-if="logNotice" #feedback>
+            <p class="text-muted-foreground text-sm">{{ logNotice }}</p>
+          </template>
+        </RaySearchForm>
       </template>
 
       <template #actions>

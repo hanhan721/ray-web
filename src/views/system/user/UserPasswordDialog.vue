@@ -4,7 +4,7 @@ import { resetUserPassword } from '@/api/user'
 import { QUIET, failureMessage } from '@/utils/failure'
 import RayFormDialog from '@/components/common/RayFormDialog.vue'
 import { Button } from '@/components/ui/button'
-import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
+import { Field, FieldGroup, FieldLabel, FieldError } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 
@@ -75,8 +75,8 @@ async function onSubmit() {
     @submit="onSubmit"
   >
     <FieldGroup>
-      <Field :data-invalid="formError ? true : undefined">
-        <FieldLabel for="reset-password">新密码</FieldLabel>
+      <Field :data-invalid="formError && !password ? true : undefined">
+        <FieldLabel for="reset-password" required>新密码</FieldLabel>
         <Input
           id="reset-password"
           ref="passwordInput"
@@ -85,8 +85,14 @@ async function onSubmit() {
           name="password"
           autocomplete="new-password"
           :disabled="saving"
-          :aria-invalid="formError ? true : undefined"
+          required
+          :aria-invalid="formError && !password ? true : undefined"
+          :aria-describedby="formError && !password ? 'reset-password-error' : undefined"
         />
+
+        <FieldError v-if="formError && !password" id="reset-password-error"
+          >请填写新密码</FieldError
+        >
       </Field>
     </FieldGroup>
 

@@ -5,7 +5,14 @@ import { QUIET, failureMessage } from '@/utils/failure'
 import { sameEditorSession } from '@/views/system/user/user-table'
 import RayFormDialog from '@/components/common/RayFormDialog.vue'
 import { Button } from '@/components/ui/button'
-import { Field, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
+import {
+  Field,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+  FieldGroup,
+  FieldError,
+} from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
@@ -133,44 +140,56 @@ async function onSubmit() {
     <div class="flex flex-col gap-6">
       <FieldSet class="gap-3">
         <FieldLegend class="mb-0">基本资料</FieldLegend>
-        <div class="grid gap-4 sm:grid-cols-2">
-          <Field>
-            <FieldLabel for="dict-data-label">标签</FieldLabel>
+        <FieldGroup class="ray-form-grid">
+          <Field :data-invalid="formError && !dictLabel.trim() ? true : undefined">
+            <FieldLabel for="dict-data-label" required>标签</FieldLabel>
             <Input
               id="dict-data-label"
               ref="labelInput"
               v-model="dictLabel"
               name="dictLabel"
-              class="h-9"
               :disabled="saving"
+              required
+              :aria-invalid="formError && !dictLabel.trim() ? true : undefined"
+              :aria-describedby="
+                formError && !dictLabel.trim() ? 'dict-data-label-error' : undefined
+              "
             />
+
+            <FieldError v-if="formError && !dictLabel.trim()" id="dict-data-label-error"
+              >请填写标签</FieldError
+            >
           </Field>
-          <Field>
-            <FieldLabel for="dict-data-value">字典值</FieldLabel>
-            <Input id="dict-data-value" v-model="dictValue" class="h-9" :disabled="saving" />
+          <Field :data-invalid="formError && !dictValue.trim() ? true : undefined">
+            <FieldLabel for="dict-data-value" required>字典值</FieldLabel>
+            <Input
+              id="dict-data-value"
+              v-model="dictValue"
+              :disabled="saving"
+              required
+              :aria-invalid="formError && !dictValue.trim() ? true : undefined"
+              :aria-describedby="
+                formError && !dictValue.trim() ? 'dict-data-value-error' : undefined
+              "
+            />
+
+            <FieldError v-if="formError && !dictValue.trim()" id="dict-data-value-error"
+              >请填写字典值</FieldError
+            >
           </Field>
           <Field>
             <FieldLabel for="dict-data-sort">顺序</FieldLabel>
-            <Input
-              id="dict-data-sort"
-              v-model="sortText"
-              inputmode="numeric"
-              class="h-9"
-              :disabled="saving"
-            />
+            <Input id="dict-data-sort" v-model="sortText" inputmode="numeric" :disabled="saving" />
           </Field>
-          <Field orientation="horizontal" class="rounded-lg border bg-muted/20 px-3 py-2">
+          <Field>
             <FieldLabel for="dict-data-default">默认</FieldLabel>
             <Switch id="dict-data-default" v-model="isDefault" :disabled="saving" />
           </Field>
-          <Field
-            orientation="horizontal"
-            class="rounded-lg border bg-muted/20 px-3 py-2 sm:col-span-2"
-          >
+          <Field class="ray-form-span-full">
             <FieldLabel for="dict-data-enabled">启用</FieldLabel>
             <Switch id="dict-data-enabled" v-model="enabled" :disabled="saving" />
           </Field>
-        </div>
+        </FieldGroup>
       </FieldSet>
 
       <details class="rounded-lg border px-4 py-3">
@@ -180,16 +199,16 @@ async function onSubmit() {
         </summary>
         <FieldSet class="mt-4 gap-3">
           <FieldLegend class="sr-only">样式与备注</FieldLegend>
-          <div class="grid gap-4 sm:grid-cols-2">
+          <FieldGroup class="ray-form-grid">
             <Field>
               <FieldLabel for="dict-data-list-class">列表样式</FieldLabel>
-              <Input id="dict-data-list-class" v-model="listClass" class="h-9" :disabled="saving" />
+              <Input id="dict-data-list-class" v-model="listClass" :disabled="saving" />
             </Field>
             <Field>
               <FieldLabel for="dict-data-css-class">样式类名</FieldLabel>
-              <Input id="dict-data-css-class" v-model="cssClass" class="h-9" :disabled="saving" />
+              <Input id="dict-data-css-class" v-model="cssClass" :disabled="saving" />
             </Field>
-            <Field class="sm:col-span-2">
+            <Field class="ray-form-span-full">
               <FieldLabel for="dict-data-remark">备注</FieldLabel>
               <Textarea
                 id="dict-data-remark"
@@ -198,7 +217,7 @@ async function onSubmit() {
                 :disabled="saving"
               />
             </Field>
-          </div>
+          </FieldGroup>
         </FieldSet>
       </details>
     </div>

@@ -47,6 +47,14 @@
 - 优先通过组合、参数和插槽扩展已有组件；修改公共组件前检查调用方，不为尚未出现的需求设计抽象。
 - API 定义放在 `src/api/`，统一使用 `src/utils/request.ts` 的 Axios 封装；组件不另建请求实例。
 
+## 表单设计规范
+
+- 搜索表单统一使用 `RaySearchForm`，字段使用 `Field orientation="horizontal"`：Label 在左、控件在右，优先单行，空间不足自然换行。查询、重置按钮放在 `#actions`；短选择项使用 `ray-search-field-short`，日期时间使用 `ray-search-field-date`。容器宽度不超过 32rem 时每个字段独占一行，控件填满剩余空间。
+- 新增、编辑表单使用 `RayFormDialog`、`FieldGroup` 和默认纵向 `Field`，Label 在上、控件在下。相关短字段可在 `FieldGroup class="ray-form-grid"` 中并排；正文可用宽度达到 32rem 时启用两列，否则单列。长文本、备注使用 `ray-form-span-full` 跨整行，开关同样保留上下结构；复选框选项的文字仍紧邻复选框。
+- Label 统一 500 字重，字段间距 16px，Label 与控件间距 8px，单行输入和选择器默认高度 36px。使用公共 tokens 与已有 shadcn-vue 组件，不在页面重复覆盖高度、字重或配色；文本域保持多行。
+- 必填字段在 `FieldLabel` 设置 `required`，控件同步设置 `required`；条件必填同时绑定条件。标识使用统一红色星号，并保留屏幕阅读器说明。校验失败使用 `Field` 的 `data-invalid`、控件的 `aria-invalid` 和下方 `FieldError`，通过 `aria-describedby` 关联；接口错误和部分成功信息继续使用弹窗整体提示。
+- 表单字段保留 `min-width: 0`，避免固定最小宽度挤出小屏；长校验文本允许换行。桌面和小屏的搜索、编辑示例见 `/style-guide`。
+
 ## 五条实现经验
 
 1. **按实际版本开发并检查生成代码。** 查阅对应版本的官方文档和源码，不混用 TanStack Table v8 / v9 API；通用封装保持数据类型与响应式引用。shadcn 生成后核对源码、导入依赖与交互行为，不能把生成成功等同于实现完成。

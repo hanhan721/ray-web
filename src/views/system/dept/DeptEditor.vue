@@ -5,7 +5,14 @@ import { QUIET, failureMessage } from '@/utils/failure'
 import RayFormDialog from '@/components/common/RayFormDialog.vue'
 import RayTreeSelect, { type TreeSelectOption } from '@/components/common/RayTreeSelect.vue'
 import { Button } from '@/components/ui/button'
-import { Field, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
+import {
+  Field,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+  FieldGroup,
+  FieldError,
+} from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
@@ -44,7 +51,10 @@ const parentOptions = computed(() => {
 })
 const parentSelectOptions = computed(() => {
   const nodes = parentOptions.value.map((row) => ({
-    value: String(row.id), label: row.deptName, children: [] as TreeSelectOption<string>[], parentId: row.parentId,
+    value: String(row.id),
+    label: row.deptName,
+    children: [] as TreeSelectOption<string>[],
+    parentId: row.parentId,
   }))
   const lookup = new Map(nodes.map((node) => [node.value, node]))
   const roots: TreeSelectOption<string>[] = [{ value: '0', label: '无' }]
@@ -151,17 +161,23 @@ async function onSubmit() {
     <div class="flex flex-col gap-6">
       <FieldSet class="gap-3">
         <FieldLegend class="mb-0">基本资料</FieldLegend>
-        <div class="grid gap-4 sm:grid-cols-2">
+        <FieldGroup class="ray-form-grid">
           <Field :data-invalid="formError && !deptName.trim() ? true : undefined">
-            <FieldLabel for="dept-name">名称</FieldLabel>
+            <FieldLabel for="dept-name" required>名称</FieldLabel>
             <Input
               id="dept-name"
               ref="nameInput"
               v-model="deptName"
               name="deptName"
-              class="h-9"
               :disabled="saving"
+              required
+              :aria-invalid="formError && !deptName.trim() ? true : undefined"
+              :aria-describedby="formError && !deptName.trim() ? 'dept-name-error' : undefined"
             />
+
+            <FieldError v-if="formError && !deptName.trim()" id="dept-name-error"
+              >请填写名称</FieldError
+            >
           </Field>
           <Field>
             <FieldLabel for="dept-parent">上级</FieldLabel>
@@ -183,42 +199,38 @@ async function onSubmit() {
               v-model="sortText"
               name="sort"
               inputmode="numeric"
-              class="h-9"
               :disabled="saving"
             />
           </Field>
           <Field>
             <FieldLabel for="dept-leader">负责人</FieldLabel>
-            <Input id="dept-leader" v-model="leader" class="h-9" :disabled="saving" />
+            <Input id="dept-leader" v-model="leader" :disabled="saving" />
           </Field>
-        </div>
+        </FieldGroup>
       </FieldSet>
 
       <FieldSet class="gap-3">
         <FieldLegend class="mb-0">联系方式</FieldLegend>
-        <div class="grid gap-4 sm:grid-cols-2">
+        <FieldGroup class="ray-form-grid">
           <Field>
             <FieldLabel for="dept-phone">电话</FieldLabel>
-            <Input id="dept-phone" v-model="phone" class="h-9" :disabled="saving" />
+            <Input id="dept-phone" v-model="phone" :disabled="saving" />
           </Field>
           <Field>
             <FieldLabel for="dept-email">邮箱</FieldLabel>
-            <Input id="dept-email" v-model="email" type="email" class="h-9" :disabled="saving" />
+            <Input id="dept-email" v-model="email" type="email" :disabled="saving" />
           </Field>
-        </div>
+        </FieldGroup>
       </FieldSet>
 
       <FieldSet class="gap-3">
         <FieldLegend class="mb-0">状态与备注</FieldLegend>
-        <div class="grid gap-4 sm:grid-cols-2">
-          <Field
-            orientation="horizontal"
-            class="rounded-lg border bg-muted/20 px-3 py-2 sm:col-span-2"
-          >
+        <FieldGroup class="ray-form-grid">
+          <Field class="ray-form-span-full">
             <FieldLabel for="dept-enabled">启用</FieldLabel>
             <Switch id="dept-enabled" v-model="enabled" :disabled="saving" />
           </Field>
-          <Field class="sm:col-span-2">
+          <Field class="ray-form-span-full">
             <FieldLabel for="dept-remark">备注</FieldLabel>
             <Textarea
               id="dept-remark"
@@ -227,7 +239,7 @@ async function onSubmit() {
               :disabled="saving"
             />
           </Field>
-        </div>
+        </FieldGroup>
       </FieldSet>
     </div>
 

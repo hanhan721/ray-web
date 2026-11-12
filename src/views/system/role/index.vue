@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import RaySearchForm from '@/components/common/RaySearchForm.vue'
 import { RotateCcw, Search, ShieldCheck, ShieldPlus, Trash2 } from '@lucide/vue'
 import { onMounted, shallowRef } from 'vue'
 import { deleteRoles, updateRoleStatus, type Role } from '@/api/role'
@@ -127,46 +128,27 @@ onMounted(() => {
     @update:page-index="changePage"
     @update:page-size="changePageSize"
     @toggle-row="toggleSelected"
-      @row-click="(row) => toggleSelected(row.id, !selectedIds.includes(row.id))"
+    @row-click="(row) => toggleSelected(row.id, !selectedIds.includes(row.id))"
     @toggle-page="togglePage"
     @retry="load()"
   >
     <template #filters>
-      <form class="flex flex-wrap items-center gap-x-4 gap-y-3" @submit.prevent="search()">
-        <Field orientation="horizontal" class="w-auto">
-          <FieldLabel
-            for="filter-role-name"
-            class="w-8 shrink-0 whitespace-nowrap font-normal text-muted-foreground"
-            >名称</FieldLabel
-          >
+      <RaySearchForm @submit="search()">
+        <Field orientation="horizontal">
+          <FieldLabel for="filter-role-name">名称</FieldLabel>
           <Input
             id="filter-role-name"
             v-model="roleName"
             name="roleName"
             placeholder="输入角色名称"
-            class="h-9 w-44"
           />
         </Field>
-        <Field orientation="horizontal" class="w-auto">
-          <FieldLabel
-            for="filter-role-key"
-            class="w-8 shrink-0 whitespace-nowrap font-normal text-muted-foreground"
-            >标识</FieldLabel
-          >
-          <Input
-            id="filter-role-key"
-            v-model="roleKey"
-            name="roleKey"
-            placeholder="输入角色标识"
-            class="h-9 w-44"
-          />
+        <Field orientation="horizontal">
+          <FieldLabel for="filter-role-key">标识</FieldLabel>
+          <Input id="filter-role-key" v-model="roleKey" name="roleKey" placeholder="输入角色标识" />
         </Field>
-        <Field orientation="horizontal" class="w-auto">
-          <FieldLabel
-            for="filter-role-enabled"
-            class="w-8 shrink-0 whitespace-nowrap font-normal text-muted-foreground"
-            >状态</FieldLabel
-          >
+        <Field orientation="horizontal" class="ray-search-field-short">
+          <FieldLabel for="filter-role-enabled">状态</FieldLabel>
           <RaySelect
             id="filter-role-enabled"
             :model-value="enabled || null"
@@ -175,11 +157,10 @@ onMounted(() => {
             size="lg"
             searchable
             clearable
-            class="w-36"
             @update:model-value="setEnabledFilter"
           />
         </Field>
-        <div class="flex items-center gap-2">
+        <template #actions>
           <Button type="submit" :disabled="loading">
             <Search data-icon="inline-start" />
             查询
@@ -188,8 +169,8 @@ onMounted(() => {
             <RotateCcw data-icon="inline-start" />
             重置
           </Button>
-        </div>
-      </form>
+        </template>
+      </RaySearchForm>
     </template>
 
     <template #actions>

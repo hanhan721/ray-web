@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label'
 
 const props = defineProps<{
   class?: HTMLAttributes['class']
+  required?: boolean
 }>()
 </script>
 
@@ -20,5 +21,9 @@ const props = defineProps<{
     "
   >
     <slot />
+    <template v-if="required">
+      <span class="text-destructive" aria-hidden="true">*</span>
+      <span class="sr-only">（必填）</span>
+    </template>
   </Label>
 </template>

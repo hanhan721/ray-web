@@ -4,6 +4,8 @@ import { computed, shallowRef } from 'vue'
 import { storeToRefs } from 'pinia'
 import { toast } from 'vue-sonner'
 import { useThemeStore } from '@/stores/theme'
+import RaySearchForm from '@/components/common/RaySearchForm.vue'
+import RaySelect from '@/components/common/RaySelect.vue'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
   AlertDialog,
@@ -69,6 +71,12 @@ const allowLogin = shallowRef(true)
 const editorOpen = shallowRef(false)
 const confirmOpen = shallowRef(false)
 const nickname = shallowRef('夜间巡检')
+const filterName = shallowRef('')
+const filterStatus = shallowRef<string | null>(null)
+const statusOptions = [
+  { value: 'true', label: '启用' },
+  { value: 'false', label: '停用' },
+]
 
 const longRemark =
   '夜间巡检账号，负责字典维护、任务失败重试和权限复核。备注需要完整显示，不能被表格裁成一行省略号。'
@@ -79,6 +87,11 @@ function toggleTheme() {
 
 function showSaved() {
   toast.success('已保存')
+}
+
+function resetSearchExample() {
+  filterName.value = ''
+  filterStatus.value = null
 }
 </script>
 
@@ -115,6 +128,60 @@ function showSaved() {
         <Switch id="allow-login" v-model="allowLogin" />
         <FieldLabel for="allow-login">允许登录</FieldLabel>
       </Field>
+    </section>
+
+    <Separator />
+
+    <section class="flex min-w-0 flex-col gap-4">
+      <h2 class="text-sm font-medium">表单布局规范</h2>
+      <p class="text-muted-foreground text-sm">
+        搜索字段左右排列，空间不足自动换行；编辑字段上下排列，相关短字段在宽屏并排。
+        以下为布局示例，查询不会请求接口。
+      </p>
+      <RaySearchForm @submit="toast.info('布局示例，无接口请求')">
+        <Field orientation="horizontal">
+          <FieldLabel for="guide-filter-name">账号</FieldLabel>
+          <Input id="guide-filter-name" v-model="filterName" placeholder="输入账号关键字" />
+        </Field>
+        <Field orientation="horizontal" class="ray-search-field-short">
+          <FieldLabel for="guide-filter-status">状态</FieldLabel>
+          <RaySelect
+            id="guide-filter-status"
+            v-model="filterStatus"
+            :options="statusOptions"
+            placeholder="全部"
+            :searchable="false"
+          />
+        </Field>
+        <template #actions>
+          <Button type="submit">查询</Button>
+          <Button type="button" variant="ghost" @click="resetSearchExample"> 重置 </Button>
+        </template>
+      </RaySearchForm>
+      <div class="ray-form-body">
+        <FieldGroup class="ray-form-grid">
+          <Field>
+            <FieldLabel for="guide-edit-name" required>账号</FieldLabel>
+            <Input id="guide-edit-name" model-value="night-watch" required />
+          </Field>
+          <Field>
+            <FieldLabel for="guide-edit-nickname">昵称</FieldLabel>
+            <Input id="guide-edit-nickname" model-value="夜间巡检" />
+          </Field>
+          <Field class="ray-form-span-full" data-invalid>
+            <FieldLabel for="guide-edit-email">邮箱</FieldLabel>
+            <Input
+              id="guide-edit-email"
+              model-value="night-watch@"
+              aria-invalid="true"
+              aria-describedby="guide-email-error"
+            />
+            <FieldError id="guide-email-error"
+              >请输入完整的邮箱地址，例如 name@example.com。</FieldError
+            >
+          </Field>
+        </FieldGroup>
+      </div>
     </section>
 
     <Separator />

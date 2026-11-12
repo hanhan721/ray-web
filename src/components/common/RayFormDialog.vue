@@ -90,7 +90,7 @@ function onOpenChange(open: boolean) {
       </DialogClose>
 
       <form class="flex min-h-0 flex-1 flex-col" novalidate @submit.prevent="emit('submit')">
-        <div class="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+        <div class="ray-form-body min-h-0 flex-1 overflow-y-auto px-6 py-5">
           <slot />
         </div>
 

@@ -18,7 +18,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
-import { Field, FieldLabel } from '@/components/ui/field'
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Spinner } from '@/components/ui/spinner'
 import {
   FILE_DATA_COLUMNS,
@@ -154,32 +154,26 @@ async function confirmDelete() {
     @toggle-page="toggleAll(rows, $event)"
   >
     <template #filters>
-      <form
-        v-if="can('system:file:upload')"
-        class="flex flex-wrap items-center gap-x-4 gap-y-3"
-        @submit.prevent="uploadPicked()"
-      >
-        <Field orientation="horizontal" class="w-auto min-w-64 flex-1">
-          <FieldLabel
-            for="file-input"
-            class="w-16 shrink-0 whitespace-nowrap font-normal text-muted-foreground"
-            >选择文件</FieldLabel
-          >
-          <input
-            id="file-input"
-            ref="fileInput"
-            type="file"
-            multiple
-            class="border-input bg-input/20 h-9 w-full rounded-md border px-2 text-sm outline-none file:mr-3 focus-visible:ring-2"
-            :disabled="uploading"
-            @change="onPick"
-          />
-        </Field>
-        <Button type="submit" :disabled="uploading">
-          <Spinner v-if="uploading" />
-          <Upload v-else data-icon="inline-start" />
-          {{ uploading ? '正在上传' : '上传' }}
-        </Button>
+      <form v-if="can('system:file:upload')" class="min-w-0" @submit.prevent="uploadPicked()">
+        <FieldGroup class="flex-row flex-wrap items-end gap-3">
+          <Field class="min-w-0 basis-64 flex-1">
+            <FieldLabel for="file-input">选择文件</FieldLabel>
+            <input
+              id="file-input"
+              ref="fileInput"
+              type="file"
+              multiple
+              class="border-input bg-input/20 h-9 min-w-0 w-full rounded-md border px-2.5 text-sm outline-none file:mr-3 focus-visible:ring-2"
+              :disabled="uploading"
+              @change="onPick"
+            />
+          </Field>
+          <Button type="submit" :disabled="uploading">
+            <Spinner v-if="uploading" />
+            <Upload v-else data-icon="inline-start" />
+            {{ uploading ? '正在上传' : '上传' }}
+          </Button>
+        </FieldGroup>
       </form>
 
       <Alert v-if="actionError" variant="destructive" class="mt-3">

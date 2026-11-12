@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import RaySearchForm from '@/components/common/RaySearchForm.vue'
 import { ListTree, Plus, RefreshCw, RotateCcw, Trash2 } from '@lucide/vue'
 import { computed, onMounted, shallowRef, watch } from 'vue'
 import { deletePermissions, getPermissionTree, updatePermission } from '@/api/permission'
@@ -159,27 +160,13 @@ onMounted(() => {
     @retry="load()"
   >
     <template #filters>
-      <form class="flex flex-wrap items-center gap-x-4 gap-y-3" @submit.prevent="load()">
-        <Field orientation="horizontal" class="w-auto">
-          <FieldLabel
-            for="filter-menu-name"
-            class="w-8 shrink-0 whitespace-nowrap font-normal text-muted-foreground"
-            >名称</FieldLabel
-          >
-          <Input
-            id="filter-menu-name"
-            v-model="name"
-            name="name"
-            placeholder="输入菜单名称"
-            class="h-9 w-48"
-          />
+      <RaySearchForm @submit="load()">
+        <Field orientation="horizontal">
+          <FieldLabel for="filter-menu-name">名称</FieldLabel>
+          <Input id="filter-menu-name" v-model="name" name="name" placeholder="输入菜单名称" />
         </Field>
-        <Field orientation="horizontal" class="w-auto">
-          <FieldLabel
-            for="filter-menu-type"
-            class="w-8 shrink-0 whitespace-nowrap font-normal text-muted-foreground"
-            >类型</FieldLabel
-          >
+        <Field orientation="horizontal" class="ray-search-field-short">
+          <FieldLabel for="filter-menu-type">类型</FieldLabel>
           <RaySelect
             id="filter-menu-type"
             :model-value="typeFilter || null"
@@ -188,11 +175,10 @@ onMounted(() => {
             size="lg"
             searchable
             clearable
-            class="w-32"
             @update:model-value="setTypeFilter"
           />
         </Field>
-        <div class="flex items-center gap-2">
+        <template #actions>
           <Button type="submit" :disabled="loading">
             <RefreshCw data-icon="inline-start" />
             刷新
@@ -201,8 +187,8 @@ onMounted(() => {
             <RotateCcw data-icon="inline-start" />
             重置
           </Button>
-        </div>
-      </form>
+        </template>
+      </RaySearchForm>
     </template>
 
     <template #actions>
@@ -253,10 +239,7 @@ onMounted(() => {
     </template>
 
     <template #cell-name="{ row }">
-      <span
-        class="block max-w-72 truncate font-medium text-foreground"
-        :title="row.name"
-      >
+      <span class="block max-w-72 truncate font-medium text-foreground" :title="row.name">
         {{ row.name }}
       </span>
     </template>

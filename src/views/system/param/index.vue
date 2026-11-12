@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import RaySearchForm from '@/components/common/RaySearchForm.vue'
 import { Plus, RotateCcw, Search, SlidersHorizontal, Trash2 } from '@lucide/vue'
 import { onMounted, shallowRef } from 'vue'
 import { deleteParams, getParamPage, type SystemParam } from '@/api/param'
@@ -136,18 +137,14 @@ onMounted(() => {
     @update:page-index="changePage"
     @update:page-size="changePageSize"
     @toggle-row="toggleSelected"
-      @row-click="(row) => toggleSelected(row.id, !selectedIds.includes(row.id))"
+    @row-click="(row) => toggleSelected(row.id, !selectedIds.includes(row.id))"
     @toggle-page="togglePage"
     @retry="load()"
   >
     <template #filters>
-      <form class="flex flex-wrap items-center gap-x-4 gap-y-3" @submit.prevent="search()">
-        <Field orientation="horizontal" class="w-auto">
-          <FieldLabel
-            for="filter-param-biz"
-            class="w-8 shrink-0 whitespace-nowrap font-normal text-muted-foreground"
-            >分类</FieldLabel
-          >
+      <RaySearchForm @submit="search()">
+        <Field orientation="horizontal" class="ray-search-field-short">
+          <FieldLabel for="filter-param-biz">分类</FieldLabel>
           <RaySelect
             id="filter-param-biz"
             :model-value="bizType || null"
@@ -156,16 +153,11 @@ onMounted(() => {
             size="lg"
             searchable
             clearable
-            class="w-40"
             @update:model-value="bizType = $event ?? ''"
           />
         </Field>
-        <Field orientation="horizontal" class="w-auto">
-          <FieldLabel
-            for="filter-param-type"
-            class="w-8 shrink-0 whitespace-nowrap font-normal text-muted-foreground"
-            >类型</FieldLabel
-          >
+        <Field orientation="horizontal" class="ray-search-field-short">
+          <FieldLabel for="filter-param-type">类型</FieldLabel>
           <RaySelect
             id="filter-param-type"
             :model-value="paramType || null"
@@ -174,11 +166,10 @@ onMounted(() => {
             size="lg"
             searchable
             clearable
-            class="w-36"
             @update:model-value="paramType = $event ?? ''"
           />
         </Field>
-        <div class="flex items-center gap-2">
+        <template #actions>
           <Button type="submit" :disabled="loading">
             <Search data-icon="inline-start" />
             查询
@@ -187,8 +178,8 @@ onMounted(() => {
             <RotateCcw data-icon="inline-start" />
             重置
           </Button>
-        </div>
-      </form>
+        </template>
+      </RaySearchForm>
     </template>
 
     <template #actions>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import RaySearchForm from '@/components/common/RaySearchForm.vue'
 import {
   ChevronLeft,
   ChevronRight,
@@ -382,26 +383,16 @@ onMounted(() => {
       @retry="loadTypes()"
     >
       <template #filters>
-        <form class="flex flex-wrap items-end gap-3" @submit.prevent="searchTypes()">
-          <Field class="w-48">
+        <RaySearchForm @submit="searchTypes()">
+          <Field orientation="horizontal">
             <FieldLabel for="filter-dict-name">类型名称</FieldLabel>
-            <Input
-              id="filter-dict-name"
-              v-model="typeName"
-              placeholder="搜索类型名称"
-              class="h-9"
-            />
+            <Input id="filter-dict-name" v-model="typeName" placeholder="搜索类型名称" />
           </Field>
-          <Field class="w-48">
+          <Field orientation="horizontal">
             <FieldLabel for="filter-dict-code">类型编码</FieldLabel>
-            <Input
-              id="filter-dict-code"
-              v-model="typeCode"
-              placeholder="搜索类型编码"
-              class="h-9"
-            />
+            <Input id="filter-dict-code" v-model="typeCode" placeholder="搜索类型编码" />
           </Field>
-          <Field class="w-36">
+          <Field orientation="horizontal" class="ray-search-field-short">
             <FieldLabel for="filter-dict-enabled">状态</FieldLabel>
             <RaySelect
               id="filter-dict-enabled"
@@ -413,13 +404,19 @@ onMounted(() => {
               @update:model-value="setTypeEnabledFilter"
             />
           </Field>
-          <Button type="submit" :disabled="typeLoading"
-            ><Search data-icon="inline-start" />查询</Button
-          >
-          <Button type="button" variant="ghost" :disabled="typeLoading" @click="resetTypeFilters()"
-            ><RotateCcw data-icon="inline-start" />重置</Button
-          >
-        </form>
+          <template #actions>
+            <Button type="submit" :disabled="typeLoading"
+              ><Search data-icon="inline-start" />查询</Button
+            >
+            <Button
+              type="button"
+              variant="ghost"
+              :disabled="typeLoading"
+              @click="resetTypeFilters()"
+              ><RotateCcw data-icon="inline-start" />重置</Button
+            >
+          </template>
+        </RaySearchForm>
       </template>
 
       <template #actions>
@@ -516,17 +513,12 @@ onMounted(() => {
 
       <div class="flex min-h-0 flex-1 flex-col">
         <div class="flex shrink-0 flex-col gap-4 border-b px-6 py-5">
-          <form class="flex flex-wrap items-end gap-2" @submit.prevent="searchData()">
-            <Field class="w-48">
+          <RaySearchForm @submit="searchData()">
+            <Field orientation="horizontal">
               <FieldLabel for="filter-dict-label">标签</FieldLabel>
-              <Input
-                id="filter-dict-label"
-                v-model="dataLabel"
-                placeholder="搜索字典标签"
-                class="h-9"
-              />
+              <Input id="filter-dict-label" v-model="dataLabel" placeholder="搜索字典标签" />
             </Field>
-            <Field class="w-36">
+            <Field orientation="horizontal" class="ray-search-field-short">
               <FieldLabel for="filter-dict-data-enabled">状态</FieldLabel>
               <RaySelect
                 id="filter-dict-data-enabled"
@@ -538,17 +530,19 @@ onMounted(() => {
                 @update:model-value="setDataEnabledFilter"
               />
             </Field>
-            <Button type="submit" variant="outline" :disabled="dataLoading"
-              ><Search data-icon="inline-start" />查询</Button
-            >
-            <Button
-              type="button"
-              variant="ghost"
-              :disabled="dataLoading"
-              @click="resetDataFilters()"
-              >重置</Button
-            >
-          </form>
+            <template #actions>
+              <Button type="submit" variant="outline" :disabled="dataLoading"
+                ><Search data-icon="inline-start" />查询</Button
+              >
+              <Button
+                type="button"
+                variant="ghost"
+                :disabled="dataLoading"
+                @click="resetDataFilters()"
+                >重置</Button
+              >
+            </template>
+          </RaySearchForm>
           <div class="flex flex-wrap items-center justify-end gap-3">
             <span v-if="dataSelectedIds.length" class="text-muted-foreground text-xs">
               已选 {{ dataSelectedIds.length }} 条

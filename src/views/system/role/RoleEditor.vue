@@ -7,7 +7,14 @@ import { QUIET, failureMessage } from '@/utils/failure'
 import RayFormDialog from '@/components/common/RayFormDialog.vue'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Field, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
+import {
+  Field,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+  FieldGroup,
+  FieldError,
+} from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
@@ -257,21 +264,39 @@ async function onSubmit() {
     <div v-else-if="detailReady" class="flex flex-col gap-6">
       <FieldSet class="gap-3">
         <FieldLegend class="mb-0">基本资料</FieldLegend>
-        <div class="grid gap-4 sm:grid-cols-2">
+        <FieldGroup class="ray-form-grid">
           <Field :data-invalid="formError && !roleName.trim() ? true : undefined">
-            <FieldLabel for="role-name">名称</FieldLabel>
+            <FieldLabel for="role-name" required>名称</FieldLabel>
             <Input
               id="role-name"
               ref="nameInput"
               v-model="roleName"
               name="roleName"
-              class="h-9"
               :disabled="saving"
+              required
+              :aria-invalid="formError && !roleName.trim() ? true : undefined"
+              :aria-describedby="formError && !roleName.trim() ? 'role-name-error' : undefined"
             />
+
+            <FieldError v-if="formError && !roleName.trim()" id="role-name-error"
+              >请填写名称</FieldError
+            >
           </Field>
           <Field :data-invalid="formError && !roleKey.trim() ? true : undefined">
-            <FieldLabel for="role-key">标识</FieldLabel>
-            <Input id="role-key" v-model="roleKey" name="roleKey" class="h-9" :disabled="saving" />
+            <FieldLabel for="role-key" required>标识</FieldLabel>
+            <Input
+              id="role-key"
+              v-model="roleKey"
+              name="roleKey"
+              :disabled="saving"
+              required
+              :aria-invalid="formError && !roleKey.trim() ? true : undefined"
+              :aria-describedby="formError && !roleKey.trim() ? 'role-key-error' : undefined"
+            />
+
+            <FieldError v-if="formError && !roleKey.trim()" id="role-key-error"
+              >请填写标识</FieldError
+            >
           </Field>
           <Field>
             <FieldLabel for="role-sort">顺序</FieldLabel>
@@ -280,15 +305,14 @@ async function onSubmit() {
               v-model="sortText"
               name="sort"
               inputmode="numeric"
-              class="h-9"
               :disabled="saving"
             />
           </Field>
-          <Field orientation="horizontal" class="rounded-lg border bg-muted/20 px-3 py-2">
+          <Field>
             <FieldLabel for="role-enabled">启用</FieldLabel>
             <Switch id="role-enabled" v-model="enabled" :disabled="saving" />
           </Field>
-          <Field class="sm:col-span-2">
+          <Field class="ray-form-span-full">
             <FieldLabel for="role-remark">备注</FieldLabel>
             <Textarea
               id="role-remark"
@@ -297,7 +321,7 @@ async function onSubmit() {
               :disabled="saving"
             />
           </Field>
-        </div>
+        </FieldGroup>
       </FieldSet>
 
       <FieldSet v-if="!creating && canAssignPermissions" class="gap-3">
