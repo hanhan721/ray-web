@@ -137,15 +137,20 @@ async function onSubmit() {
             <FieldLabel for="dict-type-enabled">启用</FieldLabel>
             <Switch id="dict-type-enabled" v-model="enabled" :disabled="saving" />
           </Field>
-          <Field class="sm:col-span-2">
-            <FieldLabel for="dict-type-remark">备注</FieldLabel>
-            <Textarea
-              id="dict-type-remark"
-              v-model="remark"
-              placeholder="补充说明（可选）"
-              :disabled="saving"
-            />
-          </Field>
+          <details class="sm:col-span-2">
+            <summary class="cursor-pointer text-sm font-medium">
+              更多设置 <span v-if="remark" class="text-muted-foreground font-normal">· 已配置</span>
+            </summary>
+            <Field class="mt-3">
+              <FieldLabel for="dict-type-remark">备注</FieldLabel>
+              <Textarea
+                id="dict-type-remark"
+                v-model="remark"
+                placeholder="补充说明（可选）"
+                :disabled="saving"
+              />
+            </Field>
+          </details>
         </div>
       </FieldSet>
     </div>

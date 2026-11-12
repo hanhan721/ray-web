@@ -24,6 +24,9 @@ const emit = defineEmits<{
 }>()
 
 const creating = computed(() => props.item === null)
+const hasAdvancedSettings = computed(() =>
+  Boolean(cssClass.value || listClass.value || remark.value),
+)
 const dictLabel = shallowRef('')
 const dictValue = shallowRef('')
 const sortText = shallowRef('0')
@@ -119,7 +122,7 @@ async function onSubmit() {
 <template>
   <RayFormDialog
     :open="open"
-    :title="creating ? '新增字典数据' : '编辑字典数据'"
+    :title="creating ? '新增字典项' : '编辑字典项'"
     description="这条数据属于当前选中的字典类型。"
     size="lg"
     :saving="saving"
@@ -170,28 +173,34 @@ async function onSubmit() {
         </div>
       </FieldSet>
 
-      <FieldSet class="gap-3">
-        <FieldLegend class="mb-0">样式与备注</FieldLegend>
-        <div class="grid gap-4 sm:grid-cols-2">
-          <Field>
-            <FieldLabel for="dict-data-list-class">列表样式</FieldLabel>
-            <Input id="dict-data-list-class" v-model="listClass" class="h-9" :disabled="saving" />
-          </Field>
-          <Field>
-            <FieldLabel for="dict-data-css-class">样式类名</FieldLabel>
-            <Input id="dict-data-css-class" v-model="cssClass" class="h-9" :disabled="saving" />
-          </Field>
-          <Field class="sm:col-span-2">
-            <FieldLabel for="dict-data-remark">备注</FieldLabel>
-            <Textarea
-              id="dict-data-remark"
-              v-model="remark"
-              placeholder="补充说明（可选）"
-              :disabled="saving"
-            />
-          </Field>
-        </div>
-      </FieldSet>
+      <details class="rounded-lg border px-4 py-3">
+        <summary class="cursor-pointer text-sm font-medium">
+          更多设置
+          <span v-if="hasAdvancedSettings" class="text-muted-foreground font-normal">· 已配置</span>
+        </summary>
+        <FieldSet class="mt-4 gap-3">
+          <FieldLegend class="sr-only">样式与备注</FieldLegend>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <Field>
+              <FieldLabel for="dict-data-list-class">列表样式</FieldLabel>
+              <Input id="dict-data-list-class" v-model="listClass" class="h-9" :disabled="saving" />
+            </Field>
+            <Field>
+              <FieldLabel for="dict-data-css-class">样式类名</FieldLabel>
+              <Input id="dict-data-css-class" v-model="cssClass" class="h-9" :disabled="saving" />
+            </Field>
+            <Field class="sm:col-span-2">
+              <FieldLabel for="dict-data-remark">备注</FieldLabel>
+              <Textarea
+                id="dict-data-remark"
+                v-model="remark"
+                placeholder="补充说明（可选）"
+                :disabled="saving"
+              />
+            </Field>
+          </div>
+        </FieldSet>
+      </details>
     </div>
 
     <template #footer>
