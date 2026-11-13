@@ -6,6 +6,7 @@ import { QUIET, failureMessage } from '@/utils/failure'
 import { sameEditorSession } from '@/views/system/user/user-table'
 import RayFormDialog from '@/components/common/RayFormDialog.vue'
 import RaySelect from '@/components/common/RaySelect.vue'
+import RayTreeSelect, { type TreeSelectOption } from '@/components/common/RayTreeSelect.vue'
 import { Button } from '@/components/ui/button'
 import {
   Field,
@@ -61,13 +62,22 @@ const parentOptions = computed(() => {
   const excluded = props.menu ? excludedParentIds(props.rows, props.menu.id) : new Set<number>()
   return props.rows.filter((row) => !excluded.has(row.id))
 })
-const parentSelectOptions = computed(() => [
-  { value: '0', label: '无' },
-  ...parentOptions.value.map((row) => ({
+const parentSelectOptions = computed<TreeSelectOption<string>[]>(() => {
+  const nodes = parentOptions.value.map((row) => ({
     value: String(row.id),
-    label: `${'· '.repeat(row.depth)}${row.name}`,
-  })),
-])
+    label: row.name,
+    children: [] as TreeSelectOption<string>[],
+    parentId: row.parentId,
+  }))
+  const lookup = new Map(nodes.map((node) => [node.value, node]))
+  const roots: TreeSelectOption<string>[] = [{ value: '0', label: '无' }]
+  for (const node of nodes) {
+    const parent = lookup.get(String(node.parentId))
+    if (parent) parent.children.push(node)
+    else roots.push(node)
+  }
+  return roots
+})
 
 function setType(value: unknown) {
   type.value = value === 'DIRECTORY' || value === 'MENU' || value === 'BUTTON' ? value : 'DIRECTORY'
@@ -210,13 +220,13 @@ async function onSubmit() {
       </Field>
       <Field>
         <FieldLabel for="menu-parent">上级</FieldLabel>
-        <RaySelect
+        <RayTreeSelect
           id="menu-parent"
           :model-value="parentId || null"
+          row-action="select"
           :options="parentSelectOptions"
           placeholder="选择上级"
           size="lg"
-          searchable
           :disabled="saving"
           class="w-full"
           @update:model-value="parentId = $event ?? ''"

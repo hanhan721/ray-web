@@ -7,6 +7,7 @@ import { GenderOptions, type Gender } from '@/types/enums'
 import { QUIET, failureMessage } from '@/utils/failure'
 import RayFormDialog from '@/components/common/RayFormDialog.vue'
 import RaySelect from '@/components/common/RaySelect.vue'
+import RayTreeSelect, { type TreeSelectOption } from '@/components/common/RayTreeSelect.vue'
 import { Button } from '@/components/ui/button'
 import { Field, FieldError, FieldLabel, FieldGroup } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
@@ -45,7 +46,7 @@ const avatarFileId = shallowRef<number | null>(null)
 const roleIds = shallowRef<number[]>([])
 const deptIds = shallowRef<number[]>([])
 const roles = shallowRef<Role[]>([])
-const depts = shallowRef<Array<{ id: number; label: string; depth: number }>>([])
+const depts = shallowRef<TreeSelectOption<number>[]>([])
 const formError = shallowRef('')
 const stepNote = shallowRef('')
 const loading = shallowRef(false)
@@ -66,16 +67,9 @@ const roleOptions = computed(() =>
     disabled: role.enabled === false,
   })),
 )
-const deptOptions = computed(() =>
-  depts.value.map((dept) => ({
-    value: dept.id,
-    label: dept.label,
-    depth: dept.depth,
-  })),
-)
 let session = 0
 let rolesRequest: Promise<Role[]> | null = null
-let deptsRequest: Promise<Array<{ id: number; label: string; depth: number }>> | null = null
+let deptsRequest: Promise<TreeSelectOption<number>[]> | null = null
 
 function idKey(ids: number[]): string {
   return JSON.stringify([...ids].sort((left, right) => left - right))
@@ -99,16 +93,12 @@ function writeBody(userId: number | null = props.userId): ReturnType<typeof toUs
   })
 }
 
-function flattenDepts(
-  nodes: DeptTree[],
-  depth = 0,
-): Array<{ id: number; label: string; depth: number }> {
-  const result: Array<{ id: number; label: string; depth: number }> = []
-  for (const node of nodes) {
-    result.push({ id: node.id, label: node.deptName, depth })
-    if (node.children?.length) result.push(...flattenDepts(node.children, depth + 1))
-  }
-  return result
+function toTreeOptions(nodes: DeptTree[]): TreeSelectOption<number>[] {
+  return nodes.map((node) => ({
+    value: node.id,
+    label: node.deptName,
+    children: node.children?.length ? toTreeOptions(node.children) : undefined,
+  }))
 }
 
 async function loadOptions(userId: number | null) {
@@ -134,11 +124,11 @@ function ensureRoles(): Promise<Role[]> {
   return rolesRequest
 }
 
-function ensureDepts(): Promise<Array<{ id: number; label: string; depth: number }>> {
+function ensureDepts(): Promise<TreeSelectOption<number>[]> {
   if (!deptsRequest) {
     deptsRequest = getDeptTree(QUIET)
       .then((items) => {
-        depts.value = flattenDepts(items ?? [])
+        depts.value = toTreeOptions(items ?? [])
         return depts.value
       })
       .catch((error) => {
@@ -428,16 +418,17 @@ async function onSubmit() {
       </Field>
       <Field v-if="showPermissionSection && canAssignDepts">
         <FieldLabel for="user-depts">部门</FieldLabel>
-        <RaySelect
+        <RayTreeSelect
           id="user-depts"
           v-model="deptIds"
           multiple
-          :options="deptOptions"
+          check-strictly
+          row-action="select"
+          :options="depts"
           placeholder="选择部门"
-          empty-text="没有可分配的部门"
-          no-results-text="没有匹配的部门"
           aria-label="部门"
           :disabled="saving"
+          class="w-full"
         />
       </Field>
       <Field>
