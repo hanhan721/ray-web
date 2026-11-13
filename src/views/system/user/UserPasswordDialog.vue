@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { shallowRef, useTemplateRef, watch } from 'vue'
 import { resetUserPassword } from '@/api/user'
-import { QUIET, failureMessage } from '@/utils/failure'
+import { failureMessage } from '@/utils/failure'
 import RayFormDialog from '@/components/common/RayFormDialog.vue'
 import { Button } from '@/components/ui/button'
 import { Field, FieldGroup, FieldLabel, FieldError } from '@/components/ui/field'
@@ -51,7 +51,7 @@ async function onSubmit() {
   if (userId === null) return
   saving.value = true
   try {
-    await resetUserPassword(userId, nextPassword, QUIET)
+    await resetUserPassword(userId, nextPassword)
     if (sessionId !== session) return
     emit('update:open', false)
   } catch (error) {

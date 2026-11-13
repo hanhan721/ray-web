@@ -4,7 +4,7 @@ import { getDeptTree, type DeptTree } from '@/api/dept'
 import { getRoleList, type Role } from '@/api/role'
 import { assignUserDepts, assignUserRoles, createUser, getUserById, updateUser } from '@/api/user'
 import { GenderOptions, type Gender } from '@/types/enums'
-import { QUIET, failureMessage } from '@/utils/failure'
+import { failureMessage } from '@/utils/failure'
 import RayFormDialog from '@/components/common/RayFormDialog.vue'
 import RaySelect from '@/components/common/RaySelect.vue'
 import RayTreeSelect, { type TreeSelectOption } from '@/components/common/RayTreeSelect.vue'
@@ -111,7 +111,7 @@ async function loadOptions(userId: number | null) {
 
 function ensureRoles(): Promise<Role[]> {
   if (!rolesRequest) {
-    rolesRequest = getRoleList(QUIET)
+    rolesRequest = getRoleList()
       .then((items) => {
         roles.value = items ?? []
         return roles.value
@@ -126,7 +126,7 @@ function ensureRoles(): Promise<Role[]> {
 
 function ensureDepts(): Promise<TreeSelectOption<number>[]> {
   if (!deptsRequest) {
-    deptsRequest = getDeptTree(QUIET)
+    deptsRequest = getDeptTree()
       .then((items) => {
         depts.value = toTreeOptions(items ?? [])
         return depts.value
@@ -140,7 +140,7 @@ function ensureDepts(): Promise<TreeSelectOption<number>[]> {
 }
 
 async function loadDetail(sessionId: number, userId: number) {
-  const detail = await getUserById(userId, QUIET)
+  const detail = await getUserById(userId)
   if (!sameEditorSession(sessionId, session, userId, props.userId)) return
   const user = detail.user
   username.value = user.username
@@ -253,8 +253,8 @@ async function onSubmit() {
   const stillHere = () => sameEditorSession(sessionId, session, userId, props.userId)
   try {
     if (savedProfile !== profile) {
-      if (userId === null) await createUser({ ...body, password: passwordValue }, QUIET)
-      else await updateUser({ ...body, id: userId }, QUIET)
+      if (userId === null) await createUser({ ...body, password: passwordValue })
+      else await updateUser({ ...body, id: userId })
       if (stillHere()) profileSavedKey.value = profile
     }
     profileOk = true
@@ -264,7 +264,7 @@ async function onSubmit() {
   }
   if (profileOk && userId !== null && props.canAssignRoles && savedRoles !== roleKey) {
     try {
-      await assignUserRoles(userId, nextRoles, QUIET)
+      await assignUserRoles(userId, nextRoles)
       if (stillHere()) rolesSavedKey.value = roleKey
     } catch (error) {
       if (!stillHere()) return
@@ -279,7 +279,7 @@ async function onSubmit() {
     savedDepts !== deptKey
   ) {
     try {
-      await assignUserDepts(userId, nextDepts, QUIET)
+      await assignUserDepts(userId, nextDepts)
       if (stillHere()) deptsSavedKey.value = deptKey
     } catch (error) {
       if (!stillHere()) return
@@ -349,10 +349,7 @@ async function onSubmit() {
           >请填写账号</FieldError
         >
       </Field>
-      <Field
-        v-if="creating"
-        :data-invalid="formError && !password ? true : undefined"
-      >
+      <Field v-if="creating" :data-invalid="formError && !password ? true : undefined">
         <FieldLabel for="user-password" required>密码</FieldLabel>
         <Input
           id="user-password"
@@ -365,9 +362,7 @@ async function onSubmit() {
           :aria-invalid="formError && !password ? true : undefined"
           :aria-describedby="formError && !password ? 'user-password-error' : undefined"
         />
-        <FieldError v-if="formError && !password" id="user-password-error"
-          >请填写密码</FieldError
-        >
+        <FieldError v-if="formError && !password" id="user-password-error">请填写密码</FieldError>
       </Field>
       <Field>
         <FieldLabel for="user-nickname">昵称</FieldLabel>
@@ -394,13 +389,7 @@ async function onSubmit() {
       </Field>
       <Field>
         <FieldLabel for="user-email">邮箱</FieldLabel>
-        <Input
-          id="user-email"
-          v-model="email"
-          type="email"
-          autocomplete="off"
-          :disabled="saving"
-        />
+        <Input id="user-email" v-model="email" type="email" autocomplete="off" :disabled="saving" />
       </Field>
       <Field v-if="showPermissionSection && canAssignRoles">
         <FieldLabel for="user-roles">角色</FieldLabel>

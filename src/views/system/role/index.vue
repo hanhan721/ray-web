@@ -7,7 +7,6 @@ import { EnabledFilterOptions, PAGE_KEYS } from '@/types/enums'
 import { useSessionStore } from '@/stores/session'
 import { useDeleteMany } from '@/composables/useDeleteMany'
 import { useRowStatus } from '@/composables/useRowStatus'
-import { QUIET } from '@/utils/failure'
 import RayTable from '@/components/common/RayTable.vue'
 import RaySelect from '@/components/common/RaySelect.vue'
 import { Badge } from '@/components/ui/badge'
@@ -66,7 +65,7 @@ const {
   setOpen: setDeleteOpen,
   confirm: confirmDelete,
 } = useDeleteMany<Role>({
-  deleteRows: (ids) => deleteRoles(ids, QUIET),
+  deleteRows: (ids) => deleteRoles(ids),
   selectedIds,
   clearSelection,
   rows,

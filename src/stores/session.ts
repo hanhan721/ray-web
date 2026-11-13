@@ -68,7 +68,7 @@ export const useSessionStore = defineStore('session', () => {
     setAccessToken(token.accessToken)
     const epoch = getSessionEpoch()
     try {
-      const info = await getUserInfo({ showErrorMessage: false })
+      const info = await getUserInfo()
       if (getSessionEpoch() !== epoch) return false
       profile.value = normalizeUser(info)
       routesReady.value = false

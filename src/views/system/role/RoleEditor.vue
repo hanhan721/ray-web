@@ -3,16 +3,11 @@ import { computed, nextTick, shallowRef, useTemplateRef, watch } from 'vue'
 import { getPermissionTree, getRolePermissions, saveRolePermissions } from '@/api/permission'
 import { createRole, getRoleById, updateRole } from '@/api/role'
 import type { PermissionTree } from '@/types/permission'
-import { QUIET, failureMessage } from '@/utils/failure'
+import { failureMessage } from '@/utils/failure'
 import RayFormDialog from '@/components/common/RayFormDialog.vue'
 import RayTreeSelect, { type TreeSelectOption } from '@/components/common/RayTreeSelect.vue'
 import { Button } from '@/components/ui/button'
-import {
-  Field,
-  FieldLabel,
-  FieldGroup,
-  FieldError,
-} from '@/components/ui/field'
+import { Field, FieldLabel, FieldGroup, FieldError } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
@@ -97,12 +92,12 @@ async function resetForm() {
   loading.value = true
   try {
     if (roleId !== null && props.canAssignPermissions) {
-      const tree = await getPermissionTree(QUIET)
+      const tree = await getPermissionTree()
       if (!sameEditorSession(sessionId, session, roleId, props.roleId)) return
       permissionOptions.value = toTreeOptions(tree ?? [])
     }
     if (roleId !== null) {
-      const role = await getRoleById(roleId, QUIET)
+      const role = await getRoleById(roleId)
       if (!sameEditorSession(sessionId, session, roleId, props.roleId)) return
       roleName.value = role.roleName
       roleKey.value = role.roleKey
@@ -111,7 +106,7 @@ async function resetForm() {
       remark.value = role.remark ?? ''
       profileSavedKey.value = JSON.stringify(profileBody(roleId))
       if (props.canAssignPermissions) {
-        const ids = await getRolePermissions(roleId, QUIET)
+        const ids = await getRolePermissions(roleId)
         if (!sameEditorSession(sessionId, session, roleId, props.roleId)) return
         permissionIds.value = ids ?? []
         permissionsSavedKey.value = idKey(permissionIds.value)
@@ -193,8 +188,8 @@ async function onSubmit() {
   const stillHere = () => sameEditorSession(sessionId, session, roleId, props.roleId)
   try {
     if (savedProfile !== profile) {
-      if (roleId === null) await createRole(body, QUIET)
-      else await updateRole({ ...body, id: roleId }, QUIET)
+      if (roleId === null) await createRole(body)
+      else await updateRole({ ...body, id: roleId })
       if (stillHere()) profileSavedKey.value = profile
     }
     profileOk = true
@@ -209,8 +204,8 @@ async function onSubmit() {
     savedPermissions !== permissionKey
   ) {
     try {
-      await saveRolePermissions(roleId, nextPermissions, QUIET)
-      const savedIds = await getRolePermissions(roleId, QUIET)
+      await saveRolePermissions(roleId, nextPermissions)
+      const savedIds = await getRolePermissions(roleId)
       if (stillHere()) {
         permissionIds.value = savedIds ?? []
         permissionsSavedKey.value = idKey(permissionIds.value)
@@ -283,9 +278,7 @@ async function onSubmit() {
           :aria-invalid="formError && !roleKey.trim() ? true : undefined"
           :aria-describedby="formError && !roleKey.trim() ? 'role-key-error' : undefined"
         />
-        <FieldError v-if="formError && !roleKey.trim()" id="role-key-error"
-          >请填写标识</FieldError
-        >
+        <FieldError v-if="formError && !roleKey.trim()" id="role-key-error">请填写标识</FieldError>
       </Field>
       <Field>
         <FieldLabel for="role-sort">顺序</FieldLabel>

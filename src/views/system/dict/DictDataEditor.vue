@@ -1,16 +1,11 @@
 <script setup lang="ts">
 import { computed, nextTick, shallowRef, useTemplateRef, watch } from 'vue'
 import { createDictData, updateDictData, type DictDataRecord } from '@/api/dict'
-import { QUIET, failureMessage } from '@/utils/failure'
+import { failureMessage } from '@/utils/failure'
 import { sameEditorSession } from '@/views/system/user/user-table'
 import RayFormDialog from '@/components/common/RayFormDialog.vue'
 import { Button } from '@/components/ui/button'
-import {
-  Field,
-  FieldLabel,
-  FieldGroup,
-  FieldError,
-} from '@/components/ui/field'
+import { Field, FieldLabel, FieldGroup, FieldError } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
@@ -109,8 +104,8 @@ async function onSubmit() {
   }
   saving.value = true
   try {
-    if (itemId !== null) await updateDictData({ ...body, id: itemId }, QUIET)
-    else await createDictData(body, QUIET)
+    if (itemId !== null) await updateDictData({ ...body, id: itemId })
+    else await createDictData(body)
     emit('saved')
     if (stillHere()) emit('update:open', false)
   } catch (error) {
@@ -143,9 +138,7 @@ async function onSubmit() {
           :disabled="saving"
           required
           :aria-invalid="formError && !dictLabel.trim() ? true : undefined"
-          :aria-describedby="
-            formError && !dictLabel.trim() ? 'dict-data-label-error' : undefined
-          "
+          :aria-describedby="formError && !dictLabel.trim() ? 'dict-data-label-error' : undefined"
         />
         <FieldError v-if="formError && !dictLabel.trim()" id="dict-data-label-error"
           >请填写标签</FieldError
@@ -159,9 +152,7 @@ async function onSubmit() {
           :disabled="saving"
           required
           :aria-invalid="formError && !dictValue.trim() ? true : undefined"
-          :aria-describedby="
-            formError && !dictValue.trim() ? 'dict-data-value-error' : undefined
-          "
+          :aria-describedby="formError && !dictValue.trim() ? 'dict-data-value-error' : undefined"
         />
         <FieldError v-if="formError && !dictValue.trim()" id="dict-data-value-error"
           >请填写字典值</FieldError

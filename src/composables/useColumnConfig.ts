@@ -2,7 +2,7 @@ import { computed, shallowRef, toValue, watch, type MaybeRefOrGetter } from 'vue
 import { getColumnConfig, resetColumnConfig, saveColumnConfig } from '@/api/column-config'
 import type { ColumnSettingItem, ColumnSettingsDraft } from '@/components/common/column-settings'
 import { applyColumnPreference, toColumnPreference } from '@/utils/column-preference'
-import { QUIET, failureMessage } from '@/utils/failure'
+import { failureMessage } from '@/utils/failure'
 
 /**
  * 列显隐与排序配置。`pageKey` 为空时只保留本地默认值，不读写后端。
@@ -35,7 +35,7 @@ export function useColumnConfig(
       error.value = ''
       if (!key) return
       try {
-        const result = await getColumnConfig(key, QUIET)
+        const result = await getColumnConfig(key)
         if (requestId === generation) saved.value = result
       } catch {
         // 读取失败保留默认列，页面不因此报错。
@@ -70,13 +70,13 @@ export function useColumnConfig(
     const key = toValue(pageKey)
     if (!key) return
     const next = toColumnPreference(keys.value, draft.order, draft.visibility)
-    return persist(() => saveColumnConfig(key, next, QUIET), next)
+    return persist(() => saveColumnConfig(key, next), next)
   }
 
   function reset() {
     const key = toValue(pageKey)
     if (!key) return
-    return persist(() => resetColumnConfig(key, QUIET), null)
+    return persist(() => resetColumnConfig(key), null)
   }
 
   return {

@@ -8,7 +8,7 @@ import { useSessionStore } from '@/stores/session'
 import { useDeleteMany } from '@/composables/useDeleteMany'
 import { useRowStatus } from '@/composables/useRowStatus'
 import { useSelection } from '@/composables/useSelection'
-import { QUIET, failureMessage } from '@/utils/failure'
+import { failureMessage } from '@/utils/failure'
 import RayTreeTable from '@/components/common/RayTreeTable.vue'
 import RaySelect from '@/components/common/RaySelect.vue'
 import { Badge } from '@/components/ui/badge'
@@ -80,7 +80,7 @@ const {
   setOpen: setDeleteOpen,
   confirm: confirmDelete,
 } = useDeleteMany<MenuRow>({
-  deleteRows: (ids) => deletePermissions(ids, QUIET),
+  deleteRows: (ids) => deletePermissions(ids),
   selectedIds,
   clearSelection,
   load,
@@ -101,7 +101,7 @@ async function load() {
   loading.value = true
   errorMessage.value = ''
   try {
-    const tree = await getPermissionTree(QUIET, { reload: true })
+    const tree = await getPermissionTree(undefined, { reload: true })
     if (requestId !== generation) return
     rows.value = flattenMenus(tree ?? [])
     selectedIds.value = selectedIds.value.filter((id) => rows.value.some((row) => row.id === id))
@@ -152,7 +152,11 @@ onMounted(() => {
     tree-column="name"
     :row-key="(row) => row.id"
     :children="(row) => row.children"
-    :match="name.trim() || typeFilter ? (row) => visibleRows.some((item) => item.id === row.id) : undefined"
+    :match="
+      name.trim() || typeFilter
+        ? (row) => visibleRows.some((item) => item.id === row.id)
+        : undefined
+    "
     :loading="loading"
     :error-message="errorMessage"
     :selected-ids="selectedIds"

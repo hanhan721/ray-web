@@ -9,7 +9,6 @@ import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { readRedirect } from '@/router/guard'
 import { useSessionStore } from '@/stores/session'
-import { RequestError } from '@/utils/request'
 
 const route = useRoute()
 const router = useRouter()
@@ -25,11 +24,6 @@ onMounted(() => {
   if (element instanceof HTMLInputElement) element.focus()
 })
 
-function failureMessage(error: unknown): string {
-  if (error instanceof RequestError && error.message) return error.message
-  return '登录失败，请稍后重试'
-}
-
 async function onSubmit() {
   formError.value = ''
   const accountName = username.value.trim()
@@ -42,8 +36,8 @@ async function onSubmit() {
     const signedIn = await session.login(accountName, password.value)
     if (!signedIn) return
     await router.replace(readRedirect(route.query.redirect) ?? session.entryPath)
-  } catch (error) {
-    formError.value = failureMessage(error)
+  } catch {
+    formError.value = '登录失败，请检查提示后重试'
   } finally {
     submitting.value = false
   }

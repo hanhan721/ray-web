@@ -2,16 +2,11 @@
 import { computed, nextTick, shallowRef, useTemplateRef, watch } from 'vue'
 import { createJob, updateJob, validateCron, type ScheduleJob } from '@/api/schedule-job'
 import { RequestError } from '@/utils/request'
-import { QUIET, failureMessage } from '@/utils/failure'
+import { failureMessage } from '@/utils/failure'
 import { sameEditorSession } from '@/views/system/user/user-table'
 import RayFormDialog from '@/components/common/RayFormDialog.vue'
 import { Button } from '@/components/ui/button'
-import {
-  Field,
-  FieldLabel,
-  FieldGroup,
-  FieldError,
-} from '@/components/ui/field'
+import { Field, FieldLabel, FieldGroup, FieldError } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
@@ -93,7 +88,7 @@ async function checkCron() {
   }
   checking.value = true
   try {
-    const result = await validateCron(expression, QUIET)
+    const result = await validateCron(expression)
     if (!stillHere()) return
     if (!result.valid) {
       formError.value = `Cron 表达式 [${expression}] 不合法`
@@ -137,7 +132,7 @@ async function onSubmit() {
   if (props.canValidate) {
     checking.value = true
     try {
-      const result = await validateCron(cron, QUIET)
+      const result = await validateCron(cron)
       if (!stillHere()) return
       if (!result.valid) {
         formError.value = `Cron 表达式 [${cron}] 不合法`
@@ -170,8 +165,8 @@ async function onSubmit() {
   })
   saving.value = true
   try {
-    if (jobId === null) await createJob(body, QUIET)
-    else await updateJob({ ...body, id: jobId }, QUIET)
+    if (jobId === null) await createJob(body)
+    else await updateJob({ ...body, id: jobId })
     emit('saved')
     if (stillHere()) emit('update:open', false)
   } catch (error) {
@@ -272,9 +267,7 @@ async function onSubmit() {
             :disabled="saving"
             required
             :aria-invalid="formError && !cronExpression.trim() ? true : undefined"
-            :aria-describedby="
-              formError && !cronExpression.trim() ? 'job-cron-error' : undefined
-            "
+            :aria-describedby="formError && !cronExpression.trim() ? 'job-cron-error' : undefined"
           />
           <Button
             v-if="canValidate"

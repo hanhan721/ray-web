@@ -7,7 +7,6 @@ import { ParamTypeOptions, type ParamType } from '@/types/enums'
 import { useSessionStore } from '@/stores/session'
 import { useDeleteMany } from '@/composables/useDeleteMany'
 import { usePagedList } from '@/composables/usePagedList'
-import { QUIET } from '@/utils/failure'
 import RayTable from '@/components/common/RayTable.vue'
 import RaySelect from '@/components/common/RaySelect.vue'
 import { Button } from '@/components/ui/button'
@@ -72,7 +71,6 @@ const {
         bizType: bizType.value,
         paramType: paramType.value,
       }),
-      QUIET,
     ),
   fallbackMessage: '系统参数加载失败',
 })
@@ -84,7 +82,7 @@ const {
   setOpen: setDeleteOpen,
   confirm: confirmDelete,
 } = useDeleteMany<SystemParam>({
-  deleteRows: (ids) => deleteParams(ids, QUIET),
+  deleteRows: (ids) => deleteParams(ids),
   selectedIds,
   clearSelection,
   rows,

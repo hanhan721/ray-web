@@ -1,16 +1,11 @@
 <script setup lang="ts">
 import { computed, nextTick, shallowRef, useTemplateRef, watch } from 'vue'
 import { createDept, updateDept } from '@/api/dept'
-import { QUIET, failureMessage } from '@/utils/failure'
+import { failureMessage } from '@/utils/failure'
 import RayFormDialog from '@/components/common/RayFormDialog.vue'
 import RayTreeSelect, { type TreeSelectOption } from '@/components/common/RayTreeSelect.vue'
 import { Button } from '@/components/ui/button'
-import {
-  Field,
-  FieldLabel,
-  FieldGroup,
-  FieldError,
-} from '@/components/ui/field'
+import { Field, FieldLabel, FieldGroup, FieldError } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
@@ -133,8 +128,8 @@ async function onSubmit() {
   }
   saving.value = true
   try {
-    if (deptId !== null) await updateDept({ ...body, id: deptId }, QUIET)
-    else await createDept(body, QUIET)
+    if (deptId !== null) await updateDept({ ...body, id: deptId })
+    else await createDept(body)
     emit('saved')
     if (stillHere()) emit('update:open', false)
   } catch (error) {

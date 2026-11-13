@@ -14,9 +14,9 @@ export interface TokenResponse {
   expireIn: number
 }
 
-// 登录。失败提示留在登录页，不走全局 Toast。
+// 登录。
 export function login(data: LoginParams) {
-  return post<TokenResponse>('/auth/login', data, { showErrorMessage: false })
+  return post<TokenResponse>('/auth/login', data)
 }
 
 // 获取当前用户信息

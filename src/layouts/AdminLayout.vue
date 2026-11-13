@@ -19,6 +19,7 @@ import {
 } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import ThemeToggle from '@/components/ThemeToggle.vue'
+import ErrorHistory from './components/ErrorHistory.vue'
 import NavTree from './components/NavTree.vue'
 import TopNav from './components/TopNav.vue'
 import { findNavigationTrail } from './navigation'
@@ -115,6 +116,7 @@ async function onLogout() {
         <p class="app-user-name text-muted-foreground truncate text-sm" :title="displayName">
           {{ displayName }}
         </p>
+        <ErrorHistory />
         <ThemeToggle />
         <Button type="button" variant="outline" size="sm" @click="onLogout">退出</Button>
       </div>

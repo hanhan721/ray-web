@@ -5,7 +5,7 @@ import { computed, onMounted, shallowRef } from 'vue'
 import { getOnlineSessionPage, kickBySessionId, kickByUserId, type OnlineUser } from '@/api/online'
 import { useSessionStore } from '@/stores/session'
 import { usePagedList } from '@/composables/usePagedList'
-import { QUIET, failureMessage } from '@/utils/failure'
+import { failureMessage } from '@/utils/failure'
 import RayTable from '@/components/common/RayTable.vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -72,7 +72,6 @@ const {
         startTime: appliedStart.value,
         endTime: appliedEnd.value,
       }),
-      QUIET,
     ),
   fallbackMessage: '在线用户加载失败',
 })
@@ -132,9 +131,9 @@ async function confirmKick() {
   kickError.value = ''
   try {
     if (target.mode === 'session') {
-      await kickBySessionId(target.sessionId, QUIET)
+      await kickBySessionId(target.sessionId)
     } else {
-      await kickByUserId(target.userId, QUIET)
+      await kickByUserId(target.userId)
     }
     if (token !== kickToken) {
       await load()

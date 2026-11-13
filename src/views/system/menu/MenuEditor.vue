@@ -2,18 +2,13 @@
 import { computed, nextTick, shallowRef, useTemplateRef, watch } from 'vue'
 import { createPermission, updatePermission } from '@/api/permission'
 import { PermissionTypeOptions, type PermissionType } from '@/types/enums'
-import { QUIET, failureMessage } from '@/utils/failure'
+import { failureMessage } from '@/utils/failure'
 import { sameEditorSession } from '@/views/system/user/user-table'
 import RayFormDialog from '@/components/common/RayFormDialog.vue'
 import RaySelect from '@/components/common/RaySelect.vue'
 import RayTreeSelect, { type TreeSelectOption } from '@/components/common/RayTreeSelect.vue'
 import { Button } from '@/components/ui/button'
-import {
-  Field,
-  FieldLabel,
-  FieldGroup,
-  FieldError,
-} from '@/components/ui/field'
+import { Field, FieldLabel, FieldGroup, FieldError } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
@@ -165,8 +160,8 @@ async function onSubmit() {
   saving.value = true
   try {
     if (menuId !== null) {
-      await updatePermission({ ...body, id: menuId }, QUIET)
-    } else await createPermission(body, QUIET)
+      await updatePermission({ ...body, id: menuId })
+    } else await createPermission(body)
     emit('saved')
     if (stillHere()) emit('update:open', false)
   } catch (error) {
@@ -201,9 +196,7 @@ async function onSubmit() {
           :aria-invalid="formError && !name.trim() ? true : undefined"
           :aria-describedby="formError && !name.trim() ? 'menu-name-error' : undefined"
         />
-        <FieldError v-if="formError && !name.trim()" id="menu-name-error"
-          >请填写名称</FieldError
-        >
+        <FieldError v-if="formError && !name.trim()" id="menu-name-error">请填写名称</FieldError>
       </Field>
       <Field>
         <FieldLabel for="menu-type">类型</FieldLabel>

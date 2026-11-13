@@ -1,16 +1,11 @@
 <script setup lang="ts">
 import { computed, nextTick, shallowRef, useTemplateRef, watch } from 'vue'
 import { createDictType, updateDictType, type DictTypeRecord } from '@/api/dict'
-import { QUIET, failureMessage } from '@/utils/failure'
+import { failureMessage } from '@/utils/failure'
 import { sameEditorSession } from '@/views/system/user/user-table'
 import RayFormDialog from '@/components/common/RayFormDialog.vue'
 import { Button } from '@/components/ui/button'
-import {
-  Field,
-  FieldLabel,
-  FieldGroup,
-  FieldError,
-} from '@/components/ui/field'
+import { Field, FieldLabel, FieldGroup, FieldError } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
@@ -78,10 +73,10 @@ async function onSubmit() {
   try {
     if (typeId !== null) {
       const row = { ...body, id: typeId }
-      await updateDictType(row, QUIET)
+      await updateDictType(row)
       emit('saved', row)
     } else {
-      await createDictType(body, QUIET)
+      await createDictType(body)
       emit('saved', null)
     }
     if (stillHere()) emit('update:open', false)

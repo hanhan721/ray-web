@@ -1,7 +1,6 @@
 import { shallowRef } from 'vue'
 import { getRolePage, type Role } from '@/api/role'
 import { usePagedList } from '@/composables/usePagedList'
-import { QUIET } from '@/utils/failure'
 import { toRoleQuery, type RoleListInput } from './role-table'
 
 /** 角色列表把筛选条件留在页面，分页与勾选交给通用列表。 */
@@ -20,7 +19,6 @@ export function useRoleList() {
           roleKey: roleKey.value,
           enabled: enabled.value,
         }),
-        QUIET,
       ),
     fallbackMessage: '角色列表加载失败',
   })

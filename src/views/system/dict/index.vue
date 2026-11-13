@@ -17,7 +17,6 @@ import { useSessionStore } from '@/stores/session'
 import { useDeleteMany } from '@/composables/useDeleteMany'
 import { usePagedList } from '@/composables/usePagedList'
 import { useRowStatus } from '@/composables/useRowStatus'
-import { QUIET } from '@/utils/failure'
 import RayTable from '@/components/common/RayTable.vue'
 import RaySelect from '@/components/common/RaySelect.vue'
 import { Badge } from '@/components/ui/badge'
@@ -110,7 +109,6 @@ const {
         dictType: typeCode.value,
         enabled: typeEnabled.value,
       }),
-      QUIET,
     ),
   fallbackMessage: '字典类型加载失败',
 })
@@ -143,7 +141,6 @@ const {
         dictLabel: dataLabel.value,
         enabled: dataEnabled.value,
       }),
-      QUIET,
     )
   },
   fallbackMessage: '字典数据加载失败',
@@ -159,7 +156,7 @@ const {
 } = useDeleteMany<DictTypeRecord>({
   deleteRows: async (ids) => {
     const targetIds = singleTypeDelete.value ? [singleTypeDelete.value.id] : ids
-    await deleteDictTypes(targetIds, QUIET)
+    await deleteDictTypes(targetIds)
     if (selectedType.value && targetIds.includes(selectedType.value.id)) {
       selectedType.value = null
       dataDrawerOpen.value = false
@@ -180,7 +177,7 @@ const {
   setOpen: setDataDeleteOpen,
   confirm: confirmDataDelete,
 } = useDeleteMany<DictDataRecord>({
-  deleteRows: (ids) => deleteDictData(ids, QUIET),
+  deleteRows: (ids) => deleteDictData(ids),
   selectedIds: dataSelectedIds,
   clearSelection: clearDataSelection,
   rows: dataRows,

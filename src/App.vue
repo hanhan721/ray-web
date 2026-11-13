@@ -11,5 +11,5 @@ theme.syncFromDom()
 
 <template>
   <RouterView />
-  <Toaster :theme="mode" />
+  <Toaster :theme="mode" position="top-right" />
 </template>

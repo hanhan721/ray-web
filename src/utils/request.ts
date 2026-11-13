@@ -50,7 +50,7 @@ export class RequestError extends Error {
   }
 }
 
-type ErrorNotifier = (error: RequestError) => void
+type ErrorNotifier = (error: RequestError, path: string) => void
 type UnauthorizedHandler = () => void
 
 let notifier: ErrorNotifier | null = null
@@ -131,7 +131,7 @@ export function clearAccessToken(): void {
 
 function pathnameOf(config: { url?: string; baseURL?: string }): string {
   const url = config.url ?? ''
-  const pathOnly = (value: string) => value.split('?')[0]?.replace(/\/+$/, '') || '/'
+  const pathOnly = (value: string) => value.split(/[?#]/)[0]?.replace(/\/+$/, '') || '/'
   if (/^https?:\/\//i.test(url)) return pathOnly(new URL(url).pathname)
   const base = config.baseURL ?? ''
   if (/^https?:\/\//i.test(base)) {
@@ -172,22 +172,26 @@ function isUnauthorized(error: RequestError): boolean {
   return error.code === ResponseCode.UNAUTHORIZED || error.status === ResponseCode.UNAUTHORIZED
 }
 
-function endSession(error: RequestError, config: { showErrorMessage?: boolean } | undefined): void {
+function endSession(error: RequestError, config: RequestConfig | undefined): void {
   const first = handledWave !== accessWave
   if (!first) return
   handledWave = accessWave
   clearAccessToken()
   unauthorizedHandler?.()
-  if (config?.showErrorMessage !== false) notifier?.(error)
+  notifyError(error, config)
+}
+
+function notifyError(error: RequestError, config: RequestConfig | undefined): void {
+  const path = pathnameOf({ url: config?.url, baseURL: config?.baseURL ?? client.defaults.baseURL })
+  notifier?.(error, path)
 }
 
 function present(
   error: RequestError,
-  config:
-    { url?: string; baseURL?: string; method?: string; showErrorMessage?: boolean } | undefined,
+  config: RequestConfig | undefined,
 ): RequestError {
   if (isUnauthorized(error) && !isLoginRequest(config)) endSession(error, config)
-  else if (config?.showErrorMessage !== false) notifier?.(error)
+  else notifyError(error, config)
   return error
 }
 
@@ -212,7 +216,12 @@ function statusMessage(status: number | undefined): string | undefined {
 }
 
 function networkMessage(error: AxiosError): string {
-  if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') return '请求超时，请稍后重试'
+  if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
+    const method = (error.config?.method ?? 'get').toLowerCase()
+    return method === 'get' || method === 'head'
+      ? '请求超时，请稍后重试'
+      : '请求超时，操作结果暂时无法确认，请刷新后查看'
+  }
   return '网络连接失败，请稍后重试'
 }
 
@@ -290,10 +299,15 @@ client.interceptors.response.use(
   async (error: unknown) => {
     if (isCancel(error)) return Promise.reject(error)
     if (!axios.isAxiosError(error)) {
-      const fallback = error instanceof Error ? error : new RequestError('请求失败')
-      return Promise.reject(fallback)
+      return Promise.reject(new RequestError('请求失败，请稍后重试', { cause: error }))
     }
     const body = await readErrorBody(error.response?.data, error.response?.headers)
+    if (error.response && !(error.response.data instanceof Blob) && !readEnvelope(body.payload)) {
+      console.error('无法解析 API 响应格式', {
+        url: error.config?.url,
+        status: error.response.status,
+      })
+    }
     return Promise.reject(
       new RequestError(body.msg ?? statusMessage(error.response?.status) ?? networkMessage(error), {
         code: body.code,
@@ -323,6 +337,7 @@ async function unwrapResponse(response: AxiosResponse<unknown>): Promise<unknown
 
   const envelope = readEnvelope(response.data)
   if (!envelope) {
+    console.error('无法解析 API 响应格式', { url: response.config.url, status: response.status })
     throw new RequestError('响应格式无法识别', { status: response.status, payload: response.data })
   }
   if (envelope.code !== ResponseCode.SUCCESS) {
@@ -374,7 +389,6 @@ async function refreshOnce(config: RequestConfig): Promise<RefreshResult> {
         url: '/auth/refresh',
         baseURL: config.baseURL,
         adapter: config.adapter,
-        showErrorMessage: false,
         signal: controller.signal,
       })
     } catch (error) {

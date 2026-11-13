@@ -4,7 +4,7 @@ import { shallowRef, useTemplateRef } from 'vue'
 import { deleteFiles, uploadFile, uploadFiles, type FileUpload } from '@/api/file'
 import { useSessionStore } from '@/stores/session'
 import { useSelection } from '@/composables/useSelection'
-import { QUIET, failureMessage } from '@/utils/failure'
+import { failureMessage } from '@/utils/failure'
 import RayTable from '@/components/common/RayTable.vue'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -74,10 +74,10 @@ async function uploadPicked() {
     if (accepted.length === 1) {
       const file = accepted[0]
       if (!file) return
-      const uploaded = await uploadFile(file, QUIET)
+      const uploaded = await uploadFile(file)
       rows.value = [...rows.value, uploaded]
     } else {
-      const batch = await uploadFiles(accepted, QUIET)
+      const batch = await uploadFiles(accepted)
       const uploaded: FileUpload[] = []
       const serverFailures: UploadRejection[] = [...rejected]
       for (const item of batch) {
@@ -120,7 +120,7 @@ async function confirmDelete() {
   deleting.value = true
   deleteError.value = ''
   try {
-    await deleteFiles(ids, QUIET)
+    await deleteFiles(ids)
     const removed = new Set(ids)
     rows.value = rows.value.filter((row) => !removed.has(row.fileId))
     selectedIds.value = selectedIds.value.filter((id) => !removed.has(id))

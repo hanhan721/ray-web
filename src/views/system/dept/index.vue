@@ -7,7 +7,7 @@ import { useSessionStore } from '@/stores/session'
 import { useDeleteMany } from '@/composables/useDeleteMany'
 import { useRowStatus } from '@/composables/useRowStatus'
 import { useSelection } from '@/composables/useSelection'
-import { QUIET, failureMessage } from '@/utils/failure'
+import { failureMessage } from '@/utils/failure'
 import RayTreeTable from '@/components/common/RayTreeTable.vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -78,7 +78,7 @@ const {
   setOpen: setDeleteOpen,
   confirm: confirmDelete,
 } = useDeleteMany<DeptRow>({
-  deleteRows: (ids) => deleteDepts(ids, QUIET),
+  deleteRows: (ids) => deleteDepts(ids),
   selectedIds,
   clearSelection,
   load,
@@ -99,7 +99,7 @@ async function load() {
   loading.value = true
   errorMessage.value = ''
   try {
-    const tree = await getDeptTree(QUIET)
+    const tree = await getDeptTree()
     if (requestId !== generation) return
     rows.value = flattenDepts(tree ?? [])
     selectedIds.value = selectedIds.value.filter((id) => rows.value.some((row) => row.id === id))

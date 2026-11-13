@@ -20,7 +20,7 @@ import { useSessionStore } from '@/stores/session'
 import { useDeleteMany } from '@/composables/useDeleteMany'
 import { usePagedList } from '@/composables/usePagedList'
 import { useRowStatus } from '@/composables/useRowStatus'
-import { QUIET, failureMessage } from '@/utils/failure'
+import { failureMessage } from '@/utils/failure'
 import RayFormDialog from '@/components/common/RayFormDialog.vue'
 import RayTable from '@/components/common/RayTable.vue'
 import RaySelect from '@/components/common/RaySelect.vue'
@@ -129,7 +129,6 @@ const {
         beanName: appliedBean.value,
         enabled: appliedEnabled.value,
       }),
-      QUIET,
     ),
   fallbackMessage: '定时任务加载失败',
 })
@@ -143,7 +142,7 @@ const {
   confirm: confirmDelete,
 } = useDeleteMany<ScheduleJob>({
   deleteRows: async (ids) => {
-    await deleteJobs(ids, QUIET)
+    await deleteJobs(ids)
     if (selectedLogJob.value && ids.includes(selectedLogJob.value.id)) {
       selectedLogJob.value = null
     }
@@ -158,7 +157,7 @@ const {
 })
 
 const { pendingIds: statusPendingIds, change: changeStatus } = useRowStatus({
-  update: (id, nextEnabled) => (nextEnabled ? resumeJob(id, QUIET) : pauseJob(id, QUIET)),
+  update: (id, nextEnabled) => (nextEnabled ? resumeJob(id) : pauseJob(id)),
   setRowEnabled,
 })
 
@@ -184,7 +183,6 @@ const {
         jobId: job.id,
         success: appliedLogSuccess.value,
       }),
-      QUIET,
     )
   },
   fallbackMessage: '执行日志加载失败',
@@ -274,7 +272,7 @@ async function confirmTrigger() {
   triggering.value = true
   triggerError.value = ''
   try {
-    await triggerJob(row.id, QUIET)
+    await triggerJob(row.id)
     if (token !== triggerToken) {
       if (selectedLogJob.value?.id === row.id) await loadLogPage()
       return
@@ -297,7 +295,7 @@ async function openDetail(row: ScheduleJobLog) {
   detailLoading.value = true
   detailOpen.value = true
   try {
-    const log = await getJobLogById(row.id, QUIET)
+    const log = await getJobLogById(row.id)
     if (token !== detailToken || !detailOpen.value) return
     detail.value = log
   } catch (error) {
@@ -342,7 +340,7 @@ async function confirmClean() {
   cleaning.value = true
   cleanError.value = ''
   try {
-    await cleanJobLogs(QUIET)
+    await cleanJobLogs()
     if (token !== cleanToken) {
       await loadLogPage()
       return
@@ -381,7 +379,7 @@ async function confirmRetain() {
   retaining.value = true
   retainError.value = ''
   try {
-    const count = await cleanJobLogsBefore(Number(retainDays.value), QUIET)
+    const count = await cleanJobLogsBefore(Number(retainDays.value))
     if (token !== retainToken) {
       await loadLogPage()
       logNotice.value = `已删除 ${count ?? 0} 条较早的日志`

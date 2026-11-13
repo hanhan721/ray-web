@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, shallowRef, useTemplateRef, watch } from 'vue'
 import { createParam, getParamById, updateParam } from '@/api/param'
-import { QUIET, failureMessage } from '@/utils/failure'
+import { failureMessage } from '@/utils/failure'
 import { ParamTypeOptions, type ParamType } from '@/types/enums'
 import { sameEditorSession } from '@/views/system/user/user-table'
 import RayFormDialog from '@/components/common/RayFormDialog.vue'
@@ -103,7 +103,7 @@ async function loadDetail(sessionId: number, id: number) {
   loading.value = true
   detailReady.value = false
   try {
-    const row = await getParamById(id, QUIET)
+    const row = await getParamById(id)
     if (!sameEditorSession(sessionId, session, id, props.paramId)) return
     paramKey.value = row.paramKey
     paramValue.value = row.paramValue ?? ''
@@ -181,7 +181,6 @@ async function onSubmit() {
           encrypted: encrypted.value,
           description: note,
         }),
-        QUIET,
       )
     } else {
       await updateParam(
@@ -192,7 +191,6 @@ async function onSubmit() {
           encrypted: encrypted.value,
           description: note,
         }),
-        QUIET,
       )
     }
     emit('saved')
