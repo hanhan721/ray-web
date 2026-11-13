@@ -35,6 +35,7 @@ const props = withDefaults(
     maxVisible?: number
     maxSelection?: number
     checkStrictly?: boolean
+    retainAncestors?: boolean
     /** 列表项复选框；默认多选显示、单选隐藏，可显式覆盖。 */
     checkbox?: boolean
     /** 行点击行为；展开/收起只由箭头和键盘方向键触发，默认行点击只选中。 */
@@ -50,6 +51,7 @@ const props = withDefaults(
     maxVisible: 3,
     maxSelection: 0,
     checkStrictly: false,
+    retainAncestors: false,
     // 显式 undefined：Vue 会把缺省的 Boolean prop 强转为 false，导致 ?? 失效。
     checkbox: undefined,
     rowAction: 'select',
@@ -130,7 +132,7 @@ function updateAncestors(next: Set<T>, items: TreeSelectOption<T>[]): void {
     updateAncestors(next, node.children ?? [])
     const descendants = (node.children ?? []).flatMap(selectable)
     if (descendants.length) {
-      if (descendants.every((value) => next.has(value))) next.add(node.value)
+      if (props.retainAncestors ? descendants.some((value) => next.has(value)) : descendants.every((value) => next.has(value))) next.add(node.value)
       else next.delete(node.value)
     }
   }

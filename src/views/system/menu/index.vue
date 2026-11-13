@@ -60,7 +60,7 @@ const { selectedIds, clearSelection } = useSelection<MenuRow>()
 const visibleRows = computed(() => filterMenuRows(rows.value, name.value, typeFilter.value))
 type TreeRow = MenuRow & { children: TreeRow[] }
 const treeRows = computed(() => {
-  const nodes = visibleRows.value.map((row) => ({ ...row, children: [] as TreeRow[] }))
+  const nodes = rows.value.map((row) => ({ ...row, children: [] as TreeRow[] }))
   const byId = new Map(nodes.map((node) => [node.id, node]))
   const roots: TreeRow[] = []
   for (const node of nodes) {
@@ -145,12 +145,14 @@ onMounted(() => {
 
 <template>
   <RayTreeTable
+    selection-mode="cascade-down"
     expand-on-row-click
     :columns="MENU_DATA_COLUMNS"
     :rows="treeRows"
     tree-column="name"
     :row-key="(row) => row.id"
     :children="(row) => row.children"
+    :match="name.trim() || typeFilter ? (row) => visibleRows.some((item) => item.id === row.id) : undefined"
     :loading="loading"
     :error-message="errorMessage"
     :selected-ids="selectedIds"

@@ -210,7 +210,11 @@ async function onSubmit() {
   ) {
     try {
       await saveRolePermissions(roleId, nextPermissions, QUIET)
-      if (stillHere()) permissionsSavedKey.value = permissionKey
+      const savedIds = await getRolePermissions(roleId, QUIET)
+      if (stillHere()) {
+        permissionIds.value = savedIds ?? []
+        permissionsSavedKey.value = idKey(permissionIds.value)
+      }
     } catch (error) {
       if (!stillHere()) return
       failed.push(`权限：${failureMessage(error, '保存失败，请稍后重试')}`)
@@ -303,6 +307,7 @@ async function onSubmit() {
           id="role-permissions"
           v-model="permissionIds"
           multiple
+          retain-ancestors
           row-action="select"
           :options="permissionOptions"
           placeholder="选择权限"

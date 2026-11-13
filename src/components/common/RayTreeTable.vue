@@ -30,7 +30,7 @@ const props = withDefaults(
     showExpandAll?: boolean
     expandOnRowClick?: boolean
     selectable?: boolean
-    selectionMode?: 'independent' | 'cascade'
+    selectionMode?: 'independent' | 'cascade' | 'cascade-down'
     selectScope?: 'visible' | 'filtered'
     selectedIds?: Id[]
     loading?: boolean
@@ -43,7 +43,7 @@ const props = withDefaults(
     showExpandAll: true,
     expandOnRowClick: false,
     selectable: true,
-    selectionMode: 'independent',
+    selectionMode: 'cascade',
     selectScope: 'visible',
     selectedIds: () => [],
     loading: false,
@@ -147,13 +147,23 @@ const headerState = computed(() => {
 })
 function setSelection(nodes: Node[], checked: boolean) {
   const next = new Set(props.selectedIds)
+  const affected = new Set<Id>()
   for (const node of nodes) {
     const original = allNodes.value.find((item) => item.id === node.id)
-    const targets = props.selectionMode === 'cascade' && original ? flatten([original]) : [node]
+    const targets = props.selectionMode !== 'independent' && original ? flatten([original]) : [node]
     for (const target of targets) {
+      affected.add(target.id)
       if (checked) next.add(target.id)
       else next.delete(target.id)
     }
+  }
+  if (props.selectionMode === 'cascade-down' && !checked) {
+    function clearAncestors(node: Node): boolean {
+      const childAffected = node.children.map(clearAncestors).some(Boolean)
+      if (childAffected) next.delete(node.id)
+      return affected.has(node.id) || childAffected
+    }
+    all.value.forEach(clearAncestors)
   }
   if (props.selectionMode === 'cascade') {
     function update(nodes: Node[]) {
@@ -171,13 +181,14 @@ function setSelection(nodes: Node[], checked: boolean) {
 }
 function nodeState(node: Node): boolean | 'indeterminate' {
   const original = allNodes.value.find((n) => n.id === node.id) ?? node
-  if (props.selectionMode !== 'cascade' || !original.children.length)
+  if (props.selectionMode === 'independent' || !original.children.length)
     return selected.value.has(node.id)
   const descendants = flatten([original])
   const count = descendants.filter((item) => selected.value.has(item.id)).length
   return count === 0 ? false : count === descendants.length ? true : 'indeterminate'
 }
 function selectNode(node: Node, checked: boolean) {
+  if (props.selectionMode === 'cascade-down') return setSelection([node], checked)
   const original = allNodes.value.find((n) => n.id === node.id)
   if (props.selectionMode !== 'cascade' || !original) return setSelection([node], checked)
   const next = new Set(props.selectedIds)

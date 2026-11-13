@@ -138,11 +138,11 @@ onMounted(() => {
 
 <template>
   <RayTreeTable
+    selection-mode="cascade-down"
     expand-on-row-click
     :columns="DEPT_DATA_COLUMNS"
     :rows="treeRows"
     tree-column="deptName"
-    selection-mode="cascade"
     :row-key="(row) => row.id"
     :children="(row) => row.children"
     :match="matchDept"
