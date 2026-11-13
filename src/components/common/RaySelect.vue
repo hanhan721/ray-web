@@ -15,7 +15,11 @@ import {
   ComboboxTrigger,
   ComboboxViewport,
 } from '@/components/ui/combobox'
-import { selectItemClass, selectTriggerVariants } from '@/components/ui/select/select-styles'
+import {
+  selectItemClass,
+  selectItemSelectedClass,
+  selectTriggerVariants,
+} from '@/components/ui/select/select-styles'
 import SelectCheckbox from './SelectCheckbox.vue'
 import {
   splitVisibleOptions,
@@ -413,7 +417,7 @@ function onEnter(event: KeyboardEvent) {
               :text-value="option.label"
               :disabled="isOptionDisabled(option)"
               :aria-disabled="isOptionDisabled(option) || undefined"
-              :class="selectItemClass"
+              :class="[selectItemClass, isSelected(option.value) && selectItemSelectedClass]"
             >
               <slot name="option" :option="option" :selected="isSelected(option.value)">
                 <SelectCheckbox

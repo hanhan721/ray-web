@@ -2,9 +2,15 @@
 import { Check, ChevronDown, ChevronRight } from '@lucide/vue'
 import { computed, shallowRef, watch } from 'vue'
 import { TreeItem, TreeRoot } from 'reka-ui'
+import { selectRowSelectedClass } from '@/components/ui/select/select-styles'
 import RaySelect from './RaySelect.vue'
 import SelectCheckbox from './SelectCheckbox.vue'
-import { selectionState, type SelectModelValue, type SelectValue, type SelectionState } from './select'
+import {
+  selectionState,
+  type SelectModelValue,
+  type SelectValue,
+  type SelectionState,
+} from './select'
 
 export interface TreeSelectOption<T extends SelectValue> {
   value: T
@@ -100,6 +106,11 @@ function state(item: TreeSelectOption<T>): SelectionState {
   const node = all.value.find((candidate) => candidate.value === item.value) ?? item
   const values = props.checkStrictly ? [node.value] : selectable(node)
   return selectionState(selectedValues.value, values)
+}
+/** 行选中态：单选比较模型值；多选包含全部选中的祖先和部分选中的父级。 */
+function rowSelected(item: TreeSelectOption<T>): boolean {
+  if (!props.multiple) return item.value === props.modelValue
+  return state(item) !== 'unchecked'
 }
 const blocked = computed(() => {
   const result = new Set<T>()
@@ -244,7 +255,12 @@ function onRowToggle(event: Event) {
           v-slot="{ isExpanded, handleToggle }"
           v-bind="item.bind"
           :disabled="blocked.has(item.value.value)"
-          class="hover:bg-accent focus-visible:bg-accent flex min-h-9 cursor-pointer items-center gap-1 rounded-sm pr-2 text-sm outline-none data-disabled:pointer-events-none data-disabled:opacity-50"
+          :class="[
+            'flex min-h-9 cursor-pointer items-center gap-1 rounded-sm pr-2 text-sm outline-none data-disabled:pointer-events-none data-disabled:opacity-50',
+            rowSelected(item.value)
+              ? selectRowSelectedClass
+              : 'hover:bg-accent focus-visible:bg-accent',
+          ]"
           :style="{ paddingLeft: `${(item.level - 1) * 18 + 4}px` }"
           @select="onRowSelect($event, item.value, commit, close)"
           @toggle="onRowToggle"
@@ -265,7 +281,9 @@ function onRowToggle(event: Event) {
             type="button"
             role="checkbox"
             tabindex="-1"
-            :aria-checked="state(item.value) === 'mixed' ? 'mixed' : state(item.value) === 'checked'"
+            :aria-checked="
+              state(item.value) === 'mixed' ? 'mixed' : state(item.value) === 'checked'
+            "
             :aria-label="item.value.label"
             class="flex shrink-0 items-center justify-center"
             @click.stop="choose(item.value, commit, close)"
@@ -276,7 +294,7 @@ function onRowToggle(event: Event) {
             item.value.label
           }}</span>
           <Check
-            v-if="!multiple && item.value.value === modelValue"
+            v-if="!multiple && rowSelected(item.value)"
             class="size-4 shrink-0"
             aria-hidden="true"
           />

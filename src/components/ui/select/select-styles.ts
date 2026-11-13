@@ -27,3 +27,16 @@ export const selectPanelClass =
 
 export const selectItemClass =
   'relative flex min-h-8 w-full cursor-default select-none items-center gap-2 rounded-md px-2.5 py-1 text-sm outline-hidden data-[disabled]:pointer-events-none data-[disabled]:opacity-40 data-highlighted:bg-accent data-highlighted:text-accent-foreground data-[state=checked]:font-medium'
+
+/**
+ * 已选项的行底色。
+ *
+ * `accent` 已被 hover/highlight 占用，选中态改用 primary 的浅色底；
+ * 高亮选中项时加深同色底，避免键盘移动时选中标识被 accent 覆盖。
+ */
+export const selectItemSelectedClass =
+  'bg-primary/10 data-[state=checked]:data-[highlighted]:bg-primary/15'
+
+/** 自定义列表行（如树形选择）已选中时的底色，悬停与键盘聚焦时加深同色底。 */
+export const selectRowSelectedClass =
+  'bg-primary/10 hover:bg-primary/15 focus-visible:bg-primary/15'
