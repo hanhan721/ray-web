@@ -7,12 +7,7 @@ import { sameEditorSession } from '@/views/system/user/user-table'
 import RayFormDialog from '@/components/common/RayFormDialog.vue'
 import RaySelect from '@/components/common/RaySelect.vue'
 import { Button } from '@/components/ui/button'
-import {
-  Field,
-  FieldLabel,
-  FieldGroup,
-  FieldError,
-} from '@/components/ui/field'
+import { Field, FieldLabel, FieldGroup, FieldError } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
@@ -283,7 +278,18 @@ async function onSubmit() {
           @update:model-value="bizType = $event ?? ''"
         />
       </Field>
-      <Field :data-invalid="formError && !paramValue.trim() ? true : undefined">
+      <Field>
+        <FieldLabel for="param-encrypted">加密存储</FieldLabel>
+        <Switch
+          id="param-encrypted"
+          v-model="encrypted"
+          :disabled="saving || loading || !detailReady"
+        />
+      </Field>
+      <Field
+        class="ray-form-span-full"
+        :data-invalid="formError && !paramValue.trim() ? true : undefined"
+      >
         <FieldLabel for="param-value" required>参数值</FieldLabel>
         <Textarea
           id="param-value"
@@ -298,14 +304,6 @@ async function onSubmit() {
         <FieldError v-if="formError && !paramValue.trim()" id="param-value-error"
           >请填写参数值</FieldError
         >
-      </Field>
-      <Field>
-        <FieldLabel for="param-encrypted">加密存储</FieldLabel>
-        <Switch
-          id="param-encrypted"
-          v-model="encrypted"
-          :disabled="saving || loading || !detailReady"
-        />
       </Field>
       <Field
         class="ray-form-span-full"
