@@ -8,8 +8,6 @@ import { Button } from '@/components/ui/button'
 import {
   Field,
   FieldLabel,
-  FieldLegend,
-  FieldSet,
   FieldGroup,
   FieldError,
 } from '@/components/ui/field'
@@ -31,9 +29,6 @@ const emit = defineEmits<{
 }>()
 
 const creating = computed(() => props.item === null)
-const hasAdvancedSettings = computed(() =>
-  Boolean(cssClass.value || listClass.value || remark.value),
-)
 const dictLabel = shallowRef('')
 const dictValue = shallowRef('')
 const sortText = shallowRef('0')
@@ -137,90 +132,71 @@ async function onSubmit() {
     @update:open="emit('update:open', $event)"
     @submit="onSubmit"
   >
-    <div class="flex flex-col gap-6">
-      <FieldSet class="gap-3">
-        <FieldLegend class="mb-0">基本资料</FieldLegend>
-        <FieldGroup class="ray-form-grid">
-          <Field :data-invalid="formError && !dictLabel.trim() ? true : undefined">
-            <FieldLabel for="dict-data-label" required>标签</FieldLabel>
-            <Input
-              id="dict-data-label"
-              ref="labelInput"
-              v-model="dictLabel"
-              name="dictLabel"
-              :disabled="saving"
-              required
-              :aria-invalid="formError && !dictLabel.trim() ? true : undefined"
-              :aria-describedby="
-                formError && !dictLabel.trim() ? 'dict-data-label-error' : undefined
-              "
-            />
-
-            <FieldError v-if="formError && !dictLabel.trim()" id="dict-data-label-error"
-              >请填写标签</FieldError
-            >
-          </Field>
-          <Field :data-invalid="formError && !dictValue.trim() ? true : undefined">
-            <FieldLabel for="dict-data-value" required>字典值</FieldLabel>
-            <Input
-              id="dict-data-value"
-              v-model="dictValue"
-              :disabled="saving"
-              required
-              :aria-invalid="formError && !dictValue.trim() ? true : undefined"
-              :aria-describedby="
-                formError && !dictValue.trim() ? 'dict-data-value-error' : undefined
-              "
-            />
-
-            <FieldError v-if="formError && !dictValue.trim()" id="dict-data-value-error"
-              >请填写字典值</FieldError
-            >
-          </Field>
-          <Field>
-            <FieldLabel for="dict-data-sort">顺序</FieldLabel>
-            <Input id="dict-data-sort" v-model="sortText" inputmode="numeric" :disabled="saving" />
-          </Field>
-          <Field>
-            <FieldLabel for="dict-data-default">默认</FieldLabel>
-            <Switch id="dict-data-default" v-model="isDefault" :disabled="saving" />
-          </Field>
-          <Field class="ray-form-span-full">
-            <FieldLabel for="dict-data-enabled">启用</FieldLabel>
-            <Switch id="dict-data-enabled" v-model="enabled" :disabled="saving" />
-          </Field>
-        </FieldGroup>
-      </FieldSet>
-
-      <details class="rounded-lg border px-4 py-3">
-        <summary class="cursor-pointer text-sm font-medium">
-          更多设置
-          <span v-if="hasAdvancedSettings" class="text-muted-foreground font-normal">· 已配置</span>
-        </summary>
-        <FieldSet class="mt-4 gap-3">
-          <FieldLegend class="sr-only">样式与备注</FieldLegend>
-          <FieldGroup class="ray-form-grid">
-            <Field>
-              <FieldLabel for="dict-data-list-class">列表样式</FieldLabel>
-              <Input id="dict-data-list-class" v-model="listClass" :disabled="saving" />
-            </Field>
-            <Field>
-              <FieldLabel for="dict-data-css-class">样式类名</FieldLabel>
-              <Input id="dict-data-css-class" v-model="cssClass" :disabled="saving" />
-            </Field>
-            <Field class="ray-form-span-full">
-              <FieldLabel for="dict-data-remark">备注</FieldLabel>
-              <Textarea
-                id="dict-data-remark"
-                v-model="remark"
-                placeholder="补充说明（可选）"
-                :disabled="saving"
-              />
-            </Field>
-          </FieldGroup>
-        </FieldSet>
-      </details>
-    </div>
+    <FieldGroup class="ray-form-grid">
+      <Field :data-invalid="formError && !dictLabel.trim() ? true : undefined">
+        <FieldLabel for="dict-data-label" required>标签</FieldLabel>
+        <Input
+          id="dict-data-label"
+          ref="labelInput"
+          v-model="dictLabel"
+          name="dictLabel"
+          :disabled="saving"
+          required
+          :aria-invalid="formError && !dictLabel.trim() ? true : undefined"
+          :aria-describedby="
+            formError && !dictLabel.trim() ? 'dict-data-label-error' : undefined
+          "
+        />
+        <FieldError v-if="formError && !dictLabel.trim()" id="dict-data-label-error"
+          >请填写标签</FieldError
+        >
+      </Field>
+      <Field :data-invalid="formError && !dictValue.trim() ? true : undefined">
+        <FieldLabel for="dict-data-value" required>字典值</FieldLabel>
+        <Input
+          id="dict-data-value"
+          v-model="dictValue"
+          :disabled="saving"
+          required
+          :aria-invalid="formError && !dictValue.trim() ? true : undefined"
+          :aria-describedby="
+            formError && !dictValue.trim() ? 'dict-data-value-error' : undefined
+          "
+        />
+        <FieldError v-if="formError && !dictValue.trim()" id="dict-data-value-error"
+          >请填写字典值</FieldError
+        >
+      </Field>
+      <Field>
+        <FieldLabel for="dict-data-sort">顺序</FieldLabel>
+        <Input id="dict-data-sort" v-model="sortText" inputmode="numeric" :disabled="saving" />
+      </Field>
+      <Field>
+        <FieldLabel for="dict-data-default">默认</FieldLabel>
+        <Switch id="dict-data-default" v-model="isDefault" :disabled="saving" />
+      </Field>
+      <Field>
+        <FieldLabel for="dict-data-enabled">启用</FieldLabel>
+        <Switch id="dict-data-enabled" v-model="enabled" :disabled="saving" />
+      </Field>
+      <Field>
+        <FieldLabel for="dict-data-list-class">列表样式</FieldLabel>
+        <Input id="dict-data-list-class" v-model="listClass" :disabled="saving" />
+      </Field>
+      <Field>
+        <FieldLabel for="dict-data-css-class">样式类名</FieldLabel>
+        <Input id="dict-data-css-class" v-model="cssClass" :disabled="saving" />
+      </Field>
+      <Field class="ray-form-span-full">
+        <FieldLabel for="dict-data-remark">备注</FieldLabel>
+        <Textarea
+          id="dict-data-remark"
+          v-model="remark"
+          placeholder="补充说明（可选）"
+          :disabled="saving"
+        />
+      </Field>
+    </FieldGroup>
 
     <template #footer>
       <Button

@@ -9,8 +9,6 @@ import { Button } from '@/components/ui/button'
 import {
   Field,
   FieldLabel,
-  FieldLegend,
-  FieldSet,
   FieldGroup,
   FieldError,
 } from '@/components/ui/field'
@@ -195,146 +193,124 @@ async function onSubmit() {
     @update:open="emit('update:open', $event)"
     @submit="onSubmit"
   >
-    <div class="flex flex-col gap-6">
-      <FieldSet class="gap-3">
-        <FieldLegend class="mb-0">基本资料</FieldLegend>
-        <FieldGroup class="ray-form-grid">
-          <Field :data-invalid="formError && !jobName.trim() ? true : undefined">
-            <FieldLabel for="job-name" required>任务名称</FieldLabel>
-            <Input
-              id="job-name"
-              ref="nameInput"
-              v-model="jobName"
-              name="jobName"
-              :disabled="saving"
-              required
-              :aria-invalid="formError && !jobName.trim() ? true : undefined"
-              :aria-describedby="formError && !jobName.trim() ? 'job-name-error' : undefined"
-            />
-
-            <FieldError v-if="formError && !jobName.trim()" id="job-name-error"
-              >请填写任务名称</FieldError
-            >
-          </Field>
-          <Field :data-invalid="formError && !jobGroup.trim() ? true : undefined">
-            <FieldLabel for="job-group" required>任务分组</FieldLabel>
-            <Input
-              id="job-group"
-              v-model="jobGroup"
-              name="jobGroup"
-              :disabled="saving"
-              required
-              :aria-invalid="formError && !jobGroup.trim() ? true : undefined"
-              :aria-describedby="formError && !jobGroup.trim() ? 'job-group-error' : undefined"
-            />
-
-            <FieldError v-if="formError && !jobGroup.trim()" id="job-group-error"
-              >请填写任务分组</FieldError
-            >
-          </Field>
-        </FieldGroup>
-      </FieldSet>
-
-      <FieldSet class="gap-3">
-        <FieldLegend class="mb-0">调用目标</FieldLegend>
-        <FieldGroup class="ray-form-grid">
-          <Field :data-invalid="formError && !beanName.trim() ? true : undefined">
-            <FieldLabel for="job-bean" required>Bean 名称</FieldLabel>
-            <Input
-              id="job-bean"
-              v-model="beanName"
-              name="beanName"
-              :disabled="saving"
-              required
-              :aria-invalid="formError && !beanName.trim() ? true : undefined"
-              :aria-describedby="formError && !beanName.trim() ? 'job-bean-error' : undefined"
-            />
-
-            <FieldError v-if="formError && !beanName.trim()" id="job-bean-error"
-              >请填写 Bean 名称</FieldError
-            >
-          </Field>
-          <Field :data-invalid="formError && !methodName.trim() ? true : undefined">
-            <FieldLabel for="job-method" required>方法名称</FieldLabel>
-            <Input
-              id="job-method"
-              v-model="methodName"
-              name="methodName"
-              :disabled="saving"
-              required
-              :aria-invalid="formError && !methodName.trim() ? true : undefined"
-              :aria-describedby="formError && !methodName.trim() ? 'job-method-error' : undefined"
-            />
-
-            <FieldError v-if="formError && !methodName.trim()" id="job-method-error"
-              >请填写方法名称</FieldError
-            >
-          </Field>
-          <Field class="ray-form-span-full">
-            <FieldLabel for="job-params">方法参数</FieldLabel>
-            <Input id="job-params" v-model="methodParams" name="methodParams" :disabled="saving" />
-          </Field>
-          <Field
-            class="ray-form-span-full"
-            :data-invalid="formError && !cronExpression.trim() ? true : undefined"
+    <FieldGroup class="ray-form-grid">
+      <Field :data-invalid="formError && !jobName.trim() ? true : undefined">
+        <FieldLabel for="job-name" required>任务名称</FieldLabel>
+        <Input
+          id="job-name"
+          ref="nameInput"
+          v-model="jobName"
+          name="jobName"
+          :disabled="saving"
+          required
+          :aria-invalid="formError && !jobName.trim() ? true : undefined"
+          :aria-describedby="formError && !jobName.trim() ? 'job-name-error' : undefined"
+        />
+        <FieldError v-if="formError && !jobName.trim()" id="job-name-error"
+          >请填写任务名称</FieldError
+        >
+      </Field>
+      <Field :data-invalid="formError && !jobGroup.trim() ? true : undefined">
+        <FieldLabel for="job-group" required>任务分组</FieldLabel>
+        <Input
+          id="job-group"
+          v-model="jobGroup"
+          name="jobGroup"
+          :disabled="saving"
+          required
+          :aria-invalid="formError && !jobGroup.trim() ? true : undefined"
+          :aria-describedby="formError && !jobGroup.trim() ? 'job-group-error' : undefined"
+        />
+        <FieldError v-if="formError && !jobGroup.trim()" id="job-group-error"
+          >请填写任务分组</FieldError
+        >
+      </Field>
+      <Field :data-invalid="formError && !beanName.trim() ? true : undefined">
+        <FieldLabel for="job-bean" required>Bean 名称</FieldLabel>
+        <Input
+          id="job-bean"
+          v-model="beanName"
+          name="beanName"
+          :disabled="saving"
+          required
+          :aria-invalid="formError && !beanName.trim() ? true : undefined"
+          :aria-describedby="formError && !beanName.trim() ? 'job-bean-error' : undefined"
+        />
+        <FieldError v-if="formError && !beanName.trim()" id="job-bean-error"
+          >请填写 Bean 名称</FieldError
+        >
+      </Field>
+      <Field :data-invalid="formError && !methodName.trim() ? true : undefined">
+        <FieldLabel for="job-method" required>方法名称</FieldLabel>
+        <Input
+          id="job-method"
+          v-model="methodName"
+          name="methodName"
+          :disabled="saving"
+          required
+          :aria-invalid="formError && !methodName.trim() ? true : undefined"
+          :aria-describedby="formError && !methodName.trim() ? 'job-method-error' : undefined"
+        />
+        <FieldError v-if="formError && !methodName.trim()" id="job-method-error"
+          >请填写方法名称</FieldError
+        >
+      </Field>
+      <Field class="ray-form-span-full">
+        <FieldLabel for="job-params">方法参数</FieldLabel>
+        <Input id="job-params" v-model="methodParams" name="methodParams" :disabled="saving" />
+      </Field>
+      <Field
+        class="ray-form-span-full"
+        :data-invalid="formError && !cronExpression.trim() ? true : undefined"
+      >
+        <FieldLabel for="job-cron" required>Cron 表达式</FieldLabel>
+        <div class="flex items-center gap-2">
+          <Input
+            id="job-cron"
+            v-model="cronExpression"
+            name="cronExpression"
+            :disabled="saving"
+            required
+            :aria-invalid="formError && !cronExpression.trim() ? true : undefined"
+            :aria-describedby="
+              formError && !cronExpression.trim() ? 'job-cron-error' : undefined
+            "
+          />
+          <Button
+            v-if="canValidate"
+            type="button"
+            variant="outline"
+            :disabled="saving || checking"
+            @click="checkCron"
           >
-            <FieldLabel for="job-cron" required>Cron 表达式</FieldLabel>
-            <div class="flex items-center gap-2">
-              <Input
-                id="job-cron"
-                v-model="cronExpression"
-                name="cronExpression"
-                :disabled="saving"
-                required
-                :aria-invalid="formError && !cronExpression.trim() ? true : undefined"
-                :aria-describedby="
-                  formError && !cronExpression.trim() ? 'job-cron-error' : undefined
-                "
-              />
-              <Button
-                v-if="canValidate"
-                type="button"
-                variant="outline"
-                :disabled="saving || checking"
-                @click="checkCron"
-              >
-                <Spinner v-if="checking" />
-                检查
-              </Button>
-            </div>
-            <p v-if="cronHint" class="text-muted-foreground text-xs">{{ cronHint }}</p>
-
-            <FieldError v-if="formError && !cronExpression.trim()" id="job-cron-error"
-              >请填写 Cron 表达式</FieldError
-            >
-          </Field>
-        </FieldGroup>
-      </FieldSet>
-
-      <FieldSet class="gap-3">
-        <FieldLegend class="mb-0">运行与备注</FieldLegend>
-        <FieldGroup class="ray-form-grid">
-          <Field>
-            <FieldLabel for="job-concurrent">允许并发</FieldLabel>
-            <Switch id="job-concurrent" v-model="concurrent" :disabled="saving" />
-          </Field>
-          <Field>
-            <FieldLabel for="job-enabled">启用</FieldLabel>
-            <Switch id="job-enabled" v-model="enabled" :disabled="saving" />
-          </Field>
-          <Field class="ray-form-span-full">
-            <FieldLabel for="job-remark">备注</FieldLabel>
-            <Textarea
-              id="job-remark"
-              v-model="remark"
-              name="remark"
-              placeholder="补充说明（可选）"
-              :disabled="saving"
-            />
-          </Field>
-        </FieldGroup>
-      </FieldSet>
-    </div>
+            <Spinner v-if="checking" />
+            检查
+          </Button>
+        </div>
+        <p v-if="cronHint" class="text-muted-foreground text-xs">{{ cronHint }}</p>
+        <FieldError v-if="formError && !cronExpression.trim()" id="job-cron-error"
+          >请填写 Cron 表达式</FieldError
+        >
+      </Field>
+      <Field>
+        <FieldLabel for="job-concurrent">允许并发</FieldLabel>
+        <Switch id="job-concurrent" v-model="concurrent" :disabled="saving" />
+      </Field>
+      <Field>
+        <FieldLabel for="job-enabled">启用</FieldLabel>
+        <Switch id="job-enabled" v-model="enabled" :disabled="saving" />
+      </Field>
+      <Field class="ray-form-span-full">
+        <FieldLabel for="job-remark">备注</FieldLabel>
+        <Textarea
+          id="job-remark"
+          v-model="remark"
+          name="remark"
+          placeholder="补充说明（可选）"
+          :disabled="saving"
+        />
+      </Field>
+    </FieldGroup>
 
     <template #footer>
       <Button

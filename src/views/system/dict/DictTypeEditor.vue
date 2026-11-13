@@ -8,8 +8,6 @@ import { Button } from '@/components/ui/button'
 import {
   Field,
   FieldLabel,
-  FieldLegend,
-  FieldSet,
   FieldGroup,
   FieldError,
 } from '@/components/ui/field'
@@ -106,70 +104,52 @@ async function onSubmit() {
     @update:open="emit('update:open', $event)"
     @submit="onSubmit"
   >
-    <div class="flex flex-col gap-6">
-      <FieldSet class="gap-3">
-        <FieldLegend class="mb-0">基本资料</FieldLegend>
-        <FieldGroup class="ray-form-grid">
-          <Field :data-invalid="formError && !dictName.trim() ? true : undefined">
-            <FieldLabel for="dict-type-name" required>名称</FieldLabel>
-            <Input
-              id="dict-type-name"
-              ref="nameInput"
-              v-model="dictName"
-              name="dictName"
-              :disabled="saving"
-              required
-              :aria-invalid="formError && !dictName.trim() ? true : undefined"
-              :aria-describedby="formError && !dictName.trim() ? 'dict-type-name-error' : undefined"
-            />
-
-            <FieldError v-if="formError && !dictName.trim()" id="dict-type-name-error"
-              >请填写名称</FieldError
-            >
-          </Field>
-          <Field :data-invalid="formError && !typeCode.trim() ? true : undefined">
-            <FieldLabel for="dict-type-code" required>类型编码</FieldLabel>
-            <Input
-              id="dict-type-code"
-              v-model="typeCode"
-              name="dictType"
-              :disabled="saving"
-              required
-              :aria-invalid="formError && !typeCode.trim() ? true : undefined"
-              :aria-describedby="formError && !typeCode.trim() ? 'dict-type-code-error' : undefined"
-            />
-
-            <FieldError v-if="formError && !typeCode.trim()" id="dict-type-code-error"
-              >请填写类型编码</FieldError
-            >
-          </Field>
-        </FieldGroup>
-      </FieldSet>
-
-      <FieldSet class="gap-3">
-        <FieldLegend class="mb-0">状态与备注</FieldLegend>
-        <FieldGroup class="ray-form-grid">
-          <Field class="ray-form-span-full">
-            <FieldLabel for="dict-type-enabled">启用</FieldLabel>
-            <Switch id="dict-type-enabled" v-model="enabled" :disabled="saving" />
-          </Field>
-          <details class="ray-form-span-full">
-            <summary class="cursor-pointer text-sm font-medium">
-              更多设置 <span v-if="remark" class="text-muted-foreground font-normal">· 已配置</span>
-            </summary>
-            <Field class="mt-3">
-              <FieldLabel for="dict-type-remark">备注</FieldLabel>
-              <Textarea
-                id="dict-type-remark"
-                v-model="remark"
-                placeholder="补充说明（可选）"
-                :disabled="saving"
-              />
-            </Field>
-          </details>
-        </FieldGroup>
-      </FieldSet>
-    </div>
+    <FieldGroup class="ray-form-grid">
+      <Field :data-invalid="formError && !dictName.trim() ? true : undefined">
+        <FieldLabel for="dict-type-name" required>名称</FieldLabel>
+        <Input
+          id="dict-type-name"
+          ref="nameInput"
+          v-model="dictName"
+          name="dictName"
+          :disabled="saving"
+          required
+          :aria-invalid="formError && !dictName.trim() ? true : undefined"
+          :aria-describedby="formError && !dictName.trim() ? 'dict-type-name-error' : undefined"
+        />
+        <FieldError v-if="formError && !dictName.trim()" id="dict-type-name-error"
+          >请填写名称</FieldError
+        >
+      </Field>
+      <Field :data-invalid="formError && !typeCode.trim() ? true : undefined">
+        <FieldLabel for="dict-type-code" required>类型编码</FieldLabel>
+        <Input
+          id="dict-type-code"
+          v-model="typeCode"
+          name="dictType"
+          :disabled="saving"
+          required
+          :aria-invalid="formError && !typeCode.trim() ? true : undefined"
+          :aria-describedby="formError && !typeCode.trim() ? 'dict-type-code-error' : undefined"
+        />
+        <FieldError v-if="formError && !typeCode.trim()" id="dict-type-code-error"
+          >请填写类型编码</FieldError
+        >
+      </Field>
+      <Field>
+        <FieldLabel for="dict-type-enabled">启用</FieldLabel>
+        <Switch id="dict-type-enabled" v-model="enabled" :disabled="saving" />
+      </Field>
+      <Field class="ray-form-span-full">
+        <FieldLabel for="dict-type-remark">备注</FieldLabel>
+        <Textarea
+          id="dict-type-remark"
+          v-model="remark"
+          placeholder="补充说明（可选）"
+          :disabled="saving"
+        />
+      </Field>
+    </FieldGroup>
 
     <template #footer>
       <Button

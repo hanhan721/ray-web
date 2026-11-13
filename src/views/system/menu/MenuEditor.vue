@@ -10,8 +10,6 @@ import { Button } from '@/components/ui/button'
 import {
   Field,
   FieldLabel,
-  FieldLegend,
-  FieldSet,
   FieldGroup,
   FieldError,
 } from '@/components/ui/field'
@@ -173,173 +171,153 @@ async function onSubmit() {
   <RayFormDialog
     :open="open"
     :title="creating ? '新增菜单' : '编辑菜单'"
-    description="菜单要填写路由，按钮要填写权限标识。已有标识不能清空。编辑按钮，或更改启用、标识后，需要重新登录。"
-    size="xl"
+    description="类型为菜单时要填写路由，按钮要填写权限标识。已有标识不能清空。编辑按钮，或更改启用、标识后，需要重新登录。"
+    size="lg"
     :saving="saving"
     :error="formError"
     @update:open="emit('update:open', $event)"
     @submit="onSubmit"
   >
-    <div class="flex flex-col gap-6">
-      <FieldSet class="gap-3">
-        <FieldLegend class="mb-0">基本资料</FieldLegend>
-        <FieldGroup class="ray-form-grid">
-          <Field :data-invalid="formError && !name.trim() ? true : undefined">
-            <FieldLabel for="menu-name" required>名称</FieldLabel>
-            <Input
-              id="menu-name"
-              ref="nameInput"
-              v-model="name"
-              name="name"
-              :disabled="saving"
-              required
-              :aria-invalid="formError && !name.trim() ? true : undefined"
-              :aria-describedby="formError && !name.trim() ? 'menu-name-error' : undefined"
-            />
-
-            <FieldError v-if="formError && !name.trim()" id="menu-name-error"
-              >请填写名称</FieldError
-            >
-          </Field>
-          <Field>
-            <FieldLabel for="menu-type">类型</FieldLabel>
-            <RaySelect
-              id="menu-type"
-              :model-value="type"
-              :options="PermissionTypeOptions"
-              size="lg"
-              :searchable="false"
-              :disabled="saving"
-              class="w-full"
-              @update:model-value="setType"
-            />
-          </Field>
-          <Field>
-            <FieldLabel for="menu-parent">上级</FieldLabel>
-            <RaySelect
-              id="menu-parent"
-              :model-value="parentId || null"
-              :options="parentSelectOptions"
-              placeholder="选择上级"
-              size="lg"
-              searchable
-              :disabled="saving"
-              class="w-full"
-              @update:model-value="parentId = $event ?? ''"
-            />
-          </Field>
-          <Field>
-            <FieldLabel for="menu-icon">图标</FieldLabel>
-            <Input id="menu-icon" v-model="icon" :disabled="saving" />
-          </Field>
-        </FieldGroup>
-      </FieldSet>
-
-      <FieldSet class="gap-3">
-        <FieldLegend class="mb-0">路由与标识</FieldLegend>
-        <FieldGroup class="ray-form-grid">
-          <Field :data-invalid="formError && type === 'MENU' && !url.trim() ? true : undefined">
-            <FieldLabel for="menu-url" :required="type === 'MENU'">路由</FieldLabel>
-            <Input
-              id="menu-url"
-              v-model="url"
-              :disabled="saving"
-              :required="type === 'MENU'"
-              :aria-invalid="formError && type === 'MENU' && !url.trim() ? true : undefined"
-              :aria-describedby="
-                formError && type === 'MENU' && !url.trim() ? 'menu-url-error' : undefined
-              "
-            />
-
-            <FieldError v-if="formError && type === 'MENU' && !url.trim()" id="menu-url-error"
-              >请填写路由</FieldError
-            >
-          </Field>
-          <Field
-            :data-invalid="
-              formError && (type === 'BUTTON' || Boolean(originalCode)) && !code.trim()
-                ? true
-                : undefined
-            "
-          >
-            <FieldLabel for="menu-code" :required="type === 'BUTTON' || Boolean(originalCode)"
-              >权限标识</FieldLabel
-            >
-            <Input
-              id="menu-code"
-              v-model="code"
-              :disabled="saving"
-              :required="type === 'BUTTON' || Boolean(originalCode)"
-              :aria-invalid="
-                formError && (type === 'BUTTON' || Boolean(originalCode)) && !code.trim()
-                  ? true
-                  : undefined
-              "
-              :aria-describedby="
-                formError && (type === 'BUTTON' || Boolean(originalCode)) && !code.trim()
-                  ? 'menu-code-error'
-                  : undefined
-              "
-            />
-
-            <FieldError
-              v-if="formError && (type === 'BUTTON' || Boolean(originalCode)) && !code.trim()"
-              id="menu-code-error"
-              >请填写权限标识</FieldError
-            >
-          </Field>
-          <Field>
-            <FieldLabel for="menu-component">组件</FieldLabel>
-            <Input id="menu-component" v-model="component" :disabled="saving" />
-          </Field>
-          <Field>
-            <FieldLabel for="menu-route-name">路由名称</FieldLabel>
-            <Input id="menu-route-name" v-model="routeName" :disabled="saving" />
-          </Field>
-          <Field class="ray-form-span-full">
-            <FieldLabel for="menu-redirect">重定向</FieldLabel>
-            <Input id="menu-redirect" v-model="redirect" :disabled="saving" />
-          </Field>
-        </FieldGroup>
-      </FieldSet>
-
-      <FieldSet class="gap-3">
-        <FieldLegend class="mb-0">显示与状态</FieldLegend>
-        <FieldGroup class="ray-form-grid">
-          <Field>
-            <FieldLabel for="menu-sort">顺序</FieldLabel>
-            <Input
-              id="menu-sort"
-              v-model="sortText"
-              name="sort"
-              inputmode="numeric"
-              :disabled="saving"
-            />
-          </Field>
-          <Field>
-            <FieldLabel for="menu-enabled">启用</FieldLabel>
-            <Switch id="menu-enabled" v-model="enabled" :disabled="saving" />
-          </Field>
-          <Field>
-            <FieldLabel for="menu-hidden">隐藏</FieldLabel>
-            <Switch id="menu-hidden" v-model="hidden" :disabled="saving" />
-          </Field>
-          <Field>
-            <FieldLabel for="menu-keep-alive">缓存</FieldLabel>
-            <Switch id="menu-keep-alive" v-model="keepAlive" :disabled="saving" />
-          </Field>
-          <Field class="ray-form-span-full">
-            <FieldLabel for="menu-description">描述</FieldLabel>
-            <Textarea
-              id="menu-description"
-              v-model="description"
-              placeholder="补充说明（可选）"
-              :disabled="saving"
-            />
-          </Field>
-        </FieldGroup>
-      </FieldSet>
-    </div>
+    <FieldGroup class="ray-form-grid">
+      <Field :data-invalid="formError && !name.trim() ? true : undefined">
+        <FieldLabel for="menu-name" required>名称</FieldLabel>
+        <Input
+          id="menu-name"
+          ref="nameInput"
+          v-model="name"
+          name="name"
+          :disabled="saving"
+          required
+          :aria-invalid="formError && !name.trim() ? true : undefined"
+          :aria-describedby="formError && !name.trim() ? 'menu-name-error' : undefined"
+        />
+        <FieldError v-if="formError && !name.trim()" id="menu-name-error"
+          >请填写名称</FieldError
+        >
+      </Field>
+      <Field>
+        <FieldLabel for="menu-type">类型</FieldLabel>
+        <RaySelect
+          id="menu-type"
+          :model-value="type"
+          :options="PermissionTypeOptions"
+          size="lg"
+          :searchable="false"
+          :disabled="saving"
+          class="w-full"
+          @update:model-value="setType"
+        />
+      </Field>
+      <Field>
+        <FieldLabel for="menu-parent">上级</FieldLabel>
+        <RaySelect
+          id="menu-parent"
+          :model-value="parentId || null"
+          :options="parentSelectOptions"
+          placeholder="选择上级"
+          size="lg"
+          searchable
+          :disabled="saving"
+          class="w-full"
+          @update:model-value="parentId = $event ?? ''"
+        />
+      </Field>
+      <Field>
+        <FieldLabel for="menu-icon">图标</FieldLabel>
+        <Input id="menu-icon" v-model="icon" :disabled="saving" />
+      </Field>
+      <Field :data-invalid="formError && type === 'MENU' && !url.trim() ? true : undefined">
+        <FieldLabel for="menu-url" :required="type === 'MENU'">路由</FieldLabel>
+        <Input
+          id="menu-url"
+          v-model="url"
+          :disabled="saving"
+          :required="type === 'MENU'"
+          :aria-invalid="formError && type === 'MENU' && !url.trim() ? true : undefined"
+          :aria-describedby="
+            formError && type === 'MENU' && !url.trim() ? 'menu-url-error' : undefined
+          "
+        />
+        <FieldError v-if="formError && type === 'MENU' && !url.trim()" id="menu-url-error"
+          >请填写路由</FieldError
+        >
+      </Field>
+      <Field
+        :data-invalid="
+          formError && (type === 'BUTTON' || Boolean(originalCode)) && !code.trim()
+            ? true
+            : undefined
+        "
+      >
+        <FieldLabel for="menu-code" :required="type === 'BUTTON' || Boolean(originalCode)"
+          >权限标识</FieldLabel
+        >
+        <Input
+          id="menu-code"
+          v-model="code"
+          :disabled="saving"
+          :required="type === 'BUTTON' || Boolean(originalCode)"
+          :aria-invalid="
+            formError && (type === 'BUTTON' || Boolean(originalCode)) && !code.trim()
+              ? true
+              : undefined
+          "
+          :aria-describedby="
+            formError && (type === 'BUTTON' || Boolean(originalCode)) && !code.trim()
+              ? 'menu-code-error'
+              : undefined
+          "
+        />
+        <FieldError
+          v-if="formError && (type === 'BUTTON' || Boolean(originalCode)) && !code.trim()"
+          id="menu-code-error"
+          >请填写权限标识</FieldError
+        >
+      </Field>
+      <Field>
+        <FieldLabel for="menu-component">组件</FieldLabel>
+        <Input id="menu-component" v-model="component" :disabled="saving" />
+      </Field>
+      <Field>
+        <FieldLabel for="menu-route-name">路由名称</FieldLabel>
+        <Input id="menu-route-name" v-model="routeName" :disabled="saving" />
+      </Field>
+      <Field class="ray-form-span-full">
+        <FieldLabel for="menu-redirect">重定向</FieldLabel>
+        <Input id="menu-redirect" v-model="redirect" :disabled="saving" />
+      </Field>
+      <Field>
+        <FieldLabel for="menu-sort">顺序</FieldLabel>
+        <Input
+          id="menu-sort"
+          v-model="sortText"
+          name="sort"
+          inputmode="numeric"
+          :disabled="saving"
+        />
+      </Field>
+      <Field>
+        <FieldLabel for="menu-enabled">启用</FieldLabel>
+        <Switch id="menu-enabled" v-model="enabled" :disabled="saving" />
+      </Field>
+      <Field>
+        <FieldLabel for="menu-hidden">隐藏</FieldLabel>
+        <Switch id="menu-hidden" v-model="hidden" :disabled="saving" />
+      </Field>
+      <Field>
+        <FieldLabel for="menu-keep-alive">缓存</FieldLabel>
+        <Switch id="menu-keep-alive" v-model="keepAlive" :disabled="saving" />
+      </Field>
+      <Field class="ray-form-span-full">
+        <FieldLabel for="menu-description">描述</FieldLabel>
+        <Textarea
+          id="menu-description"
+          v-model="description"
+          placeholder="补充说明（可选）"
+          :disabled="saving"
+        />
+      </Field>
+    </FieldGroup>
 
     <template #footer>
       <Button

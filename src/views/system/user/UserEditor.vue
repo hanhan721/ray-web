@@ -8,14 +8,7 @@ import { QUIET, failureMessage } from '@/utils/failure'
 import RayFormDialog from '@/components/common/RayFormDialog.vue'
 import RaySelect from '@/components/common/RaySelect.vue'
 import { Button } from '@/components/ui/button'
-import {
-  Field,
-  FieldError,
-  FieldLabel,
-  FieldLegend,
-  FieldSet,
-  FieldGroup,
-} from '@/components/ui/field'
+import { Field, FieldError, FieldLabel, FieldGroup } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
@@ -324,7 +317,7 @@ async function onSubmit() {
     :title="creating ? '新增用户' : '编辑用户'"
     description="用户资料编辑"
     hide-description
-    size="xl"
+    size="lg"
     :saving="saving"
     :error="formError"
     :step-note="stepNote"
@@ -348,134 +341,119 @@ async function onSubmit() {
       <Button type="button" variant="outline" size="sm" @click="resetForm">重试</Button>
     </div>
 
-    <div v-else class="flex flex-col gap-6">
-      <FieldSet class="gap-3">
-        <FieldLegend class="mb-0">基本资料</FieldLegend>
-        <FieldGroup class="ray-form-grid">
-          <Field :data-invalid="formError && !username.trim() ? true : undefined">
-            <FieldLabel for="user-username" required>账号</FieldLabel>
-            <Input
-              id="user-username"
-              ref="usernameInput"
-              v-model="username"
-              name="username"
-              autocomplete="off"
-              :disabled="saving"
-              required
-              :aria-invalid="formError && !username.trim() ? true : undefined"
-              :aria-describedby="formError && !username.trim() ? 'user-username-error' : undefined"
-            />
-
-            <FieldError v-if="formError && !username.trim()" id="user-username-error"
-              >请填写账号</FieldError
-            >
-          </Field>
-          <Field>
-            <FieldLabel for="user-nickname">昵称</FieldLabel>
-            <Input id="user-nickname" v-model="nickname" :disabled="saving" />
-          </Field>
-          <Field
-            v-if="creating"
-            class="ray-form-span-full"
-            :data-invalid="formError && !password ? true : undefined"
-          >
-            <FieldLabel for="user-password" required>密码</FieldLabel>
-            <Input
-              id="user-password"
-              v-model="password"
-              name="password"
-              type="password"
-              autocomplete="new-password"
-              :disabled="saving"
-              required
-              :aria-invalid="formError && !password ? true : undefined"
-              :aria-describedby="formError && !password ? 'user-password-error' : undefined"
-            />
-
-            <FieldError v-if="formError && !password" id="user-password-error"
-              >请填写密码</FieldError
-            >
-          </Field>
-          <Field>
-            <FieldLabel for="user-gender">性别</FieldLabel>
-            <RaySelect
-              id="user-gender"
-              :model-value="gender || null"
-              :options="GenderOptions"
-              placeholder="未填写"
-              size="lg"
-              :searchable="false"
-              :clearable="!originalGender"
-              :disabled="saving"
-              class="w-full"
-              @update:model-value="setGender"
-            />
-          </Field>
-          <Field>
-            <FieldLabel for="user-phone">手机</FieldLabel>
-            <Input id="user-phone" v-model="phone" autocomplete="off" :disabled="saving" />
-          </Field>
-          <Field class="ray-form-span-full">
-            <FieldLabel for="user-email">邮箱</FieldLabel>
-            <Input
-              id="user-email"
-              v-model="email"
-              type="email"
-              autocomplete="off"
-              :disabled="saving"
-            />
-          </Field>
-          <Field class="ray-form-span-full">
-            <FieldLabel for="user-enabled">启用账号</FieldLabel>
-            <Switch id="user-enabled" v-model="enabled" :disabled="saving" />
-          </Field>
-          <Field class="ray-form-span-full">
-            <FieldLabel for="user-remark">备注</FieldLabel>
-            <Textarea
-              id="user-remark"
-              v-model="remark"
-              placeholder="补充说明（可选）"
-              :disabled="saving"
-            />
-          </Field>
-        </FieldGroup>
-      </FieldSet>
-
-      <FieldSet v-if="showPermissionSection" class="gap-3">
-        <FieldLegend class="mb-0">权限与归属</FieldLegend>
-        <FieldGroup class="ray-form-grid">
-          <Field v-if="canAssignRoles">
-            <FieldLabel for="user-roles">角色</FieldLabel>
-            <RaySelect
-              id="user-roles"
-              v-model="roleIds"
-              multiple
-              :options="roleOptions"
-              placeholder="选择角色"
-              empty-text="没有可分配的角色"
-              no-results-text="没有匹配的角色"
-              aria-label="角色"
-              :disabled="saving"
-            />
-          </Field>
-
-          <Field v-if="canAssignDepts">
-            <FieldLabel for="user-depts">部门</FieldLabel>
-            <RaySelect
-              id="user-depts"
-              v-model="deptIds"
-              multiple
-              :options="deptOptions"
-              placeholder="选择部门"
-              empty-text="没有可分配的部门"
-              no-results-text="没有匹配的部门"
-              aria-label="部门"
-              :disabled="saving"
-            />
-          </Field>
-        </FieldGroup>
-      </FieldSet>
-    </div>
+    <FieldGroup v-else-if="detailReady" class="ray-form-grid">
+      <Field :data-invalid="formError && !username.trim() ? true : undefined">
+        <FieldLabel for="user-username" required>账号</FieldLabel>
+        <Input
+          id="user-username"
+          ref="usernameInput"
+          v-model="username"
+          name="username"
+          autocomplete="off"
+          :disabled="saving"
+          required
+          :aria-invalid="formError && !username.trim() ? true : undefined"
+          :aria-describedby="formError && !username.trim() ? 'user-username-error' : undefined"
+        />
+        <FieldError v-if="formError && !username.trim()" id="user-username-error"
+          >请填写账号</FieldError
+        >
+      </Field>
+      <Field
+        v-if="creating"
+        :data-invalid="formError && !password ? true : undefined"
+      >
+        <FieldLabel for="user-password" required>密码</FieldLabel>
+        <Input
+          id="user-password"
+          v-model="password"
+          name="password"
+          type="password"
+          autocomplete="new-password"
+          :disabled="saving"
+          required
+          :aria-invalid="formError && !password ? true : undefined"
+          :aria-describedby="formError && !password ? 'user-password-error' : undefined"
+        />
+        <FieldError v-if="formError && !password" id="user-password-error"
+          >请填写密码</FieldError
+        >
+      </Field>
+      <Field>
+        <FieldLabel for="user-nickname">昵称</FieldLabel>
+        <Input id="user-nickname" v-model="nickname" :disabled="saving" />
+      </Field>
+      <Field>
+        <FieldLabel for="user-gender">性别</FieldLabel>
+        <RaySelect
+          id="user-gender"
+          :model-value="gender || null"
+          :options="GenderOptions"
+          placeholder="未填写"
+          size="lg"
+          :searchable="false"
+          :clearable="!originalGender"
+          :disabled="saving"
+          class="w-full"
+          @update:model-value="setGender"
+        />
+      </Field>
+      <Field>
+        <FieldLabel for="user-phone">手机</FieldLabel>
+        <Input id="user-phone" v-model="phone" autocomplete="off" :disabled="saving" />
+      </Field>
+      <Field>
+        <FieldLabel for="user-email">邮箱</FieldLabel>
+        <Input
+          id="user-email"
+          v-model="email"
+          type="email"
+          autocomplete="off"
+          :disabled="saving"
+        />
+      </Field>
+      <Field v-if="showPermissionSection && canAssignRoles">
+        <FieldLabel for="user-roles">角色</FieldLabel>
+        <RaySelect
+          id="user-roles"
+          v-model="roleIds"
+          multiple
+          :options="roleOptions"
+          placeholder="选择角色"
+          empty-text="没有可分配的角色"
+          no-results-text="没有匹配的角色"
+          aria-label="角色"
+          :disabled="saving"
+        />
+      </Field>
+      <Field v-if="showPermissionSection && canAssignDepts">
+        <FieldLabel for="user-depts">部门</FieldLabel>
+        <RaySelect
+          id="user-depts"
+          v-model="deptIds"
+          multiple
+          :options="deptOptions"
+          placeholder="选择部门"
+          empty-text="没有可分配的部门"
+          no-results-text="没有匹配的部门"
+          aria-label="部门"
+          :disabled="saving"
+        />
+      </Field>
+      <Field>
+        <FieldLabel for="user-enabled">启用账号</FieldLabel>
+        <Switch id="user-enabled" v-model="enabled" :disabled="saving" />
+      </Field>
+      <Field class="ray-form-span-full">
+        <FieldLabel for="user-remark">备注</FieldLabel>
+        <Textarea
+          id="user-remark"
+          v-model="remark"
+          placeholder="补充说明（可选）"
+          :disabled="saving"
+        />
+      </Field>
+    </FieldGroup>
 
     <template #footer>
       <Button

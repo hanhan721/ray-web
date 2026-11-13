@@ -10,8 +10,6 @@ import { Button } from '@/components/ui/button'
 import {
   Field,
   FieldLabel,
-  FieldLegend,
-  FieldSet,
   FieldGroup,
   FieldError,
 } from '@/components/ui/field'
@@ -240,124 +238,107 @@ async function onSubmit() {
       <Button type="button" variant="outline" size="sm" @click="retryLoad">重试</Button>
     </div>
 
-    <div v-else class="flex flex-col gap-6">
-      <FieldSet class="gap-3">
-        <FieldLegend class="mb-0">基本资料</FieldLegend>
-        <FieldGroup class="ray-form-grid">
-          <Field :data-invalid="formError && creating && !paramKey.trim() ? true : undefined">
-            <FieldLabel for="param-key" :required="creating">参数键</FieldLabel>
-            <Input
-              id="param-key"
-              ref="keyInput"
-              v-model="paramKey"
-              name="paramKey"
-              :disabled="saving || loading || !creating"
-              :required="creating"
-              :aria-invalid="formError && creating && !paramKey.trim() ? true : undefined"
-              :aria-describedby="
-                formError && creating && !paramKey.trim() ? 'param-key-error' : undefined
-              "
-            />
-
-            <FieldError v-if="formError && creating && !paramKey.trim()" id="param-key-error"
-              >请填写参数键</FieldError
-            >
-          </Field>
-          <Field>
-            <FieldLabel for="param-type">类型</FieldLabel>
-            <RaySelect
-              id="param-type"
-              :model-value="paramType"
-              :options="typeOptions"
-              size="lg"
-              :searchable="false"
-              :disabled="saving || loading || !creating"
-              class="w-full"
-              @update:model-value="setParamType"
-            />
-          </Field>
-          <Field>
-            <FieldLabel for="param-biz">分类</FieldLabel>
-            <RaySelect
-              id="param-biz"
-              :model-value="bizType || null"
-              :options="bizOptions"
-              size="lg"
-              searchable
-              :disabled="saving || loading || !creating"
-              class="w-full"
-              @update:model-value="bizType = $event ?? ''"
-            />
-          </Field>
-        </FieldGroup>
-      </FieldSet>
-
-      <FieldSet class="gap-3">
-        <FieldLegend class="mb-0">参数内容</FieldLegend>
-        <FieldGroup>
-          <Field :data-invalid="formError && !paramValue.trim() ? true : undefined">
-            <FieldLabel for="param-value" required>参数值</FieldLabel>
-            <Textarea
-              id="param-value"
-              ref="valueInput"
-              v-model="paramValue"
-              rows="4"
-              :disabled="saving || loading || !detailReady"
-              required
-              :aria-invalid="formError && !paramValue.trim() ? true : undefined"
-              :aria-describedby="formError && !paramValue.trim() ? 'param-value-error' : undefined"
-            />
-
-            <FieldError v-if="formError && !paramValue.trim()" id="param-value-error"
-              >请填写参数值</FieldError
-            >
-          </Field>
-          <Field>
-            <FieldLabel for="param-encrypted">加密存储</FieldLabel>
-            <Switch
-              id="param-encrypted"
-              v-model="encrypted"
-              :disabled="saving || loading || !detailReady"
-            />
-          </Field>
-        </FieldGroup>
-      </FieldSet>
-
-      <FieldSet class="gap-3">
-        <FieldLegend class="mb-0">描述</FieldLegend>
-        <Field
-          :data-invalid="
+    <FieldGroup v-else class="ray-form-grid">
+      <Field :data-invalid="formError && creating && !paramKey.trim() ? true : undefined">
+        <FieldLabel for="param-key" :required="creating">参数键</FieldLabel>
+        <Input
+          id="param-key"
+          ref="keyInput"
+          v-model="paramKey"
+          name="paramKey"
+          :disabled="saving || loading || !creating"
+          :required="creating"
+          :aria-invalid="formError && creating && !paramKey.trim() ? true : undefined"
+          :aria-describedby="
+            formError && creating && !paramKey.trim() ? 'param-key-error' : undefined
+          "
+        />
+        <FieldError v-if="formError && creating && !paramKey.trim()" id="param-key-error"
+          >请填写参数键</FieldError
+        >
+      </Field>
+      <Field>
+        <FieldLabel for="param-type">类型</FieldLabel>
+        <RaySelect
+          id="param-type"
+          :model-value="paramType"
+          :options="typeOptions"
+          size="lg"
+          :searchable="false"
+          :disabled="saving || loading || !creating"
+          class="w-full"
+          @update:model-value="setParamType"
+        />
+      </Field>
+      <Field>
+        <FieldLabel for="param-biz">分类</FieldLabel>
+        <RaySelect
+          id="param-biz"
+          :model-value="bizType || null"
+          :options="bizOptions"
+          size="lg"
+          searchable
+          :disabled="saving || loading || !creating"
+          class="w-full"
+          @update:model-value="bizType = $event ?? ''"
+        />
+      </Field>
+      <Field :data-invalid="formError && !paramValue.trim() ? true : undefined">
+        <FieldLabel for="param-value" required>参数值</FieldLabel>
+        <Textarea
+          id="param-value"
+          ref="valueInput"
+          v-model="paramValue"
+          rows="4"
+          :disabled="saving || loading || !detailReady"
+          required
+          :aria-invalid="formError && !paramValue.trim() ? true : undefined"
+          :aria-describedby="formError && !paramValue.trim() ? 'param-value-error' : undefined"
+        />
+        <FieldError v-if="formError && !paramValue.trim()" id="param-value-error"
+          >请填写参数值</FieldError
+        >
+      </Field>
+      <Field>
+        <FieldLabel for="param-encrypted">加密存储</FieldLabel>
+        <Switch
+          id="param-encrypted"
+          v-model="encrypted"
+          :disabled="saving || loading || !detailReady"
+        />
+      </Field>
+      <Field
+        class="ray-form-span-full"
+        :data-invalid="
+          formError && Boolean(originalDescription) && !description.trim() ? true : undefined
+        "
+      >
+        <FieldLabel for="param-description" :required="Boolean(originalDescription)"
+          >描述</FieldLabel
+        >
+        <Textarea
+          id="param-description"
+          v-model="description"
+          name="description"
+          placeholder="补充说明（可选）"
+          :disabled="saving || loading || !detailReady"
+          :required="Boolean(originalDescription)"
+          :aria-invalid="
             formError && Boolean(originalDescription) && !description.trim() ? true : undefined
           "
+          :aria-describedby="
+            formError && Boolean(originalDescription) && !description.trim()
+              ? 'param-description-error'
+              : undefined
+          "
+        />
+        <FieldError
+          v-if="formError && Boolean(originalDescription) && !description.trim()"
+          id="param-description-error"
+          >描述暂时不能清空。</FieldError
         >
-          <FieldLabel for="param-description" :required="Boolean(originalDescription)"
-            >描述</FieldLabel
-          >
-          <Textarea
-            id="param-description"
-            v-model="description"
-            name="description"
-            placeholder="补充说明（可选）"
-            :disabled="saving || loading || !detailReady"
-            :required="Boolean(originalDescription)"
-            :aria-invalid="
-              formError && Boolean(originalDescription) && !description.trim() ? true : undefined
-            "
-            :aria-describedby="
-              formError && Boolean(originalDescription) && !description.trim()
-                ? 'param-description-error'
-                : undefined
-            "
-          />
-
-          <FieldError
-            v-if="formError && Boolean(originalDescription) && !description.trim()"
-            id="param-description-error"
-            >描述暂时不能清空。</FieldError
-          >
-        </Field>
-      </FieldSet>
-    </div>
+      </Field>
+    </FieldGroup>
 
     <template #footer>
       <Button
