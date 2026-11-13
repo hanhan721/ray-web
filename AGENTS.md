@@ -45,12 +45,13 @@
 - Vue 使用 `<script setup lang="ts">`，明确 Props、Emits 与接口数据类型；跨页面共享状态使用 Pinia，页面临时状态留在页面。
 - `src/components/ui/` 存放 shadcn-vue 基础组件源码并保留原名；`common/` 存放以 `Ray` 为统一前缀的通用组合，如 RayTable、RaySelect、RayFormDialog、RayTableColumnSettings；`business/` 存放业务组件；页面专用组件放在页面同级 `components/`。
 - 优先通过组合、参数和插槽扩展已有组件；修改公共组件前检查调用方，不为尚未出现的需求设计抽象。
+- `RaySelect` / `RayTreeSelect` 的列表复选框（`checkbox`）与树形行点击行为（`row-action`：select / toggle / both / none）是可配置的，不同页面按交互需要显式声明，不依赖组件按模式猜默认。项目内 `RayTreeSelect` 统一用 `row-action="select"`：行点击只勾选/选中，展开收起只认节点前的箭头和键盘方向键。复选框图形与选中态计算统一来自 `SelectCheckbox` 与 `select.ts` 的 `selectionState`，不要在页面复刻。
 - API 定义放在 `src/api/`，统一使用 `src/utils/request.ts` 的 Axios 封装；组件不另建请求实例。
 
 ## 表单设计规范
 
 - 搜索表单统一使用 `RaySearchForm`，字段使用 `Field orientation="horizontal"`：Label 在左、控件在右，优先单行，空间不足自然换行。查询、重置按钮放在 `#actions`；短选择项使用 `ray-search-field-short`，日期时间使用 `ray-search-field-date`。容器宽度不超过 32rem 时每个字段独占一行，控件填满剩余空间。
-- 新增、编辑表单使用 `RayFormDialog`、`FieldGroup` 和默认纵向 `Field`，Label 在上、控件在下。相关短字段可在 `FieldGroup class="ray-form-grid"` 中并排；正文可用宽度达到 32rem 时启用两列，否则单列。长文本、备注使用 `ray-form-span-full` 跨整行，开关同样保留上下结构；复选框选项的文字仍紧邻复选框。
+- 新增、编辑表单使用 `RayFormDialog`、`FieldGroup` 和默认纵向 `Field`，Label 在上、控件在下。相关短字段可在 `FieldGroup class="ray-form-grid"` 中并排；正文可用宽度达到 32rem 时启用两列，否则单列。字段少的编辑表单不设 `FieldSet` 分组，全部字段按填写顺序放在一个 `FieldGroup` 里流下来：必填身份字段在前，备注/描述用 `Textarea` 加 `ray-form-span-full` 收尾。长列表（如权限、角色多选）直接作为网格项跟在字段后面，不再另起分组标题。长文本、备注使用 `ray-form-span-full` 跨整行，开关同样保留上下结构，多个开关并排，落单的开关占半格；复选框选项的文字仍紧邻复选框。
 - Label 统一 500 字重，字段间距 16px，Label 与控件间距 8px，单行输入和选择器默认高度 36px。使用公共 tokens 与已有 shadcn-vue 组件，不在页面重复覆盖高度、字重或配色；文本域保持多行。
 - 必填字段在 `FieldLabel` 设置 `required`，控件同步设置 `required`；条件必填同时绑定条件。标识使用统一红色星号，并保留屏幕阅读器说明。校验失败使用 `Field` 的 `data-invalid`、控件的 `aria-invalid` 和下方 `FieldError`，通过 `aria-describedby` 关联；接口错误和部分成功信息继续使用弹窗整体提示。
 - 表单字段保留 `min-width: 0`，避免固定最小宽度挤出小屏；长校验文本允许换行。桌面和小屏的搜索、编辑示例见 `/style-guide`。
