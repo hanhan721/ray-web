@@ -1,16 +1,7 @@
 <script setup lang="ts">
 import RaySearchForm from '@/components/common/RaySearchForm.vue'
-import {
-  ChevronLeft,
-  ChevronRight,
-  Database,
-  Library,
-  Plus,
-  RotateCcw,
-  Search,
-  Trash2,
-} from '@lucide/vue'
-import { computed, onMounted, shallowRef, watch } from 'vue'
+import { Database, Library, Plus, RotateCcw, Search, Trash2 } from '@lucide/vue'
+import { onMounted, shallowRef, watch } from 'vue'
 import {
   deleteDictData,
   deleteDictTypes,
@@ -30,7 +21,6 @@ import { QUIET } from '@/utils/failure'
 import RayTable from '@/components/common/RayTable.vue'
 import RaySelect from '@/components/common/RaySelect.vue'
 import { Badge } from '@/components/ui/badge'
-import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog,
   DialogContent,
@@ -38,24 +28,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableEmpty,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { PAGE_SIZES } from '@/utils/pagination'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import {
@@ -81,6 +53,7 @@ import { Spinner } from '@/components/ui/spinner'
 import DictDataEditor from './DictDataEditor.vue'
 import DictTypeEditor from './DictTypeEditor.vue'
 import {
+  DICT_DATA_COLUMNS,
   DICT_TYPE_COLUMNS,
   dictCellClass,
   toDataQuery,
@@ -100,12 +73,6 @@ const dataEnabled = shallowRef<'' | 'true' | 'false'>('')
 const selectedType = shallowRef<DictTypeRecord | null>(null)
 const dataDrawerOpen = shallowRef(false)
 const singleTypeDelete = shallowRef<DictTypeRecord | null>(null)
-const dataPageCount = computed(() => Math.max(1, Math.ceil(dataTotal.value / dataPageSize.value)))
-const allDataSelected = computed(
-  () =>
-    dataRows.value.length > 0 &&
-    dataRows.value.every((row) => dataSelectedIds.value.includes(row.id)),
-)
 const typeHasFilters = shallowRef(false)
 const dataHasFilters = shallowRef(false)
 const typeEditorOpen = shallowRef(false)
@@ -243,6 +210,7 @@ const { pendingIds: dataStatusPendingIds, change: changeDataStatus } = useRowSta
 })
 
 const typeRowLabel = (row: DictTypeRecord) => row.dictName
+const dataRowLabel = (row: DictDataRecord) => row.dictLabel
 
 /** 列表刷新后把选中的类型替换成最新行，避免右侧仍显示旧名称。 */
 async function loadTypes() {
@@ -511,209 +479,141 @@ onMounted(() => {
         </DialogDescription>
       </DialogHeader>
 
-      <div class="flex min-h-0 flex-1 flex-col">
-        <div class="flex shrink-0 flex-col gap-4 border-b px-6 py-5">
-          <RaySearchForm @submit="searchData()">
-            <Field orientation="horizontal">
-              <FieldLabel for="filter-dict-label">标签</FieldLabel>
-              <Input id="filter-dict-label" v-model="dataLabel" placeholder="搜索字典标签" />
-            </Field>
-            <Field orientation="horizontal" class="ray-search-field-short">
-              <FieldLabel for="filter-dict-data-enabled">状态</FieldLabel>
-              <RaySelect
-                id="filter-dict-data-enabled"
-                :model-value="dataEnabled || null"
-                :options="EnabledFilterOptions"
-                placeholder="全部状态"
-                size="lg"
-                clearable
-                @update:model-value="setDataEnabledFilter"
-              />
-            </Field>
-            <template #actions>
-              <Button type="submit" variant="outline" :disabled="dataLoading"
-                ><Search data-icon="inline-start" />查询</Button
-              >
-              <Button
-                type="button"
-                variant="ghost"
-                :disabled="dataLoading"
-                @click="resetDataFilters()"
-                >重置</Button
-              >
-            </template>
-          </RaySearchForm>
-          <div class="flex flex-wrap items-center justify-end gap-3">
-            <span v-if="dataSelectedIds.length" class="text-muted-foreground text-xs">
-              已选 {{ dataSelectedIds.length }} 条
-            </span>
-            <div class="flex flex-wrap gap-2">
-              <Button
-                v-if="can('system:dict-data:remove')"
-                variant="outline"
-                :disabled="!dataSelectedIds.length || dataDeleting"
-                @click="openDataDelete"
-                ><Trash2 data-icon="inline-start" />删除所选</Button
-              >
-              <Button v-if="can('system:dict-data:add')" @click="openDataCreate"
-                ><Plus data-icon="inline-start" />新增字典项</Button
-              >
-            </div>
-          </div>
-        </div>
-
-        <div class="min-h-0 flex-1 overflow-auto px-6">
-          <div
-            v-if="dataError"
-            class="text-destructive flex items-center gap-3 py-4 text-sm"
-            role="alert"
-          >
-            {{ dataError }}
-            <Button variant="outline" size="sm" @click="loadDataPage()">重试</Button>
-          </div>
-          <Table>
-            <TableHeader class="bg-background sticky top-0">
-              <TableRow>
-                <TableHead v-if="can('system:dict-data:remove')" class="w-12"
-                  ><Checkbox
-                    aria-label="选择当前页"
-                    :model-value="allDataSelected"
-                    :disabled="!dataRows.length"
-                    @update:model-value="toggleDataPage(Boolean($event))"
-                /></TableHead>
-                <TableHead>标签</TableHead><TableHead>字典值</TableHead><TableHead>顺序</TableHead
-                ><TableHead>状态</TableHead><TableHead>操作</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody :aria-busy="dataLoading">
-              <TableRow v-if="dataLoading && !dataRows.length"
-                ><TableCell
-                  :colspan="can('system:dict-data:remove') ? 6 : 5"
-                  class="h-32 text-center"
-                  ><Spinner class="mx-auto" /><span class="sr-only">加载中</span></TableCell
-                ></TableRow
-              >
-              <TableEmpty
-                v-else-if="!dataRows.length"
-                :colspan="can('system:dict-data:remove') ? 6 : 5"
-              >
-                <Empty>
-                  <EmptyHeader>
-                    <EmptyMedia variant="icon"><Database /></EmptyMedia>
-                    <EmptyTitle>{{
-                      dataError
-                        ? '字典项加载失败'
-                        : dataHasFilters
-                          ? '没有符合条件的字典项'
-                          : '这个类型下还没有字典项'
-                    }}</EmptyTitle>
-                    <EmptyDescription>{{
-                      dataError
-                        ? '请重试加载。'
-                        : dataHasFilters
-                          ? '调整筛选条件后重试。'
-                          : '新增字典项，开始维护这个类型。'
-                    }}</EmptyDescription>
-                  </EmptyHeader>
-                  <EmptyContent v-if="can('system:dict-data:add') && !dataError && !dataHasFilters"
-                    ><Button variant="outline" size="sm" @click="openDataCreate"
-                      >新增字典项</Button
-                    ></EmptyContent
-                  >
-                </Empty>
-              </TableEmpty>
-              <TableRow
-                v-for="row in dataRows"
-                v-else
-                :key="row.id"
-                :data-state="dataSelectedIds.includes(row.id) ? 'selected' : undefined"
-              >
-                <TableCell v-if="can('system:dict-data:remove')"
-                  ><Checkbox
-                    :aria-label="'选择 ' + row.dictLabel"
-                    :model-value="dataSelectedIds.includes(row.id)"
-                    @update:model-value="toggleData(row.id, Boolean($event))"
-                /></TableCell>
-                <TableCell class="min-w-32 font-medium"
-                  ><span class="block max-w-56 truncate" :title="row.dictLabel">{{
-                    row.dictLabel
-                  }}</span></TableCell
-                >
-                <TableCell class="min-w-28 font-mono"
-                  ><span class="block max-w-48 truncate" :title="row.dictValue">{{
-                    row.dictValue
-                  }}</span></TableCell
-                >
-                <TableCell class="tabular-nums">{{ row.sort ?? 0 }}</TableCell>
-                <TableCell
-                  ><Switch
-                    v-if="can('system:dict-data:edit')"
-                    :model-value="row.enabled !== false"
-                    :disabled="dataStatusPendingIds.has(row.id)"
-                    :aria-label="row.dictLabel + ' 的状态'"
-                    @update:model-value="changeDataStatus(row.id, Boolean($event))"
-                  /><Badge v-else :variant="row.enabled !== false ? 'outline' : 'secondary'">{{
-                    row.enabled !== false ? '启用' : '停用'
-                  }}</Badge></TableCell
-                >
-                <TableCell
-                  ><Button
-                    v-if="can('system:dict-data:query')"
-                    variant="ghost"
-                    size="sm"
-                    @click="openDataEdit(row)"
-                    >编辑</Button
-                  ></TableCell
-                >
-              </TableRow>
-            </TableBody>
-          </Table>
-        </div>
-        <div
-          class="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t px-6 py-4 text-sm"
+      <div class="flex min-h-0 flex-1 flex-col overflow-hidden px-6 py-5">
+        <RayTable
+          fill
+          class="min-h-0 flex-1"
+          :columns="DICT_DATA_COLUMNS"
+          :rows="dataRows"
+          :total="dataTotal"
+          :page-index="dataPageIndex"
+          :page-size="dataPageSize"
+          :loading="dataLoading"
+          :error-message="dataError"
+          :selectable="can('system:dict-data:remove')"
+          :selected-ids="dataSelectedIds"
+          :row-label="dataRowLabel"
+          :cell-class="dictCellClass"
+          selection-unit="条"
+          @update:page-index="changeDataPage"
+          @update:page-size="changeDataPageSize"
+          @toggle-row="toggleData"
+          @toggle-page="toggleDataPage"
+          @retry="loadDataPage()"
         >
-          <span class="text-muted-foreground tabular-nums" aria-live="polite">{{
-            dataLoading ? '加载中…' : '共 ' + dataTotal + ' 条'
-          }}</span>
-          <div class="flex items-center gap-2">
-            <span class="text-muted-foreground">每页</span>
-            <Select
-              :model-value="String(dataPageSize)"
-              :disabled="dataLoading"
-              @update:model-value="changeDataPageSize(Number($event))"
-            >
-              <SelectTrigger aria-label="每页条数" size="sm" class="w-20"
-                ><SelectValue
-              /></SelectTrigger>
-              <SelectContent
-                ><SelectGroup
-                  ><SelectItem v-for="size in PAGE_SIZES" :key="size" :value="String(size)">{{
-                    size
-                  }}</SelectItem></SelectGroup
-                ></SelectContent
-              >
-            </Select>
-            <span class="text-muted-foreground mx-1 tabular-nums"
-              >{{ dataPageIndex + 1 }} / {{ dataPageCount }}</span
-            >
+          <template #filters>
+            <RaySearchForm @submit="searchData()">
+              <Field orientation="horizontal">
+                <FieldLabel for="filter-dict-label">标签</FieldLabel>
+                <Input id="filter-dict-label" v-model="dataLabel" placeholder="搜索字典标签" />
+              </Field>
+              <Field orientation="horizontal" class="ray-search-field-short">
+                <FieldLabel for="filter-dict-data-enabled">状态</FieldLabel>
+                <RaySelect
+                  id="filter-dict-data-enabled"
+                  :model-value="dataEnabled || null"
+                  :options="EnabledFilterOptions"
+                  placeholder="全部状态"
+                  size="lg"
+                  clearable
+                  @update:model-value="setDataEnabledFilter"
+                />
+              </Field>
+              <template #actions>
+                <Button type="submit" variant="outline" :disabled="dataLoading"
+                  ><Search data-icon="inline-start" />查询</Button
+                >
+                <Button
+                  type="button"
+                  variant="ghost"
+                  :disabled="dataLoading"
+                  @click="resetDataFilters()"
+                  >重置</Button
+                >
+              </template>
+            </RaySearchForm>
+          </template>
+
+          <template #actions>
             <Button
+              v-if="can('system:dict-data:remove')"
+              type="button"
               variant="outline"
-              size="icon-sm"
-              aria-label="上一页"
-              :disabled="dataLoading || dataPageIndex === 0"
-              @click="changeDataPage(dataPageIndex - 1)"
-              ><ChevronLeft
-            /></Button>
+              :disabled="!dataSelectedIds.length || dataDeleting"
+              @click="openDataDelete"
+            >
+              <Trash2 data-icon="inline-start" />
+              删除所选
+            </Button>
+            <Button v-if="can('system:dict-data:add')" type="button" @click="openDataCreate">
+              <Plus data-icon="inline-start" />
+              新增字典项
+            </Button>
+          </template>
+
+          <template #empty="{ errorMessage: loadError }">
+            <Empty>
+              <EmptyHeader>
+                <EmptyMedia variant="icon"><Database /></EmptyMedia>
+                <EmptyTitle>{{
+                  loadError
+                    ? '字典项加载失败'
+                    : dataHasFilters
+                      ? '没有符合条件的字典项'
+                      : '这个类型下还没有字典项'
+                }}</EmptyTitle>
+                <EmptyDescription>{{
+                  loadError
+                    ? '请重试加载。'
+                    : dataHasFilters
+                      ? '调整筛选条件后重试。'
+                      : '新增字典项，开始维护这个类型。'
+                }}</EmptyDescription>
+              </EmptyHeader>
+              <EmptyContent v-if="can('system:dict-data:add') && !loadError && !dataHasFilters">
+                <Button variant="outline" size="sm" @click="openDataCreate">新增字典项</Button>
+              </EmptyContent>
+            </Empty>
+          </template>
+
+          <template #cell-dictLabel="{ row }">
+            <span :class="[dictCellClass('dictLabel'), 'max-w-56']" :title="row.dictLabel">
+              {{ row.dictLabel }}
+            </span>
+          </template>
+          <template #cell-dictValue="{ row }">
+            <span
+              :class="[dictCellClass('dictValue'), 'max-w-48 font-mono']"
+              :title="row.dictValue"
+            >
+              {{ row.dictValue }}
+            </span>
+          </template>
+          <template #cell-sort="{ row }">
+            <span class="tabular-nums">{{ row.sort ?? 0 }}</span>
+          </template>
+          <template #cell-enabled="{ row }">
+            <Switch
+              v-if="can('system:dict-data:edit')"
+              :model-value="row.enabled !== false"
+              :disabled="dataStatusPendingIds.has(row.id)"
+              :aria-label="row.dictLabel + ' 的状态'"
+              @update:model-value="changeDataStatus(row.id, Boolean($event))"
+            />
+            <Badge v-else :variant="row.enabled !== false ? 'outline' : 'secondary'">{{
+              row.enabled !== false ? '启用' : '停用'
+            }}</Badge>
+          </template>
+          <template #cell-actions="{ row }">
             <Button
-              variant="outline"
-              size="icon-sm"
-              aria-label="下一页"
-              :disabled="dataLoading || dataPageIndex + 1 >= dataPageCount"
-              @click="changeDataPage(dataPageIndex + 1)"
-              ><ChevronRight
-            /></Button>
-          </div>
-        </div>
+              v-if="can('system:dict-data:query')"
+              variant="ghost"
+              size="sm"
+              @click="openDataEdit(row)"
+              >编辑</Button
+            >
+          </template>
+        </RayTable>
       </div>
     </DialogContent>
   </Dialog>
