@@ -6,6 +6,7 @@ import { toast } from 'vue-sonner'
 import { useThemeStore } from '@/stores/theme'
 import RaySearchForm from '@/components/common/RaySearchForm.vue'
 import RaySelect from '@/components/common/RaySelect.vue'
+import RayTreeSelect, { type TreeSelectOption } from '@/components/common/RayTreeSelect.vue'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
   AlertDialog,
@@ -76,6 +77,30 @@ const filterStatus = shallowRef<string | null>(null)
 const statusOptions = [
   { value: 'true', label: '启用' },
   { value: 'false', label: '停用' },
+]
+const guideTreeSingle = shallowRef<number | null>(null)
+const guideTreeMulti = shallowRef<number[]>([])
+const guideFlatMulti = shallowRef<string[]>([])
+const guideTagOptions = [
+  { value: 'ops', label: '运维' },
+  { value: 'dev', label: '开发' },
+  { value: 'test', label: '测试' },
+]
+const guideTreeOptions: TreeSelectOption<number>[] = [
+  {
+    value: 1,
+    label: '演示分组A',
+    children: [
+      { value: 11, label: '演示页面A1' },
+      { value: 12, label: '演示页面A2' },
+    ],
+  },
+  {
+    value: 2,
+    label: '演示分组B',
+    children: [{ value: 21, label: '演示页面B1' }],
+  },
+  { value: 3, label: '演示单页' },
 ]
 
 const longRemark =
@@ -181,6 +206,46 @@ function resetSearchExample() {
             >
           </Field>
         </FieldGroup>
+      </div>
+      <div class="flex flex-col gap-3">
+        <p class="text-muted-foreground text-sm">
+          选择器变体：复选框与行点击行为可配置（select / toggle / both / none），页面统一用
+          select：行点击只勾选，展开收起只认箭头。
+        </p>
+        <div class="flex flex-wrap gap-3">
+          <Field class="w-64">
+            <FieldLabel for="guide-select-checkbox">多选 + 复选框</FieldLabel>
+            <RaySelect
+              id="guide-select-checkbox"
+              v-model="guideFlatMulti"
+              multiple
+              checkbox
+              :options="guideTagOptions"
+              placeholder="选择标签"
+            />
+          </Field>
+          <Field class="w-64">
+            <FieldLabel for="guide-tree-single">树形单选（行点击选中）</FieldLabel>
+            <RayTreeSelect
+              id="guide-tree-single"
+              v-model="guideTreeSingle"
+              row-action="select"
+              :options="guideTreeOptions"
+              placeholder="选择节点"
+            />
+          </Field>
+          <Field class="w-64">
+            <FieldLabel for="guide-tree-multi">树形多选（行点击勾选）</FieldLabel>
+            <RayTreeSelect
+              id="guide-tree-multi"
+              v-model="guideTreeMulti"
+              multiple
+              row-action="select"
+              :options="guideTreeOptions"
+              placeholder="选择节点"
+            />
+          </Field>
+        </div>
       </div>
     </section>
 

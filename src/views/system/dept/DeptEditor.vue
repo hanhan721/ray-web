@@ -8,8 +8,6 @@ import { Button } from '@/components/ui/button'
 import {
   Field,
   FieldLabel,
-  FieldLegend,
-  FieldSet,
   FieldGroup,
   FieldError,
 } from '@/components/ui/field'
@@ -152,96 +150,79 @@ async function onSubmit() {
     :open="open"
     :title="creating ? '新增部门' : '编辑部门'"
     description="顶级部门的上级留在「无」。不能把部门挂到自己或下级下面。"
-    size="xl"
+    size="lg"
     :saving="saving"
     :error="formError"
     @update:open="emit('update:open', $event)"
     @submit="onSubmit"
   >
-    <div class="flex flex-col gap-6">
-      <FieldSet class="gap-3">
-        <FieldLegend class="mb-0">基本资料</FieldLegend>
-        <FieldGroup class="ray-form-grid">
-          <Field :data-invalid="formError && !deptName.trim() ? true : undefined">
-            <FieldLabel for="dept-name" required>名称</FieldLabel>
-            <Input
-              id="dept-name"
-              ref="nameInput"
-              v-model="deptName"
-              name="deptName"
-              :disabled="saving"
-              required
-              :aria-invalid="formError && !deptName.trim() ? true : undefined"
-              :aria-describedby="formError && !deptName.trim() ? 'dept-name-error' : undefined"
-            />
-
-            <FieldError v-if="formError && !deptName.trim()" id="dept-name-error"
-              >请填写名称</FieldError
-            >
-          </Field>
-          <Field>
-            <FieldLabel for="dept-parent">上级</FieldLabel>
-            <RayTreeSelect
-              id="dept-parent"
-              :model-value="parentId || null"
-              :options="parentSelectOptions"
-              placeholder="选择上级"
-              size="lg"
-              :disabled="saving"
-              class="w-full"
-              @update:model-value="parentId = $event ?? ''"
-            />
-          </Field>
-          <Field>
-            <FieldLabel for="dept-sort">顺序</FieldLabel>
-            <Input
-              id="dept-sort"
-              v-model="sortText"
-              name="sort"
-              inputmode="numeric"
-              :disabled="saving"
-            />
-          </Field>
-          <Field>
-            <FieldLabel for="dept-leader">负责人</FieldLabel>
-            <Input id="dept-leader" v-model="leader" :disabled="saving" />
-          </Field>
-        </FieldGroup>
-      </FieldSet>
-
-      <FieldSet class="gap-3">
-        <FieldLegend class="mb-0">联系方式</FieldLegend>
-        <FieldGroup class="ray-form-grid">
-          <Field>
-            <FieldLabel for="dept-phone">电话</FieldLabel>
-            <Input id="dept-phone" v-model="phone" :disabled="saving" />
-          </Field>
-          <Field>
-            <FieldLabel for="dept-email">邮箱</FieldLabel>
-            <Input id="dept-email" v-model="email" type="email" :disabled="saving" />
-          </Field>
-        </FieldGroup>
-      </FieldSet>
-
-      <FieldSet class="gap-3">
-        <FieldLegend class="mb-0">状态与备注</FieldLegend>
-        <FieldGroup class="ray-form-grid">
-          <Field class="ray-form-span-full">
-            <FieldLabel for="dept-enabled">启用</FieldLabel>
-            <Switch id="dept-enabled" v-model="enabled" :disabled="saving" />
-          </Field>
-          <Field class="ray-form-span-full">
-            <FieldLabel for="dept-remark">备注</FieldLabel>
-            <Textarea
-              id="dept-remark"
-              v-model="remark"
-              placeholder="补充说明（可选）"
-              :disabled="saving"
-            />
-          </Field>
-        </FieldGroup>
-      </FieldSet>
-    </div>
+    <FieldGroup class="ray-form-grid">
+      <Field :data-invalid="formError && !deptName.trim() ? true : undefined">
+        <FieldLabel for="dept-name" required>名称</FieldLabel>
+        <Input
+          id="dept-name"
+          ref="nameInput"
+          v-model="deptName"
+          name="deptName"
+          :disabled="saving"
+          required
+          :aria-invalid="formError && !deptName.trim() ? true : undefined"
+          :aria-describedby="formError && !deptName.trim() ? 'dept-name-error' : undefined"
+        />
+        <FieldError v-if="formError && !deptName.trim()" id="dept-name-error"
+          >请填写名称</FieldError
+        >
+      </Field>
+      <Field>
+        <FieldLabel for="dept-parent">上级</FieldLabel>
+        <RayTreeSelect
+          id="dept-parent"
+          :model-value="parentId || null"
+          row-action="select"
+          :options="parentSelectOptions"
+          placeholder="选择上级"
+          size="lg"
+          :disabled="saving"
+          class="w-full"
+          @update:model-value="parentId = $event ?? ''"
+        />
+      </Field>
+      <Field>
+        <FieldLabel for="dept-sort">顺序</FieldLabel>
+        <Input
+          id="dept-sort"
+          v-model="sortText"
+          name="sort"
+          inputmode="numeric"
+          :disabled="saving"
+        />
+      </Field>
+      <Field>
+        <FieldLabel for="dept-leader">负责人</FieldLabel>
+        <Input id="dept-leader" v-model="leader" :disabled="saving" />
+      </Field>
+      <Field>
+        <FieldLabel for="dept-phone">电话</FieldLabel>
+        <Input id="dept-phone" v-model="phone" :disabled="saving" />
+      </Field>
+      <Field>
+        <FieldLabel for="dept-email">邮箱</FieldLabel>
+        <Input id="dept-email" v-model="email" type="email" :disabled="saving" />
+      </Field>
+      <Field>
+        <FieldLabel for="dept-enabled">启用</FieldLabel>
+        <Switch id="dept-enabled" v-model="enabled" :disabled="saving" />
+      </Field>
+      <Field class="ray-form-span-full">
+        <FieldLabel for="dept-remark">备注</FieldLabel>
+        <Textarea
+          id="dept-remark"
+          v-model="remark"
+          placeholder="补充说明（可选）"
+          :disabled="saving"
+        />
+      </Field>
+    </FieldGroup>
 
     <template #footer>
       <Button

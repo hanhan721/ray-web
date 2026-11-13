@@ -13,6 +13,20 @@ export type SelectModelValue<
   Multiple extends boolean = false,
 > = Multiple extends true ? T[] : T | null
 
+/** 列表项复选框的三态。 */
+export type SelectionState = 'checked' | 'mixed' | 'unchecked'
+
+/**
+ * 按「受影响值集合」计算选中态，供 RaySelect 与 RayTreeSelect 的列表项复选框共用。
+ */
+export function selectionState(
+  selected: readonly SelectValue[],
+  affected: readonly SelectValue[],
+): SelectionState {
+  const count = affected.filter((value) => selected.includes(value)).length
+  return count === 0 ? 'unchecked' : count === affected.length ? 'checked' : 'mixed'
+}
+
 /**
  * 多选展示时的折叠规则。
  *

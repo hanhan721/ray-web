@@ -16,6 +16,7 @@ import {
   ComboboxViewport,
 } from '@/components/ui/combobox'
 import { selectItemClass, selectTriggerVariants } from '@/components/ui/select/select-styles'
+import SelectCheckbox from './SelectCheckbox.vue'
 import {
   splitVisibleOptions,
   type SelectModelValue,
@@ -37,6 +38,8 @@ const props = withDefaults(
     searchable?: boolean
     maxVisible?: number
     maxSelection?: number
+    /** 列表项左侧显示复选框，替代右侧对勾；仅影响呈现，选中仍由行点击完成。 */
+    checkbox?: boolean
     invalid?: boolean
     size?: 'sm' | 'default' | 'lg'
     name?: string
@@ -53,6 +56,7 @@ const props = withDefaults(
     searchable: true,
     maxVisible: 3,
     maxSelection: 0,
+    checkbox: false,
     size: 'default',
     name: '',
     required: false,
@@ -412,6 +416,10 @@ function onEnter(event: KeyboardEvent) {
               :class="selectItemClass"
             >
               <slot name="option" :option="option" :selected="isSelected(option.value)">
+                <SelectCheckbox
+                  v-if="checkbox"
+                  :state="isSelected(option.value) ? 'checked' : 'unchecked'"
+                />
                 <span
                   class="min-w-0 flex-1 truncate"
                   :style="option.depth ? { paddingLeft: `${option.depth * 14}px` } : undefined"
@@ -420,7 +428,7 @@ function onEnter(event: KeyboardEvent) {
                 </span>
               </slot>
               <CheckIcon
-                v-if="isSelected(option.value)"
+                v-if="!checkbox && isSelected(option.value)"
                 class="text-muted-foreground size-3.5 shrink-0"
                 aria-hidden="true"
               />

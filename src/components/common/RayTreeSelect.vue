@@ -1,9 +1,10 @@
 <script setup lang="ts" generic="T extends SelectValue, Multiple extends boolean = false">
-import { Check, ChevronDown, ChevronRight, Minus } from '@lucide/vue'
+import { Check, ChevronDown, ChevronRight } from '@lucide/vue'
 import { computed, shallowRef, watch } from 'vue'
 import { TreeItem, TreeRoot } from 'reka-ui'
 import RaySelect from './RaySelect.vue'
-import type { SelectModelValue, SelectValue } from './select'
+import SelectCheckbox from './SelectCheckbox.vue'
+import { selectionState, type SelectModelValue, type SelectValue, type SelectionState } from './select'
 
 export interface TreeSelectOption<T extends SelectValue> {
   value: T
@@ -11,6 +12,9 @@ export interface TreeSelectOption<T extends SelectValue> {
   children?: TreeSelectOption<T>[]
   disabled?: boolean
 }
+
+/** 行点击触发什么：select 选中、toggle 展开/收起、both 两者都触发、none 无动作。 */
+export type TreeRowAction = 'select' | 'toggle' | 'both' | 'none'
 
 defineOptions({ inheritAttrs: false })
 const props = withDefaults(
@@ -25,6 +29,10 @@ const props = withDefaults(
     maxVisible?: number
     maxSelection?: number
     checkStrictly?: boolean
+    /** 列表项复选框；默认多选显示、单选隐藏，可显式覆盖。 */
+    checkbox?: boolean
+    /** 行点击行为；展开/收起只由箭头和键盘方向键触发，默认行点击只选中。 */
+    rowAction?: TreeRowAction
     size?: 'sm' | 'default' | 'lg'
   }>(),
   {
@@ -36,6 +44,9 @@ const props = withDefaults(
     maxVisible: 3,
     maxSelection: 0,
     checkStrictly: false,
+    // 显式 undefined：Vue 会把缺省的 Boolean prop 强转为 false，导致 ?? 失效。
+    checkbox: undefined,
+    rowAction: 'select',
     size: 'default',
   },
 )
@@ -85,11 +96,10 @@ function selectable(item: TreeSelectOption<T>): T[] {
   if (item.disabled) return []
   return [item.value, ...(item.children ?? []).flatMap(selectable)]
 }
-function state(item: TreeSelectOption<T>): 'checked' | 'mixed' | 'unchecked' {
-  item = all.value.find((node) => node.value === item.value) ?? item
-  const values = props.checkStrictly ? [item.value] : selectable(item)
-  const count = values.filter((value) => selectedValues.value.includes(value)).length
-  return count === 0 ? 'unchecked' : count === values.length ? 'checked' : 'mixed'
+function state(item: TreeSelectOption<T>): SelectionState {
+  const node = all.value.find((candidate) => candidate.value === item.value) ?? item
+  const values = props.checkStrictly ? [node.value] : selectable(node)
+  return selectionState(selectedValues.value, values)
 }
 const blocked = computed(() => {
   const result = new Set<T>()
@@ -141,9 +151,51 @@ function choose(
   const next = new Set(selectedValues.value)
   const affected = props.checkStrictly ? [item.value] : selectable(item)
   const remove = state(item) === 'checked'
-  for (const value of affected) remove ? next.delete(value) : next.add(value)
+  for (const value of affected) {
+    if (remove) next.delete(value)
+    else next.add(value)
+  }
   if (!props.checkStrictly) updateAncestors(next, props.options)
   commit([...next])
+}
+
+// 行点击行为可配置：
+// - select：只选中，不展开（展开/收起交给箭头和键盘）。
+// - toggle：只展开/收起，不选中。
+// - both：选中并展开/收起。
+// - none：无动作。
+// 键盘 Enter/空格始终选中，方向键始终展开收起。
+// reka 派发的是包装后的 CustomEvent，原始事件在 detail.originalEvent 上。
+const showCheckbox = computed(() => props.checkbox ?? props.multiple)
+
+function onMouse(event: Event): boolean {
+  return (
+    (event as CustomEvent<{ originalEvent?: Event }>).detail?.originalEvent instanceof MouseEvent
+  )
+}
+
+function onRowSelect(
+  event: Event,
+  item: TreeSelectOption<T>,
+  commit: (value: T | T[] | null) => void,
+  close: () => void,
+) {
+  // 统一阻断 reka 内部 onSelect，选中一律走自定义模型。
+  event.preventDefault()
+  // 键盘 Enter/空格始终可选中，无障碍不随 rowAction 变化。
+  if (!onMouse(event)) {
+    choose(item, commit, close)
+    return
+  }
+  if (props.rowAction === 'select' || props.rowAction === 'both') {
+    choose(item, commit, close)
+  }
+}
+
+function onRowToggle(event: Event) {
+  // 键盘方向键始终可展开收起；鼠标行点击按 rowAction 决定是否展开。
+  if (!onMouse(event)) return
+  if (props.rowAction === 'select' || props.rowAction === 'none') event.preventDefault()
 }
 </script>
 
@@ -192,16 +244,10 @@ function choose(
           v-slot="{ isExpanded, handleToggle }"
           v-bind="item.bind"
           :disabled="blocked.has(item.value.value)"
-          :aria-checked="
-            multiple
-              ? state(item.value) === 'mixed'
-                ? 'mixed'
-                : state(item.value) === 'checked'
-              : undefined
-          "
           class="hover:bg-accent focus-visible:bg-accent flex min-h-9 cursor-pointer items-center gap-1 rounded-sm pr-2 text-sm outline-none data-disabled:pointer-events-none data-disabled:opacity-50"
           :style="{ paddingLeft: `${(item.level - 1) * 18 + 4}px` }"
-          @select.prevent="choose(item.value, commit, close)"
+          @select="onRowSelect($event, item.value, commit, close)"
+          @toggle="onRowToggle"
         >
           <button
             v-if="item.hasChildren && !query.trim()"
@@ -214,14 +260,18 @@ function choose(
             <ChevronDown v-if="isExpanded" class="size-4" /><ChevronRight v-else class="size-4" />
           </button>
           <span v-else class="size-7 shrink-0" />
-          <span
-            v-if="multiple"
-            class="border-input flex size-4 shrink-0 items-center justify-center rounded border"
-            aria-hidden="true"
+          <button
+            v-if="showCheckbox"
+            type="button"
+            role="checkbox"
+            tabindex="-1"
+            :aria-checked="state(item.value) === 'mixed' ? 'mixed' : state(item.value) === 'checked'"
+            :aria-label="item.value.label"
+            class="flex shrink-0 items-center justify-center"
+            @click.stop="choose(item.value, commit, close)"
           >
-            <Check v-if="state(item.value) === 'checked'" class="size-3" />
-            <Minus v-else-if="state(item.value) === 'mixed'" class="size-3" />
-          </span>
+            <SelectCheckbox :state="state(item.value)" />
+          </button>
           <span class="min-w-0 flex-1 truncate" :title="item.value.label">{{
             item.value.label
           }}</span>

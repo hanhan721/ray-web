@@ -5,13 +5,11 @@ import { createRole, getRoleById, updateRole } from '@/api/role'
 import type { PermissionTree } from '@/types/permission'
 import { QUIET, failureMessage } from '@/utils/failure'
 import RayFormDialog from '@/components/common/RayFormDialog.vue'
+import RayTreeSelect, { type TreeSelectOption } from '@/components/common/RayTreeSelect.vue'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 import {
   Field,
   FieldLabel,
-  FieldLegend,
-  FieldSet,
   FieldGroup,
   FieldError,
 } from '@/components/ui/field'
@@ -39,7 +37,7 @@ const sortText = shallowRef('0')
 const enabled = shallowRef(true)
 const remark = shallowRef('')
 const permissionIds = shallowRef<number[]>([])
-const permissions = shallowRef<Array<{ id: number; label: string }>>([])
+const permissionOptions = shallowRef<TreeSelectOption<number>[]>([])
 const formError = shallowRef('')
 const stepNote = shallowRef('')
 const loading = shallowRef(false)
@@ -72,20 +70,12 @@ function profileBody(roleId: number | null) {
   }
 }
 
-function flatten(nodes: PermissionTree[], depth = 0): Array<{ id: number; label: string }> {
-  const result: Array<{ id: number; label: string }> = []
-  for (const node of nodes) {
-    result.push({ id: node.id, label: `${depth > 0 ? '· '.repeat(depth) : ''}${node.name}` })
-    if (node.children?.length) result.push(...flatten(node.children, depth + 1))
-  }
-  return result
-}
-
-function setPermission(id: number, checked: boolean) {
-  const next = new Set(permissionIds.value)
-  if (checked) next.add(id)
-  else next.delete(id)
-  permissionIds.value = [...next]
+function toTreeOptions(nodes: PermissionTree[]): TreeSelectOption<number>[] {
+  return nodes.map((node) => ({
+    value: node.id,
+    label: node.name,
+    children: node.children?.length ? toTreeOptions(node.children) : undefined,
+  }))
 }
 
 async function resetForm() {
@@ -97,7 +87,7 @@ async function resetForm() {
   enabled.value = true
   remark.value = ''
   permissionIds.value = []
-  permissions.value = []
+  permissionOptions.value = []
   formError.value = ''
   stepNote.value = ''
   profileSavedKey.value = ''
@@ -109,7 +99,7 @@ async function resetForm() {
     if (roleId !== null && props.canAssignPermissions) {
       const tree = await getPermissionTree(QUIET)
       if (!sameEditorSession(sessionId, session, roleId, props.roleId)) return
-      permissions.value = flatten(tree ?? [])
+      permissionOptions.value = toTreeOptions(tree ?? [])
     }
     if (roleId !== null) {
       const role = await getRoleById(roleId, QUIET)
@@ -246,7 +236,7 @@ async function onSubmit() {
     :open="open"
     :title="creating ? '新增角色' : '编辑角色'"
     :description="creating ? '创建后可以再分配权限。' : '资料和权限分开保存。列表按顺序升序。'"
-    size="xl"
+    size="lg"
     :saving="saving"
     :error="formError"
     :step-note="stepNote"
@@ -261,97 +251,75 @@ async function onSubmit() {
       正在读取角色资料
     </p>
 
-    <div v-else-if="detailReady" class="flex flex-col gap-6">
-      <FieldSet class="gap-3">
-        <FieldLegend class="mb-0">基本资料</FieldLegend>
-        <FieldGroup class="ray-form-grid">
-          <Field :data-invalid="formError && !roleName.trim() ? true : undefined">
-            <FieldLabel for="role-name" required>名称</FieldLabel>
-            <Input
-              id="role-name"
-              ref="nameInput"
-              v-model="roleName"
-              name="roleName"
-              :disabled="saving"
-              required
-              :aria-invalid="formError && !roleName.trim() ? true : undefined"
-              :aria-describedby="formError && !roleName.trim() ? 'role-name-error' : undefined"
-            />
-
-            <FieldError v-if="formError && !roleName.trim()" id="role-name-error"
-              >请填写名称</FieldError
-            >
-          </Field>
-          <Field :data-invalid="formError && !roleKey.trim() ? true : undefined">
-            <FieldLabel for="role-key" required>标识</FieldLabel>
-            <Input
-              id="role-key"
-              v-model="roleKey"
-              name="roleKey"
-              :disabled="saving"
-              required
-              :aria-invalid="formError && !roleKey.trim() ? true : undefined"
-              :aria-describedby="formError && !roleKey.trim() ? 'role-key-error' : undefined"
-            />
-
-            <FieldError v-if="formError && !roleKey.trim()" id="role-key-error"
-              >请填写标识</FieldError
-            >
-          </Field>
-          <Field>
-            <FieldLabel for="role-sort">顺序</FieldLabel>
-            <Input
-              id="role-sort"
-              v-model="sortText"
-              name="sort"
-              inputmode="numeric"
-              :disabled="saving"
-            />
-          </Field>
-          <Field>
-            <FieldLabel for="role-enabled">启用</FieldLabel>
-            <Switch id="role-enabled" v-model="enabled" :disabled="saving" />
-          </Field>
-          <Field class="ray-form-span-full">
-            <FieldLabel for="role-remark">备注</FieldLabel>
-            <Textarea
-              id="role-remark"
-              v-model="remark"
-              placeholder="补充说明（可选）"
-              :disabled="saving"
-            />
-          </Field>
-        </FieldGroup>
-      </FieldSet>
-
-      <FieldSet v-if="!creating && canAssignPermissions" class="gap-3">
-        <FieldLegend class="mb-0">权限</FieldLegend>
-        <p class="text-muted-foreground text-sm">
-          资料和权限分开提交；如果只成功了一步，会提示哪一步没有保存。
-        </p>
-        <div class="grid gap-2 sm:grid-cols-2">
-          <Field
-            v-for="permission in permissions"
-            :key="permission.id"
-            orientation="horizontal"
-            class="rounded-md border px-3 py-2"
-          >
-            <Checkbox
-              :id="`role-permission-${permission.id}`"
-              :model-value="permissionIds.includes(permission.id)"
-              :disabled="saving"
-              @update:model-value="setPermission(permission.id, Boolean($event))"
-            />
-            <FieldLabel :for="`role-permission-${permission.id}`" class="font-normal">
-              {{ permission.label }}
-            </FieldLabel>
-          </Field>
-        </div>
-        <p v-if="permissions.length === 0" class="text-muted-foreground text-sm">
-          没有可分配的权限。
-        </p>
-      </FieldSet>
-    </div>
+    <FieldGroup v-else-if="detailReady" class="ray-form-grid">
+      <Field :data-invalid="formError && !roleName.trim() ? true : undefined">
+        <FieldLabel for="role-name" required>名称</FieldLabel>
+        <Input
+          id="role-name"
+          ref="nameInput"
+          v-model="roleName"
+          name="roleName"
+          :disabled="saving"
+          required
+          :aria-invalid="formError && !roleName.trim() ? true : undefined"
+          :aria-describedby="formError && !roleName.trim() ? 'role-name-error' : undefined"
+        />
+        <FieldError v-if="formError && !roleName.trim()" id="role-name-error"
+          >请填写名称</FieldError
+        >
+      </Field>
+      <Field :data-invalid="formError && !roleKey.trim() ? true : undefined">
+        <FieldLabel for="role-key" required>标识</FieldLabel>
+        <Input
+          id="role-key"
+          v-model="roleKey"
+          name="roleKey"
+          :disabled="saving"
+          required
+          :aria-invalid="formError && !roleKey.trim() ? true : undefined"
+          :aria-describedby="formError && !roleKey.trim() ? 'role-key-error' : undefined"
+        />
+        <FieldError v-if="formError && !roleKey.trim()" id="role-key-error"
+          >请填写标识</FieldError
+        >
+      </Field>
+      <Field>
+        <FieldLabel for="role-sort">顺序</FieldLabel>
+        <Input
+          id="role-sort"
+          v-model="sortText"
+          name="sort"
+          inputmode="numeric"
+          :disabled="saving"
+        />
+      </Field>
+      <Field>
+        <FieldLabel for="role-enabled">启用</FieldLabel>
+        <Switch id="role-enabled" v-model="enabled" :disabled="saving" />
+      </Field>
+      <Field v-if="!creating && canAssignPermissions" class="ray-form-span-full">
+        <FieldLabel for="role-permissions">权限</FieldLabel>
+        <RayTreeSelect
+          id="role-permissions"
+          v-model="permissionIds"
+          multiple
+          row-action="select"
+          :options="permissionOptions"
+          placeholder="选择权限"
+          :disabled="saving"
+          class="w-full"
+        />
+      </Field>
+      <Field class="ray-form-span-full">
+        <FieldLabel for="role-remark">备注</FieldLabel>
+        <Textarea
+          id="role-remark"
+          v-model="remark"
+          placeholder="补充说明（可选）"
+          :disabled="saving"
+        />
+      </Field>
+    </FieldGroup>
 
     <div v-else class="flex min-h-48 flex-col items-center justify-center gap-2 text-center">
       <p class="text-sm font-medium">没有读取到角色资料</p>
