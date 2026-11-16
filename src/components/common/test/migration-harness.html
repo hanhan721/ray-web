@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Migration verification</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module">
+      import { createApp } from 'vue'
+      import { createPinia } from 'pinia'
+      import MigrationHarness from './MigrationHarness.vue'
+      import '../../../styles/globals.css'
+      createApp(MigrationHarness).use(createPinia()).mount('#app')
+    </script>
+  </body>
+</html>
