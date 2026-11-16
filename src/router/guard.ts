@@ -77,7 +77,7 @@ export function setupRouterGuard(router: Router) {
       // 添加动态路由（避免重复添加）
       dynamicRoutes.forEach((route) => {
         if (route.name && !router.hasRoute(route.name)) {
-          router.addRoute(route)
+          router.addRoute('Root', route)
         }
       })
 

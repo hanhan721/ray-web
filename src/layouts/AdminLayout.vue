@@ -1,51 +1,313 @@
 <template>
-  <NLayout has-sider class="admin-layout">
-    <NLayoutSider
-      bordered
-      collapse-mode="width"
-      :collapsed="appStore.sidebarCollapsed"
-      :collapsed-width="appStore.themeConfig.sidebarCollapsedWidth"
-      :width="appStore.themeConfig.sidebarWidth"
-      :native-scrollbar="false"
-      :inverted="appStore.themeConfig.menuTheme === 'dark'"
-      show-trigger="bar"
-      @collapse="appStore.setSidebarCollapsed(true)"
-      @expand="appStore.setSidebarCollapsed(false)"
-    >
-      <AppSidebar />
-    </NLayoutSider>
+  <div
+    class="app-shell"
+    :class="{
+      'sidebar-inverted': sidebarInverted,
+      'has-sidebar': sidebarOpen,
+    }"
+    :style="shellStyle"
+  >
+    <a href="#main" class="skip-link">跳到主要内容</a>
+    <header class="app-header">
+      <div ref="brandRegionRef" class="brand-region">
+        <RouterLink to="/dashboard" class="app-brand">
+          <span class="brand-mark" aria-hidden="true">R</span>
+          <span>
+            Ray
+            <span class="brand-subtitle">管理平台</span>
+          </span>
+        </RouterLink>
+      </div>
+      <TopNav
+        class="app-top-nav"
+        :nodes="modules"
+        :active-id="homeActive ? undefined : activeModule?.id"
+        :home-active="homeActive"
+      />
+      <div class="app-user">
+        <p class="app-user-name" :title="displayName">
+          {{ displayName }}
+        </p>
+        <NTooltip trigger="hover">
+          <template #trigger>
+            <NButton quaternary circle aria-label="切换主题" @click="appStore.toggleTheme">
+              <template #icon>
+                <NIcon :component="appStore.isDarkMode ? SunnyOutline : MoonOutline" />
+              </template>
+            </NButton>
+          </template>
+          {{ appStore.isDarkMode ? '切换亮色模式' : '切换暗色模式' }}
+        </NTooltip>
+        <NTooltip trigger="hover">
+          <template #trigger>
+            <NButton quaternary circle aria-label="系统设置" @click="appStore.openSettingDrawer">
+              <template #icon>
+                <NIcon :component="SettingsOutline" />
+              </template>
+            </NButton>
+          </template>
+          系统设置
+        </NTooltip>
+        <NButton secondary size="small" @click="onLogout">
+          退出
+        </NButton>
+      </div>
+    </header>
 
-    <NLayout class="main-layout">
-      <NLayoutHeader bordered>
-        <AppHeader />
-      </NLayoutHeader>
-
-      <TabsView />
-
-      <NLayoutContent content-style="display: flex; flex-direction: column;">
+    <div class="app-body">
+      <aside v-if="sidebarPresent" class="app-sidebar" aria-label="子菜单" :inert="sidebarOpen ? undefined : true">
+        <div class="sidebar-panel">
+          <div class="sidebar-mobile-bar">
+            <span class="sidebar-mobile-title">{{ displayedTitle }}</span>
+            <NButton
+              quaternary
+              size="small"
+              :aria-expanded="navOpen"
+              aria-controls="app-nav"
+              @click="navOpen = !navOpen"
+            >
+              <template #icon>
+                <NIcon :component="MenuOutline" />
+              </template>
+              {{ navOpen ? '收起子菜单' : '展开子菜单' }}
+            </NButton>
+          </div>
+          <nav
+            id="app-nav"
+            class="secondary-nav"
+            :class="{ 'is-open': navOpen }"
+            :aria-label="`${displayedTitle}子菜单`"
+            @keydown.esc="closeMobileNav"
+          >
+            <NavTree
+              class="nav-tree-root"
+              :nodes="displayedNodes"
+              :open="openGroups"
+              :active-ancestors="activeAncestors"
+              :depth="0"
+              @toggle="toggleGroup"
+              @navigate="closeMobileNav"
+            />
+          </nav>
+        </div>
+      </aside>
+      <div class="app-content">
+        <div v-if="appStore.themeConfig.showTabs" class="app-tabs">
+          <TabsView />
+        </div>
         <AppMain />
-      </NLayoutContent>
-    </NLayout>
-  </NLayout>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { useAppStore } from '@/stores/app'
-import { useTabsStore } from '@/stores/tabs'
-import AppHeader from './components/AppHeader.vue'
-import AppSidebar from './components/AppSidebar.vue'
-import AppMain from './components/AppMain.vue'
+import { MenuOutline, MoonOutline, SettingsOutline, SunnyOutline } from '@vicons/ionicons5'
 import TabsView from '@/components/common/TabsView/index.vue'
+import { useAppStore } from '@/stores/app'
+import { usePermissionStore } from '@/stores/permission'
+import { useTabsStore } from '@/stores/tabs'
+import { useUserStore } from '@/stores/user'
+import AppMain from './components/AppMain.vue'
+import NavTree from './components/NavTree.vue'
+import TopNav from './components/TopNav.vue'
+import { buildNavigation, findNavigationTrail, siblingGroupIds, type NavNode } from './navigation'
 
 defineOptions({
   name: 'AdminLayout',
 })
 
 const route = useRoute()
+const router = useRouter()
 const appStore = useAppStore()
+const permissionStore = usePermissionStore()
 const tabsStore = useTabsStore()
+const userStore = useUserStore()
+const dialog = useDialog()
 
-// 监听路由变化，自动添加标签
+const SIDEBAR_MOTION_MS = 320
+const BRAND_PADDING = 24
+
+const navOpen = shallowRef(false)
+const openGroups = shallowRef<Set<number>>(new Set())
+const brandRegionRef = ref<HTMLElement | null>(null)
+const collapsedBrandWidth = ref(168)
+const displayedNodes = shallowRef<NavNode[]>([])
+const displayedTitle = ref('')
+const sidebarPresent = ref(false)
+const sidebarOpen = ref(false)
+const sideSpan = ref(0)
+let sidebarFrame = 0
+let sidebarGeneration = 0
+let sidebarMoving = false
+
+const displayName = computed(() => userStore.nickname || userStore.username || '未登录')
+const sidebarInverted = computed(() => appStore.themeConfig.menuTheme === 'dark' && !appStore.isDarkMode)
+const navigation = computed(() => buildNavigation(permissionStore.visibleMenus))
+const modules = computed(() => navigation.value.filter((node) => !(node.kind === 'item' && node.to === '/dashboard')))
+const homeActive = computed(() => route.name === 'Dashboard' || route.path === '/dashboard')
+const activeTrail = computed(() => (homeActive.value ? [] : findNavigationTrail(navigation.value, route.path)))
+const activeModule = computed(() => activeTrail.value[0])
+const secondaryNodes = computed(() => (activeModule.value?.kind === 'group' ? activeModule.value.items : []))
+const wantsSidebar = computed(() => secondaryNodes.value.length > 0)
+const shellStyle = computed(() => ({
+  '--brand-min': `${collapsedBrandWidth.value}px`,
+  '--side-span': `${sideSpan.value}px`,
+}))
+
+sidebarPresent.value = wantsSidebar.value
+sidebarOpen.value = wantsSidebar.value
+sideSpan.value = wantsSidebar.value ? appStore.themeConfig.sidebarWidth : 0
+const activeAncestors = computed(
+  () => new Set(activeTrail.value.filter((node) => node.kind === 'group').map((node) => node.id))
+)
+
+function toggleGroup(id: number) {
+  const next = new Set(openGroups.value)
+  if (next.has(id)) {
+    next.delete(id)
+  } else {
+    if (appStore.themeConfig.menuAccordion) {
+      for (const siblingId of siblingGroupIds(displayedNodes.value, id) ?? []) {
+        next.delete(siblingId)
+      }
+    }
+    next.add(id)
+  }
+  openGroups.value = next
+}
+
+async function closeMobileNav() {
+  if (!navOpen.value) return
+  navOpen.value = false
+  await nextTick()
+  document.getElementById('main')?.focus()
+}
+
+function onLogout() {
+  dialog.warning({
+    title: '提示',
+    content: '确定要退出登录吗？',
+    positiveText: '确定',
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      await userStore.logout()
+      router.push('/login')
+    },
+  })
+}
+
+function measureBrand() {
+  const link = brandRegionRef.value?.querySelector<HTMLElement>('.app-brand')
+  if (!link) return
+  collapsedBrandWidth.value = Math.ceil(link.offsetWidth) + BRAND_PADDING
+}
+
+function isDesktopSidebar() {
+  return window.matchMedia('(min-width: 768px)').matches
+}
+
+function prefersReducedMotion() {
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+
+function finishSidebarCollapse() {
+  cancelAnimationFrame(sidebarFrame)
+  sidebarMoving = false
+  if (sidebarOpen.value) return
+  sideSpan.value = 0
+  sidebarPresent.value = false
+}
+
+function animateSideSpan(to: number, onDone?: () => void) {
+  cancelAnimationFrame(sidebarFrame)
+  const from = sideSpan.value
+  const instant = prefersReducedMotion() || !isDesktopSidebar() || Math.abs(from - to) < 1
+  if (instant) {
+    sidebarMoving = false
+    sideSpan.value = to
+    onDone?.()
+    return
+  }
+
+  sidebarMoving = true
+  const start = window.performance.now()
+  const step = (now: number) => {
+    const progress = Math.min(1, (now - start) / SIDEBAR_MOTION_MS)
+    const eased = 1 - (1 - progress) ** 3
+    sideSpan.value = from + (to - from) * eased
+    if (progress < 1) {
+      sidebarFrame = requestAnimationFrame(step)
+      return
+    }
+    sidebarMoving = false
+    sideSpan.value = to
+    onDone?.()
+  }
+  sidebarFrame = requestAnimationFrame(step)
+}
+
+async function syncSidebar(open: boolean) {
+  const generation = ++sidebarGeneration
+  if (open) {
+    if (sidebarOpen.value && sideSpan.value >= appStore.themeConfig.sidebarWidth - 1) return
+    sidebarPresent.value = true
+    sidebarOpen.value = true
+    await nextTick()
+    if (generation !== sidebarGeneration) return
+    animateSideSpan(appStore.themeConfig.sidebarWidth)
+    return
+  }
+
+  if (!sidebarPresent.value && sideSpan.value <= 1) return
+  sidebarOpen.value = false
+  if (!isDesktopSidebar() || prefersReducedMotion()) {
+    finishSidebarCollapse()
+    return
+  }
+  animateSideSpan(0, () => {
+    if (generation !== sidebarGeneration) return
+    finishSidebarCollapse()
+  })
+}
+
+watch(secondaryNodes, (nodes) => {
+  if (nodes.length === 0) return
+  displayedNodes.value = nodes
+  displayedTitle.value = activeModule.value?.title ?? ''
+}, { immediate: true })
+
+watch(wantsSidebar, (open) => {
+  void syncSidebar(open)
+})
+
+watch(
+  () => appStore.themeConfig.sidebarWidth,
+  (width) => {
+    if (sidebarOpen.value && !sidebarMoving) sideSpan.value = width
+  }
+)
+
+watch(
+  activeAncestors,
+  (ancestors) => {
+    openGroups.value = new Set([...openGroups.value, ...ancestors])
+  },
+  { immediate: true }
+)
+
+watch(() => route.fullPath, closeMobileNav)
+
+onMounted(() => {
+  measureBrand()
+  window.addEventListener('resize', measureBrand)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', measureBrand)
+  cancelAnimationFrame(sidebarFrame)
+})
+
 watch(
   () => route.path,
   (path: string) => {
@@ -65,25 +327,316 @@ watch(
 </script>
 
 <style scoped lang="scss">
-.admin-layout {
-  height: 100vh;
-}
-
-.main-layout {
+.app-shell {
+  --app-header-block: var(--header-height);
+  --side-span: 0px;
+  --nav-sidebar-bg: var(--bg-color-container);
+  --nav-sidebar-fg: var(--text-color-primary);
+  --nav-sidebar-muted: var(--text-color-secondary);
+  --nav-sidebar-hover: var(--bg-color-hover);
+  --nav-sidebar-active: var(--primary-color-suppl);
+  --nav-sidebar-border: var(--border-color);
+  --nav-accent: var(--primary-color);
   display: flex;
   flex-direction: column;
-}
-
-:deep(.n-layout-sider) {
-  transition: width 0.2s, min-width 0.2s;
-}
-
-:deep(.n-layout-header) {
-  height: $header-height;
-}
-
-:deep(.n-layout-content) {
-  flex: 1;
+  height: 100vh;
   overflow: hidden;
+  background: var(--bg-color);
+  color: var(--text-color-primary);
+
+  &.sidebar-inverted {
+    --nav-sidebar-bg: #001529;
+    --nav-sidebar-fg: rgba(255, 255, 255, 0.85);
+    --nav-sidebar-muted: rgba(255, 255, 255, 0.65);
+    --nav-sidebar-hover: rgba(255, 255, 255, 0.08);
+    --nav-sidebar-active: rgba(24, 144, 255, 0.22);
+    --nav-sidebar-border: rgba(255, 255, 255, 0.12);
+  }
+}
+
+.skip-link {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+
+  &:focus {
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    z-index: 50;
+    width: auto;
+    height: auto;
+    padding: 8px 12px;
+    overflow: visible;
+    clip: auto;
+    background: var(--bg-color-container);
+    border-radius: 6px;
+    outline: 2px solid var(--primary-color);
+  }
+}
+
+.app-header {
+  position: relative;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  flex: none;
+  height: var(--app-header-block);
+  padding-inline: 16px;
+  background: var(--bg-color-container);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.app-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-color-primary);
+  font-size: 16px;
+  font-weight: 600;
+  white-space: nowrap;
+  outline: none;
+
+  &:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+}
+
+.brand-mark {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--primary-color-suppl);
+  color: var(--primary-color);
+  font-weight: 700;
+}
+
+.brand-subtitle {
+  color: var(--text-color-secondary);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.app-user {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.app-user-name {
+  max-width: 10rem;
+  margin: 0 8px 0 0;
+  overflow: hidden;
+  color: var(--text-color-secondary);
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.app-sidebar {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--nav-sidebar-bg);
+  color: var(--nav-sidebar-fg);
+  border-bottom: 1px solid var(--nav-sidebar-border);
+}
+
+.sidebar-mobile-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 16px;
+}
+
+.sidebar-mobile-title {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.secondary-nav {
+  display: none;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) transparent;
+
+  &.is-open {
+    display: block;
+    max-height: min(24rem, 50vh);
+  }
+}
+
+.nav-tree-root {
+  padding: 4px 12px 16px;
+}
+
+.app-content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--bg-color);
+}
+
+.app-tabs {
+  flex: none;
+}
+
+@media (min-width: 768px) {
+  .app-header {
+    grid-template-columns: max(var(--brand-min, 168px), var(--side-span, 0px)) minmax(0, 1fr) auto;
+    gap: 0;
+    padding-left: 0;
+    padding-right: 16px;
+  }
+
+  .brand-region {
+    display: flex;
+    align-items: center;
+    align-self: stretch;
+    min-width: 0;
+    padding-left: 24px;
+    overflow: hidden;
+    background: transparent;
+  }
+
+  .has-sidebar .brand-region {
+    padding-right: 24px;
+  }
+
+  .app-top-nav {
+    margin-left: 24px;
+    transition: margin-left 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .has-sidebar .app-top-nav {
+    margin-left: 8px;
+  }
+
+  .app-user {
+    margin-left: 12px;
+  }
+
+  .app-body {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    min-height: 0;
+  }
+
+  .app-content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .app-sidebar {
+    width: var(--side-span);
+    flex: none;
+    min-width: 0;
+    overflow: hidden;
+    border-right: 0;
+    border-bottom: 0;
+    pointer-events: none;
+  }
+
+  .has-sidebar .app-sidebar {
+    pointer-events: auto;
+  }
+
+  .sidebar-panel {
+    display: flex;
+    flex-direction: column;
+    width: var(--sidebar-width);
+    height: 100%;
+    min-height: 0;
+    border-right: 1px solid var(--nav-sidebar-border);
+  }
+
+  .sidebar-mobile-bar {
+    display: none;
+  }
+
+  .secondary-nav,
+  .secondary-nav.is-open {
+    display: block;
+    flex: 1;
+    max-height: none;
+    min-height: 0;
+  }
+
+  .nav-tree-root {
+    padding-top: 16px;
+  }
+}
+
+@media (max-width: 1023px) {
+  .brand-subtitle {
+    display: none;
+  }
+
+  .app-user-name {
+    max-width: 5rem;
+  }
+}
+
+@media (max-width: 767px) {
+  .app-shell {
+    --app-header-block: calc(var(--header-height) + 48px);
+  }
+
+  .app-header {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: var(--header-height) 48px;
+    gap: 0;
+    padding-left: 16px;
+    padding-right: 8px;
+  }
+
+  .brand-region {
+    justify-self: start;
+  }
+
+  .app-user {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .app-top-nav {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    align-self: stretch;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-shell,
+  .brand-region,
+  .app-brand,
+  .brand-subtitle,
+  .app-top-nav {
+    transition: none;
+  }
 }
 </style>

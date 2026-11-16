@@ -1,5 +1,5 @@
 <template>
-  <div class="app-main">
+  <div id="main" tabindex="-1" class="app-main">
     <RouterView v-slot="{ Component }">
       <Transition name="fade" mode="out-in">
         <KeepAlive :include="cachedViews">
@@ -25,9 +25,12 @@ const { cachedViews } = storeToRefs(tabsStore)
 <style scoped lang="scss">
 .app-main {
   flex: 1;
+  min-width: 0;
+  min-height: 0;
   padding: $spacing-md;
   overflow: auto;
   background: var(--bg-color);
+  outline: none;
 }
 
 .fade-enter-active,

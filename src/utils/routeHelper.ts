@@ -1,6 +1,5 @@
 import type { RouteRecordRaw } from 'vue-router'
 import type { PermissionVO } from '@/types/permission'
-import { AdminLayout } from '@/layouts'
 
 // 动态导入视图组件
 const viewModules = import.meta.glob('../views/**/*.vue')
@@ -19,34 +18,17 @@ function loadView(component: string) {
 }
 
 /**
- * 将菜单树转换为路由配置
- * @param menus 菜单列表
- * @returns 路由配置数组（类型安全）
+ * 将菜单树转换为路由配置。
+ * 这些路由会挂到唯一的 Root 布局下，由 AdminLayout 统一渲染顶栏和侧栏。
  */
 export function generateRoutes(menus: PermissionVO[]): RouteRecordRaw[] {
-  const routes = generateRoutesInternal(menus) as RouteRecordRaw[]
-
-  // 顶层 MENU 路由需要包裹 AdminLayout，否则不会显示侧边栏和顶栏
-  for (let i = 0; i < routes.length; i++) {
-    const route = routes[i]
-    if (route.component && route.component !== AdminLayout) {
-      routes[i] = {
-        path: route.path,
-        component: AdminLayout,
-        name: `${String(route.name)}Layout`,
-        meta: { ...route.meta },
-        children: [{ ...route, path: '' }],
-      } as RouteRecordRaw
-    }
-  }
-
-  return routes
+  return generateRoutesInternal(menus) as RouteRecordRaw[]
 }
 
 /**
  * 内部生成路由配置
  */
- 
+
 function generateRoutesInternal(menus: PermissionVO[]): any[] {
   const routes = []
 
@@ -76,14 +58,12 @@ function generateRoutesInternal(menus: PermissionVO[]): any[] {
       menu.type === 'DIRECTORY' || menu.component === 'Layout' || (menu.children?.length && !menu.component)
 
     if (isLayout) {
-      // 布局容器：使用 AdminLayout，递归处理子菜单
-      route.component = AdminLayout
+      // 目录只做路径分组。页面渲染在 Root 的 AdminLayout 里，避免每一级目录再套一层导航。
       if (menu.children?.length) {
         route.children = generateRoutesInternal(menu.children)
         // 如果没有设置 redirect，默认重定向到第一个子路由
-         
+
         if (!route.redirect && (route.children as any[]).length > 0) {
-           
           const firstChild = (route.children as any[])[0]
           route.redirect = `${menu.url}/${firstChild.path}`.replace(/\/+/g, '/')
         }
