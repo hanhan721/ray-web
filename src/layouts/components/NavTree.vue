@@ -1,12 +1,13 @@
 <template>
-  <ul class="nav-tree">
+  <ul class="nav-tree" :class="{ 'is-compact': compact }">
     <li v-for="node in nodes" :key="`${node.kind}-${node.id}`">
       <RouterLink
         v-if="node.kind === 'item'"
         :to="node.to"
         :title="node.title"
         class="nav-link"
-        :style="{ paddingLeft: `${12 + depth * 10}px` }"
+        :class="{ 'is-compact': compact }"
+        :style="compact ? undefined : { paddingLeft: `${12 + depth * 10}px` }"
         exact-active-class="nav-link-active"
         @click="onNavigate"
       >
@@ -17,8 +18,8 @@
         <button
           type="button"
           class="nav-link nav-directory"
-          :class="{ 'nav-ancestor': activeAncestors.has(node.id) }"
-          :style="{ paddingLeft: `${12 + depth * 10}px` }"
+          :class="{ 'nav-ancestor': activeAncestors.has(node.id), 'is-compact': compact }"
+          :style="compact ? undefined : { paddingLeft: `${12 + depth * 10}px` }"
           :title="node.title"
           :aria-expanded="open.has(node.id)"
           :aria-controls="`nav-group-${node.id}`"
@@ -36,6 +37,7 @@
                 :open="open"
                 :active-ancestors="activeAncestors"
                 :depth="depth + 1"
+                :compact="compact"
                 @toggle="(id) => emit('toggle', id)"
                 @navigate="emit('navigate')"
               />
@@ -61,6 +63,7 @@ defineProps<{
   open: Set<number>
   activeAncestors: Set<number>
   depth: number
+  compact?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -115,9 +118,30 @@ function onNavigate(event: MouseEvent) {
   width: 100%;
 }
 
-.nav-label {
-  flex: 1;
-  white-space: nowrap;
+.nav-link.is-compact {
+  justify-content: center;
+  gap: 0;
+  width: 100%;
+  padding-right: 0;
+  padding-left: 0;
+
+  .nav-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .nav-chevron {
+    display: none;
+  }
+}
+
+.nav-tree.is-compact {
+  width: 100%;
 }
 
 .nav-chevron {

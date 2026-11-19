@@ -109,7 +109,7 @@
 
       <div class="demo-account">
         <n-tag type="info" :bordered="false">
-          admin / 123456
+          admin / admin123
         </n-tag>
       </div>
 
@@ -146,7 +146,7 @@ const formRef = ref<FormInst | null>(null)
 // 表单数据
 const formData = reactive({
   username: 'admin',
-  password: '123456',
+  password: 'admin123',
   remember: true,
 })
 

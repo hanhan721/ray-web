@@ -55,7 +55,17 @@
     </header>
 
     <div class="app-body">
-      <aside v-if="sidebarPresent" class="app-sidebar" aria-label="子菜单" :inert="sidebarOpen ? undefined : true">
+      <aside
+        v-if="sidebarPresent"
+        class="app-sidebar"
+        :class="{ 'is-compact': sidebarCompact, 'is-hovering': sidebarHovering }"
+        aria-label="子菜单"
+        :inert="sidebarOpen ? undefined : true"
+        @mouseenter="onSidebarPointerEnter"
+        @mouseleave="onSidebarPointerLeave"
+        @focusin="onSidebarFocusIn"
+        @focusout="onSidebarFocusOut"
+      >
         <div class="sidebar-panel">
           <div class="sidebar-mobile-bar">
             <span class="sidebar-mobile-title">{{ displayedTitle }}</span>
@@ -85,10 +95,27 @@
               :open="openGroups"
               :active-ancestors="activeAncestors"
               :depth="0"
+              :compact="sidebarIconsOnly"
               @toggle="toggleGroup"
               @navigate="closeMobileNav"
             />
           </nav>
+          <div class="sidebar-foot">
+            <NButton
+              quaternary
+              class="sidebar-mode"
+              :class="{ 'is-icon': sidebarIconsOnly }"
+              :aria-pressed="sidebarCompact"
+              :aria-label="sidebarModeLabel"
+              :title="sidebarModeLabel"
+              @click="toggleSidebarCompact"
+            >
+              <template #icon>
+                <NIcon :component="sidebarCompact ? ChevronForwardOutline : ChevronBackOutline" />
+              </template>
+              <span v-if="!sidebarIconsOnly">{{ sidebarModeLabel }}</span>
+            </NButton>
+          </div>
         </div>
       </aside>
       <div class="app-content">
@@ -102,7 +129,7 @@
 </template>
 
 <script setup lang="ts">
-import { MenuOutline, MoonOutline, SettingsOutline, SunnyOutline } from '@vicons/ionicons5'
+import { ChevronBackOutline, ChevronForwardOutline, MenuOutline, MoonOutline, SettingsOutline, SunnyOutline } from '@vicons/ionicons5'
 import TabsView from '@/components/common/TabsView/index.vue'
 import { useAppStore } from '@/stores/app'
 import { usePermissionStore } from '@/stores/permission'
@@ -127,6 +154,9 @@ const dialog = useDialog()
 
 const SIDEBAR_MOTION_MS = 320
 const BRAND_PADDING = 24
+const SIDEBAR_COMPACT_KEY = 'ray-sidebar-compact'
+const SIDEBAR_HOVER_DELAY = 120
+const SIDEBAR_EXPANDED_WIDTH = 200
 
 const navOpen = shallowRef(false)
 const openGroups = shallowRef<Set<number>>(new Set())
@@ -136,10 +166,15 @@ const displayedNodes = shallowRef<NavNode[]>([])
 const displayedTitle = ref('')
 const sidebarPresent = ref(false)
 const sidebarOpen = ref(false)
+const sidebarCompact = ref(localStorage.getItem(SIDEBAR_COMPACT_KEY) === '1')
+const sidebarHovering = ref(false)
 const sideSpan = ref(0)
+const brandSpan = ref(0)
 let sidebarFrame = 0
+let brandFrame = 0
 let sidebarGeneration = 0
 let sidebarMoving = false
+let sidebarHoverTimer = 0
 
 const displayName = computed(() => userStore.nickname || userStore.username || '未登录')
 const sidebarInverted = computed(() => appStore.themeConfig.menuTheme === 'dark' && !appStore.isDarkMode)
@@ -150,17 +185,100 @@ const activeTrail = computed(() => (homeActive.value ? [] : findNavigationTrail(
 const activeModule = computed(() => activeTrail.value[0])
 const secondaryNodes = computed(() => (activeModule.value?.kind === 'group' ? activeModule.value.items : []))
 const wantsSidebar = computed(() => secondaryNodes.value.length > 0)
+const sidebarIconsOnly = computed(() => sidebarCompact.value && !sidebarHovering.value)
+const sidebarModeLabel = computed(() => (sidebarCompact.value ? '自动收缩' : '默认显示'))
 const shellStyle = computed(() => ({
   '--brand-min': `${collapsedBrandWidth.value}px`,
+  '--brand-span': `${brandSpan.value}px`,
   '--side-span': `${sideSpan.value}px`,
 }))
 
 sidebarPresent.value = wantsSidebar.value
 sidebarOpen.value = wantsSidebar.value
-sideSpan.value = wantsSidebar.value ? appStore.themeConfig.sidebarWidth : 0
+sideSpan.value = wantsSidebar.value ? sidebarRestWidth() : 0
+brandSpan.value = wantsSidebar.value ? sidebarRestWidth() : collapsedBrandWidth.value
 const activeAncestors = computed(
   () => new Set(activeTrail.value.filter((node) => node.kind === 'group').map((node) => node.id))
 )
+
+function brandTargetWidth() {
+  if (sidebarOpen.value && sidebarCompact.value && sidebarHovering.value) return SIDEBAR_EXPANDED_WIDTH
+  if (sidebarOpen.value) return sidebarRestWidth()
+  return collapsedBrandWidth.value
+}
+
+function animateBrandSpan(duration = SIDEBAR_MOTION_MS) {
+  cancelAnimationFrame(brandFrame)
+  const to = brandTargetWidth()
+  const from = brandSpan.value
+  if (duration <= 0 || prefersReducedMotion() || !isDesktopSidebar() || Math.abs(from - to) < 1) {
+    brandSpan.value = to
+    return
+  }
+  const start = window.performance.now()
+  const step = (now: number) => {
+    const progress = Math.min(1, (now - start) / duration)
+    const eased = 1 - (1 - progress) ** 3
+    brandSpan.value = from + (to - from) * eased
+    if (progress < 1) {
+      brandFrame = requestAnimationFrame(step)
+      return
+    }
+    brandSpan.value = to
+  }
+  brandFrame = requestAnimationFrame(step)
+}
+
+function sidebarRestWidth() {
+  return sidebarCompact.value ? appStore.themeConfig.sidebarCollapsedWidth : SIDEBAR_EXPANDED_WIDTH
+}
+
+function toggleSidebarCompact() {
+  sidebarCompact.value = !sidebarCompact.value
+  localStorage.setItem(SIDEBAR_COMPACT_KEY, sidebarCompact.value ? '1' : '0')
+  window.clearTimeout(sidebarHoverTimer)
+  sidebarHovering.value = false
+  if (!sidebarOpen.value) {
+    animateBrandSpan()
+    return
+  }
+  animateSideSpan(sidebarRestWidth())
+  animateBrandSpan()
+}
+
+function cancelSidebarHover() {
+  window.clearTimeout(sidebarHoverTimer)
+  sidebarHoverTimer = window.setTimeout(() => {
+    sidebarHovering.value = false
+    animateBrandSpan(200)
+  }, SIDEBAR_HOVER_DELAY)
+}
+
+function onSidebarPointerEnter() {
+  if (!sidebarCompact.value || !isDesktopSidebar()) return
+  window.clearTimeout(sidebarHoverTimer)
+  sidebarHovering.value = true
+  animateBrandSpan(200)
+}
+
+function onSidebarPointerLeave() {
+  if (!sidebarCompact.value) return
+  cancelSidebarHover()
+}
+
+function onSidebarFocusIn() {
+  if (!sidebarCompact.value || !isDesktopSidebar()) return
+  window.clearTimeout(sidebarHoverTimer)
+  sidebarHovering.value = true
+  animateBrandSpan(200)
+}
+
+function onSidebarFocusOut(event: FocusEvent) {
+  const current = event.currentTarget
+  const next = event.relatedTarget
+  if (current instanceof Node && next instanceof Node && current.contains(next)) return
+  onSidebarPointerLeave()
+}
 
 function toggleGroup(id: number) {
   const next = new Set(openGroups.value)
@@ -201,6 +319,7 @@ function measureBrand() {
   const link = brandRegionRef.value?.querySelector<HTMLElement>('.app-brand')
   if (!link) return
   collapsedBrandWidth.value = Math.ceil(link.offsetWidth) + BRAND_PADDING
+  if (!sidebarOpen.value) animateBrandSpan(0)
 }
 
 function isDesktopSidebar() {
@@ -250,12 +369,13 @@ function animateSideSpan(to: number, onDone?: () => void) {
 async function syncSidebar(open: boolean) {
   const generation = ++sidebarGeneration
   if (open) {
-    if (sidebarOpen.value && sideSpan.value >= appStore.themeConfig.sidebarWidth - 1) return
+    if (sidebarOpen.value && Math.abs(sideSpan.value - sidebarRestWidth()) < 2) return
     sidebarPresent.value = true
     sidebarOpen.value = true
     await nextTick()
     if (generation !== sidebarGeneration) return
-    animateSideSpan(appStore.themeConfig.sidebarWidth)
+    animateSideSpan(sidebarRestWidth())
+    animateBrandSpan()
     return
   }
 
@@ -263,12 +383,15 @@ async function syncSidebar(open: boolean) {
   sidebarOpen.value = false
   if (!isDesktopSidebar() || prefersReducedMotion()) {
     finishSidebarCollapse()
+    animateBrandSpan(0)
     return
   }
   animateSideSpan(0, () => {
     if (generation !== sidebarGeneration) return
     finishSidebarCollapse()
+    animateBrandSpan()
   })
+  animateBrandSpan()
 }
 
 watch(secondaryNodes, (nodes) => {
@@ -282,9 +405,9 @@ watch(wantsSidebar, (open) => {
 })
 
 watch(
-  () => appStore.themeConfig.sidebarWidth,
-  (width) => {
-    if (sidebarOpen.value && !sidebarMoving) sideSpan.value = width
+  () => appStore.themeConfig.sidebarCollapsedWidth,
+  () => {
+    if (sidebarOpen.value && !sidebarMoving && sidebarCompact.value) sideSpan.value = sidebarRestWidth()
   }
 )
 
@@ -306,6 +429,8 @@ onMounted(() => {
 onBeforeUnmount(() => {
   window.removeEventListener('resize', measureBrand)
   cancelAnimationFrame(sidebarFrame)
+  cancelAnimationFrame(brandFrame)
+  window.clearTimeout(sidebarHoverTimer)
 })
 
 watch(
@@ -488,8 +613,8 @@ watch(
   }
 }
 
-.nav-tree-root {
-  padding: 4px 12px 16px;
+.sidebar-foot {
+  display: none;
 }
 
 .app-content {
@@ -507,7 +632,7 @@ watch(
 
 @media (min-width: 768px) {
   .app-header {
-    grid-template-columns: max(var(--brand-min, 168px), var(--side-span, 0px)) minmax(0, 1fr) auto;
+    grid-template-columns: var(--brand-span, var(--brand-min, 168px)) minmax(0, 1fr) auto;
     gap: 0;
     padding-left: 0;
     padding-right: 16px;
@@ -517,6 +642,7 @@ watch(
     display: flex;
     align-items: center;
     align-self: stretch;
+    width: 100%;
     min-width: 0;
     padding-left: 24px;
     overflow: hidden;
@@ -569,10 +695,50 @@ watch(
   .sidebar-panel {
     display: flex;
     flex-direction: column;
-    width: var(--sidebar-width);
+    width: 100%;
     height: 100%;
     min-height: 0;
     border-right: 1px solid var(--nav-sidebar-border);
+  }
+
+  .app-sidebar.is-compact {
+    position: relative;
+    z-index: 30;
+    overflow: visible;
+  }
+
+  .app-sidebar.is-compact .sidebar-panel {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    overflow: hidden;
+    background: var(--nav-sidebar-bg);
+    transition: width 0.2s ease;
+  }
+
+  .app-sidebar.is-compact.is-hovering .sidebar-panel {
+    width: 200px;
+    box-shadow: var(--box-shadow-md);
+  }
+
+  .sidebar-foot {
+    display: flex;
+    flex: none;
+    justify-content: flex-end;
+    padding: 8px 12px 12px;
+    border-top: 1px solid var(--nav-sidebar-border);
+  }
+
+  .app-sidebar.is-compact:not(.is-hovering) .sidebar-foot {
+    justify-content: center;
+    padding-inline: 0;
+  }
+
+  .sidebar-mode.is-icon {
+    width: 34px;
+    padding-inline: 0;
   }
 
   .sidebar-mobile-bar {
@@ -635,7 +801,8 @@ watch(
   .brand-region,
   .app-brand,
   .brand-subtitle,
-  .app-top-nav {
+  .app-top-nav,
+  .sidebar-panel {
     transition: none;
   }
 }

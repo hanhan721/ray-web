@@ -76,7 +76,7 @@ export const defaultThemeConfig: ThemeConfig = {
   warningColor: '#faad14',
   errorColor: '#ff4d4f',
   infoColor: '#1890ff',
-  sidebarWidth: 256,
+  sidebarWidth: 200,
   sidebarCollapsedWidth: 64,
   headerHeight: 56,
   tabsHeight: 40,
