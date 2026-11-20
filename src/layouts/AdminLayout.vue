@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
-import { computed, nextTick, onUnmounted, shallowRef, useTemplateRef, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, shallowRef, useTemplateRef, watch } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import {
@@ -9,6 +9,8 @@ import {
   Building2,
   Calendar,
   FileText,
+  ChevronLeft,
+  ChevronRight,
   LayoutGrid,
   List,
   Menu,
@@ -26,6 +28,27 @@ import { findNavigationTrail } from './navigation'
 import type { NavNode } from '@/router/menu-routes'
 import { removeRouteNames } from '@/router/menu-install'
 import { useSessionStore } from '@/stores/session'
+
+const SIDEBAR_PIN_KEY = 'ray.sidebar-pinned'
+const SIDEBAR_LEAVE_MS = 120
+
+function readSidebarPinned(): boolean {
+  if (typeof localStorage === 'undefined') return true
+  try {
+    return localStorage.getItem(SIDEBAR_PIN_KEY) !== '0'
+  } catch {
+    return true
+  }
+}
+
+function writeSidebarPinned(pinned: boolean): void {
+  if (typeof localStorage === 'undefined') return
+  try {
+    localStorage.setItem(SIDEBAR_PIN_KEY, pinned ? '1' : '0')
+  } catch {
+    // 隐私模式或存储不可用时保持当前页面状态即可。
+  }
+}
 
 const icons: Record<string, Component> = {
   SettingsOutline: Settings,
@@ -47,6 +70,8 @@ const route = useRoute()
 const session = useSessionStore()
 const { displayName, navigation } = storeToRefs(session)
 const navOpen = shallowRef(false)
+const sidebarPinned = shallowRef(readSidebarPinned())
+const pointerInside = shallowRef(false)
 const openGroups = shallowRef<Set<number>>(new Set())
 const activeTrail = computed(() => findNavigationTrail(navigation.value, route.path))
 const activeModule = computed(() => activeTrail.value[0])
@@ -54,10 +79,13 @@ const secondaryNodes = computed(() =>
   activeModule.value?.kind === 'group' ? activeModule.value.items : [],
 )
 const sidebarOpen = computed(() => secondaryNodes.value.length > 0)
+const sidebarRevealed = computed(() => sidebarPinned.value || pointerInside.value)
+const sidebarPinLabel = computed(() => (sidebarPinned.value ? '收起侧栏' : '展开侧栏'))
 const displayedNodes = shallowRef<NavNode[]>([])
 const displayedTitle = shallowRef('')
 const sidebarTrack = useTemplateRef<HTMLElement>('sidebarTrack')
 let sidebarReleaseTimer = 0
+let sidebarCollapseTimer = 0
 
 watch(
   secondaryNodes,
@@ -86,13 +114,54 @@ function onSidebarTransitionEnd(event: TransitionEvent) {
 watch(sidebarOpen, (open) => {
   window.clearTimeout(sidebarReleaseTimer)
   if (open) return
+  pointerInside.value = false
   if (sidebarTrack.value?.contains(document.activeElement)) {
     document.getElementById('main')?.focus()
   }
-  sidebarReleaseTimer = window.setTimeout(releaseClosedSidebar, 560)
+  sidebarReleaseTimer = window.setTimeout(releaseClosedSidebar, 320)
+})
+
+watch(sidebarPinned, (pinned) => {
+  writeSidebarPinned(pinned)
+})
+
+function clearSidebarCollapseTimer() {
+  window.clearTimeout(sidebarCollapseTimer)
+  sidebarCollapseTimer = 0
+}
+
+function onSidebarPointerEnter(event: PointerEvent) {
+  if (event.pointerType === 'touch') return
+  clearSidebarCollapseTimer()
+  pointerInside.value = true
+}
+
+function onSidebarPointerLeave(event: PointerEvent) {
+  if (event.pointerType === 'touch') return
+  clearSidebarCollapseTimer()
+  sidebarCollapseTimer = window.setTimeout(() => {
+    sidebarCollapseTimer = 0
+    pointerInside.value = false
+  }, SIDEBAR_LEAVE_MS)
+}
+
+function onDocumentPointerDown(event: PointerEvent) {
+  if (event.pointerType !== 'touch') return
+  const target = event.target
+  pointerInside.value = target instanceof Node && !!sidebarTrack.value?.contains(target)
+}
+
+function toggleSidebarPinned() {
+  sidebarPinned.value = !sidebarPinned.value
+}
+
+onMounted(() => {
+  document.addEventListener('pointerdown', onDocumentPointerDown)
 })
 
 onUnmounted(() => {
+  document.removeEventListener('pointerdown', onDocumentPointerDown)
+  clearSidebarCollapseTimer()
   window.clearTimeout(sidebarReleaseTimer)
 })
 
@@ -132,7 +201,10 @@ async function onLogout() {
 </script>
 
 <template>
-  <div class="app-shell bg-background text-foreground min-h-svh">
+  <div
+    class="app-shell bg-background text-foreground min-h-svh"
+    :class="{ 'has-sidebar': sidebarOpen, 'is-pinned': sidebarOpen && sidebarPinned }"
+  >
     <a
       href="#main"
       class="bg-background sr-only rounded-md px-3 py-2 focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus-visible:ring-2"
@@ -143,10 +215,10 @@ async function onLogout() {
       <div class="brand-region">
         <RouterLink
           to="/"
-          class="app-brand flex items-center gap-3 rounded-md text-base font-semibold outline-none focus-visible:ring-2"
+          class="app-brand rounded-md text-base font-semibold outline-none focus-visible:ring-2"
         >
           <span class="brand-mark" aria-hidden="true">R</span>
-          <span>Ray <span class="brand-subtitle">管理平台</span></span>
+          <span class="brand-name">Ray <span class="brand-subtitle">管理平台</span></span>
         </RouterLink>
       </div>
       <TopNav
@@ -165,18 +237,16 @@ async function onLogout() {
         <Button type="button" variant="outline" size="sm" @click="onLogout">退出</Button>
       </div>
     </header>
-    <div
-      class="app-body"
-      :class="{ 'has-sidebar': sidebarOpen }"
-      @transitionend="onSidebarTransitionEnd"
-    >
+    <div class="app-body" @transitionend="onSidebarTransitionEnd">
       <div
         ref="sidebarTrack"
         class="sidebar-track"
         :inert="!sidebarOpen"
         :aria-hidden="sidebarOpen ? undefined : 'true'"
+        @pointerenter="onSidebarPointerEnter"
+        @pointerleave="onSidebarPointerLeave"
       >
-        <aside class="app-sidebar" aria-label="子菜单">
+        <aside class="app-sidebar" :class="{ 'is-revealed': sidebarRevealed }" aria-label="子菜单">
           <div class="flex items-center justify-between gap-3 px-4 py-3 md:hidden">
             <span class="truncate text-sm font-medium">{{ displayedTitle }}</span>
             <Button
@@ -199,7 +269,7 @@ async function onLogout() {
             @keydown.esc="closeMobileNav"
           >
             <NavTree
-              class="px-3 pb-4 md:pt-4"
+              class="pb-2 md:pt-2"
               :nodes="displayedNodes"
               :open="openGroups"
               :active-ancestors="activeAncestors"
@@ -209,6 +279,19 @@ async function onLogout() {
               @navigate="closeMobileNav"
             />
           </nav>
+          <div class="sidebar-footer">
+            <button
+              type="button"
+              class="sidebar-pin"
+              :aria-pressed="sidebarPinned"
+              :aria-label="sidebarPinLabel"
+              :title="sidebarPinLabel"
+              @click="toggleSidebarPinned"
+            >
+              <ChevronLeft v-if="sidebarPinned" class="size-4" aria-hidden="true" />
+              <ChevronRight v-else class="size-4" aria-hidden="true" />
+            </button>
+          </div>
         </aside>
       </div>
       <main id="main" tabindex="-1" class="min-w-0 flex-1 p-4 outline-none md:p-6">
@@ -227,6 +310,10 @@ async function onLogout() {
 .app-shell {
   --app-header-height: 4rem;
   --app-sidebar-width: 13rem;
+  --app-sidebar-rail: 4rem;
+  --app-sidebar-inset: 0.5rem;
+  --app-nav-icon: calc(var(--app-sidebar-rail) - 2 * var(--app-sidebar-inset));
+  --app-sidebar-motion: 200ms cubic-bezier(0.2, 0, 0, 1);
 }
 .app-header {
   position: sticky;
@@ -242,6 +329,9 @@ async function onLogout() {
   border-bottom: 1px solid var(--border);
 }
 .app-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
   white-space: nowrap;
 }
 .app-user-name {
@@ -252,12 +342,16 @@ async function onLogout() {
   min-height: calc(100svh - var(--app-header-height));
 }
 .sidebar-track {
+  position: relative;
+  z-index: 15;
   min-width: 0;
   background: var(--sidebar);
   color: var(--sidebar-foreground);
 }
 .app-sidebar {
+  display: flex;
   min-width: 0;
+  flex-direction: column;
   background: var(--sidebar);
   color: var(--sidebar-foreground);
   border-bottom: 1px solid var(--sidebar-border);
@@ -269,6 +363,28 @@ async function onLogout() {
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
 }
+.sidebar-footer {
+  display: none;
+}
+.sidebar-pin {
+  display: grid;
+  width: var(--app-nav-icon);
+  height: 2.5rem;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 0.5rem;
+  background: transparent;
+  color: var(--sidebar-foreground);
+  cursor: pointer;
+}
+.sidebar-pin:hover {
+  background: var(--muted);
+}
+.sidebar-pin:focus-visible {
+  outline: 2px solid var(--sidebar-primary);
+  outline-offset: -2px;
+}
 .brand-mark {
   display: grid;
   width: 2rem;
@@ -278,6 +394,9 @@ async function onLogout() {
   background: var(--sidebar-accent);
   color: var(--sidebar-primary);
   font-weight: 700;
+}
+.brand-name {
+  min-width: 0;
 }
 .brand-subtitle {
   color: var(--muted-foreground);
@@ -290,13 +409,36 @@ async function onLogout() {
     grid-template-columns: var(--app-sidebar-width) minmax(0, 1fr) auto;
     gap: 0;
     padding-left: 0;
+    transition: grid-template-columns var(--app-sidebar-motion);
+  }
+  .app-shell.has-sidebar:not(.is-pinned) .app-header {
+    grid-template-columns: var(--app-sidebar-rail) minmax(0, 1fr) auto;
   }
   .brand-region {
     display: flex;
     align-self: stretch;
     align-items: center;
-    padding-inline: 1.5rem;
+    min-width: 0;
+    padding-inline: 0;
+    overflow: hidden;
     background: var(--sidebar);
+  }
+  .app-brand {
+    display: grid;
+    grid-template-columns: var(--app-sidebar-rail) max-content;
+    align-items: center;
+    gap: 0;
+    height: 100%;
+  }
+  .brand-mark {
+    margin-inline: auto;
+  }
+  .brand-name {
+    padding-right: 1rem;
+    transition: opacity 120ms ease;
+  }
+  .app-shell.has-sidebar:not(.is-pinned) .brand-name {
+    opacity: 0;
   }
   .app-top-nav {
     margin-left: 1rem;
@@ -307,9 +449,12 @@ async function onLogout() {
   .app-body {
     display: grid;
     grid-template-columns: 0rem minmax(0, 1fr);
-    transition: grid-template-columns 380ms cubic-bezier(0.4, 0, 0.2, 1);
+    transition: grid-template-columns var(--app-sidebar-motion);
   }
-  .app-body.has-sidebar {
+  .app-shell.has-sidebar .app-body {
+    grid-template-columns: var(--app-sidebar-rail) minmax(0, 1fr);
+  }
+  .app-shell.has-sidebar.is-pinned .app-body {
     grid-template-columns: var(--app-sidebar-width) minmax(0, 1fr);
   }
   .sidebar-track {
@@ -318,21 +463,69 @@ async function onLogout() {
     height: calc(100svh - var(--app-header-height));
     align-self: start;
     overflow: hidden;
-    box-shadow: inset -1px 0 0 var(--sidebar-border);
+  }
+  .app-shell.has-sidebar .sidebar-track {
+    overflow: visible;
   }
   .app-sidebar {
-    width: var(--app-sidebar-width);
-    height: 100%;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 0;
+    height: auto;
+    overflow: hidden;
     border-bottom: 0;
+    border-right: 1px solid var(--sidebar-border);
     opacity: 0;
-    transition: opacity 160ms ease;
+    transition:
+      width var(--app-sidebar-motion),
+      opacity 160ms ease,
+      box-shadow var(--app-sidebar-motion);
   }
-  .app-body.has-sidebar .app-sidebar {
+  .app-shell.has-sidebar .app-sidebar {
+    width: var(--app-sidebar-rail);
     opacity: 1;
-    transition: opacity 180ms ease 100ms;
+  }
+  .app-shell.has-sidebar .app-sidebar.is-revealed,
+  .app-shell.has-sidebar .app-sidebar:has(:focus-visible) {
+    width: var(--app-sidebar-width);
+  }
+  .app-shell.has-sidebar:not(.is-pinned) .app-sidebar.is-revealed,
+  .app-shell.has-sidebar:not(.is-pinned) .app-sidebar:has(:focus-visible) {
+    box-shadow: 8px 0 28px oklch(0.28 0.02 230 / 0.14);
+  }
+  .dark .app-shell.has-sidebar:not(.is-pinned) .app-sidebar.is-revealed,
+  .dark .app-shell.has-sidebar:not(.is-pinned) .app-sidebar:has(:focus-visible) {
+    box-shadow: 8px 0 28px oklch(0 0 0 / 0.45);
+  }
+  .app-sidebar:not(.is-revealed):not(:has(:focus-visible)) :deep(.nav-group) {
+    grid-template-rows: 0fr;
+    opacity: 0;
+  }
+  .app-sidebar :deep(.nav-label) {
+    transition: opacity 120ms ease;
+  }
+  .app-sidebar :deep(.nav-chevron) {
+    transition:
+      opacity 120ms ease,
+      transform 200ms ease;
+  }
+  .app-sidebar:not(.is-revealed):not(:has(:focus-visible)) :deep(.nav-label),
+  .app-sidebar:not(.is-revealed):not(:has(:focus-visible)) :deep(.nav-chevron) {
+    opacity: 0;
   }
   .secondary-nav {
-    max-height: 100%;
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+  }
+  .sidebar-footer {
+    display: block;
+    flex-shrink: 0;
+    margin-top: auto;
+    padding: 0.5rem var(--app-sidebar-inset);
+    border-top: 1px solid var(--sidebar-border);
   }
 }
 
@@ -352,8 +545,9 @@ async function onLogout() {
 @media (max-width: 767px) {
   .app-shell {
     --app-header-height: 7rem;
+    --app-sidebar-rail: 2.75rem;
   }
-  .app-body:not(.has-sidebar) .sidebar-track {
+  .app-shell:not(.has-sidebar) .sidebar-track {
     display: none;
   }
   .app-header {
@@ -377,9 +571,14 @@ async function onLogout() {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .app-header,
   .app-body,
-  .app-body.has-sidebar .app-sidebar,
-  .app-sidebar {
+  .app-sidebar,
+  .brand-name {
+    transition: none;
+  }
+  .app-sidebar :deep(.nav-label),
+  .app-sidebar :deep(.nav-chevron) {
     transition: none;
   }
 }
