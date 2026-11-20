@@ -111,6 +111,10 @@ const menuIcons: Record<string, Component> = {
   TimeOutline,
 }
 
+export function hasMenuIcon(name?: string): boolean {
+  return !!name && !!menuIcons[name]
+}
+
 export function resolveMenuIcon(name?: string): Component {
   if (name && menuIcons[name]) return menuIcons[name]
   return FolderOutline

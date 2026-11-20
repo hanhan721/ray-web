@@ -101,6 +101,10 @@ export const useAppStore = defineStore('app', () => {
     // 加载主题配置
     const storedConfig = getStoredThemeConfig()
     if (storedConfig) {
+      // 默认侧栏展开宽度已由 256 调整为 200，旧配置里的 256 是旧默认值，回落到新默认值
+      if (storedConfig.sidebarWidth === 256) {
+        delete storedConfig.sidebarWidth
+      }
       themeConfig.value = { ...defaultThemeConfig, ...storedConfig }
     }
     applyTheme()

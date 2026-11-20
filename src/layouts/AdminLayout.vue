@@ -4,15 +4,15 @@
     :class="{
       'sidebar-inverted': sidebarInverted,
       'has-sidebar': sidebarOpen,
+      'is-pinned': sidebarOpen && sidebarPinned,
     }"
-    :style="shellStyle"
   >
     <a href="#main" class="skip-link">跳到主要内容</a>
     <header class="app-header">
-      <div ref="brandRegionRef" class="brand-region">
+      <div class="brand-region">
         <RouterLink to="/dashboard" class="app-brand">
           <span class="brand-mark" aria-hidden="true">R</span>
-          <span>
+          <span class="brand-name">
             Ray
             <span class="brand-subtitle">管理平台</span>
           </span>
@@ -54,19 +54,16 @@
       </div>
     </header>
 
-    <div class="app-body">
-      <aside
-        v-if="sidebarPresent"
-        class="app-sidebar"
-        :class="{ 'is-compact': sidebarCompact, 'is-hovering': sidebarHovering }"
-        aria-label="子菜单"
+    <div class="app-body" @transitionend="onSidebarTransitionEnd">
+      <div
+        ref="sidebarTrackRef"
+        class="sidebar-track"
         :inert="sidebarOpen ? undefined : true"
-        @mouseenter="onSidebarPointerEnter"
-        @mouseleave="onSidebarPointerLeave"
-        @focusin="onSidebarFocusIn"
-        @focusout="onSidebarFocusOut"
+        :aria-hidden="sidebarOpen ? undefined : 'true'"
+        @pointerenter="onSidebarPointerEnter"
+        @pointerleave="onSidebarPointerLeave"
       >
-        <div class="sidebar-panel">
+        <aside class="app-sidebar" :class="{ 'is-revealed': sidebarRevealed }" aria-label="子菜单">
           <div class="sidebar-mobile-bar">
             <span class="sidebar-mobile-title">{{ displayedTitle }}</span>
             <NButton
@@ -86,7 +83,7 @@
             id="app-nav"
             class="secondary-nav"
             :class="{ 'is-open': navOpen }"
-            :aria-label="`${displayedTitle}子菜单`"
+            :aria-label="displayedTitle ? `${displayedTitle}子菜单` : '子菜单'"
             @keydown.esc="closeMobileNav"
           >
             <NavTree
@@ -95,7 +92,6 @@
               :open="openGroups"
               :active-ancestors="activeAncestors"
               :depth="0"
-              :compact="sidebarIconsOnly"
               @toggle="toggleGroup"
               @navigate="closeMobileNav"
             />
@@ -104,20 +100,18 @@
             <NButton
               quaternary
               class="sidebar-mode"
-              :class="{ 'is-icon': sidebarIconsOnly }"
-              :aria-pressed="sidebarCompact"
-              :aria-label="sidebarModeLabel"
-              :title="sidebarModeLabel"
-              @click="toggleSidebarCompact"
+              :aria-pressed="sidebarPinned"
+              :aria-label="sidebarPinLabel"
+              :title="sidebarPinLabel"
+              @click="toggleSidebarPinned"
             >
               <template #icon>
-                <NIcon :component="sidebarCompact ? ChevronForwardOutline : ChevronBackOutline" />
+                <NIcon :component="sidebarPinned ? ChevronBackOutline : ChevronForwardOutline" />
               </template>
-              <span v-if="!sidebarIconsOnly">{{ sidebarModeLabel }}</span>
             </NButton>
           </div>
-        </div>
-      </aside>
+        </aside>
+      </div>
       <div class="app-content">
         <div v-if="appStore.themeConfig.showTabs" class="app-tabs">
           <TabsView />
@@ -152,29 +146,36 @@ const tabsStore = useTabsStore()
 const userStore = useUserStore()
 const dialog = useDialog()
 
-const SIDEBAR_MOTION_MS = 320
-const BRAND_PADDING = 24
-const SIDEBAR_COMPACT_KEY = 'ray-sidebar-compact'
-const SIDEBAR_HOVER_DELAY = 120
-const SIDEBAR_EXPANDED_WIDTH = 200
+const SIDEBAR_PIN_KEY = 'ray.sidebar-pinned'
+const SIDEBAR_LEAVE_MS = 120
+
+function readSidebarPinned(): boolean {
+  if (typeof localStorage === 'undefined') return true
+  try {
+    return localStorage.getItem(SIDEBAR_PIN_KEY) !== '0'
+  } catch {
+    return true
+  }
+}
+
+function writeSidebarPinned(pinned: boolean): void {
+  if (typeof localStorage === 'undefined') return
+  try {
+    localStorage.setItem(SIDEBAR_PIN_KEY, pinned ? '1' : '0')
+  } catch {
+    // 隐私模式或存储不可用时保持当前页面状态即可
+  }
+}
 
 const navOpen = shallowRef(false)
+const sidebarPinned = shallowRef(readSidebarPinned())
+const pointerInside = shallowRef(false)
 const openGroups = shallowRef<Set<number>>(new Set())
-const brandRegionRef = ref<HTMLElement | null>(null)
-const collapsedBrandWidth = ref(168)
+const sidebarTrackRef = ref<HTMLElement | null>(null)
 const displayedNodes = shallowRef<NavNode[]>([])
-const displayedTitle = ref('')
-const sidebarPresent = ref(false)
-const sidebarOpen = ref(false)
-const sidebarCompact = ref(localStorage.getItem(SIDEBAR_COMPACT_KEY) === '1')
-const sidebarHovering = ref(false)
-const sideSpan = ref(0)
-const brandSpan = ref(0)
-let sidebarFrame = 0
-let brandFrame = 0
-let sidebarGeneration = 0
-let sidebarMoving = false
-let sidebarHoverTimer = 0
+const displayedTitle = shallowRef('')
+let sidebarReleaseTimer = 0
+let sidebarCollapseTimer = 0
 
 const displayName = computed(() => userStore.nickname || userStore.username || '未登录')
 const sidebarInverted = computed(() => appStore.themeConfig.menuTheme === 'dark' && !appStore.isDarkMode)
@@ -184,100 +185,84 @@ const homeActive = computed(() => route.name === 'Dashboard' || route.path === '
 const activeTrail = computed(() => (homeActive.value ? [] : findNavigationTrail(navigation.value, route.path)))
 const activeModule = computed(() => activeTrail.value[0])
 const secondaryNodes = computed(() => (activeModule.value?.kind === 'group' ? activeModule.value.items : []))
-const wantsSidebar = computed(() => secondaryNodes.value.length > 0)
-const sidebarIconsOnly = computed(() => sidebarCompact.value && !sidebarHovering.value)
-const sidebarModeLabel = computed(() => (sidebarCompact.value ? '自动收缩' : '默认显示'))
-const shellStyle = computed(() => ({
-  '--brand-min': `${collapsedBrandWidth.value}px`,
-  '--brand-span': `${brandSpan.value}px`,
-  '--side-span': `${sideSpan.value}px`,
-}))
-
-sidebarPresent.value = wantsSidebar.value
-sidebarOpen.value = wantsSidebar.value
-sideSpan.value = wantsSidebar.value ? sidebarRestWidth() : 0
-brandSpan.value = wantsSidebar.value ? sidebarRestWidth() : collapsedBrandWidth.value
+const sidebarOpen = computed(() => secondaryNodes.value.length > 0)
+const sidebarRevealed = computed(() => sidebarPinned.value || pointerInside.value)
+const sidebarPinLabel = computed(() => (sidebarPinned.value ? '收起侧栏' : '展开侧栏'))
 const activeAncestors = computed(
   () => new Set(activeTrail.value.filter((node) => node.kind === 'group').map((node) => node.id))
 )
 
-function brandTargetWidth() {
-  if (sidebarOpen.value && sidebarCompact.value && sidebarHovering.value) return SIDEBAR_EXPANDED_WIDTH
-  if (sidebarOpen.value) return sidebarRestWidth()
-  return collapsedBrandWidth.value
+watch(
+  secondaryNodes,
+  (nodes) => {
+    if (nodes.length === 0) return
+    displayedNodes.value = nodes
+    displayedTitle.value = activeModule.value?.title ?? ''
+  },
+  { immediate: true }
+)
+
+function releaseClosedSidebar() {
+  window.clearTimeout(sidebarReleaseTimer)
+  sidebarReleaseTimer = 0
+  if (sidebarOpen.value) return
+  displayedNodes.value = []
+  displayedTitle.value = ''
 }
 
-function animateBrandSpan(duration = SIDEBAR_MOTION_MS) {
-  cancelAnimationFrame(brandFrame)
-  const to = brandTargetWidth()
-  const from = brandSpan.value
-  if (duration <= 0 || prefersReducedMotion() || !isDesktopSidebar() || Math.abs(from - to) < 1) {
-    brandSpan.value = to
-    return
+function onSidebarTransitionEnd(event: Event) {
+  if (event.target !== event.currentTarget) return
+  if (!('propertyName' in event) || event.propertyName !== 'grid-template-columns') return
+  releaseClosedSidebar()
+}
+
+watch(sidebarOpen, (open) => {
+  window.clearTimeout(sidebarReleaseTimer)
+  clearSidebarCollapseTimer()
+  if (open) return
+  pointerInside.value = false
+  if (sidebarTrackRef.value?.contains(document.activeElement)) {
+    document.getElementById('main')?.focus()
   }
-  const start = window.performance.now()
-  const step = (now: number) => {
-    const progress = Math.min(1, (now - start) / duration)
-    const eased = 1 - (1 - progress) ** 3
-    brandSpan.value = from + (to - from) * eased
-    if (progress < 1) {
-      brandFrame = requestAnimationFrame(step)
-      return
-    }
-    brandSpan.value = to
-  }
-  brandFrame = requestAnimationFrame(step)
+  sidebarReleaseTimer = window.setTimeout(releaseClosedSidebar, 320)
+})
+
+watch(sidebarPinned, (pinned) => {
+  writeSidebarPinned(pinned)
+})
+
+function clearSidebarCollapseTimer() {
+  window.clearTimeout(sidebarCollapseTimer)
+  sidebarCollapseTimer = 0
 }
 
-function sidebarRestWidth() {
-  return sidebarCompact.value ? appStore.themeConfig.sidebarCollapsedWidth : SIDEBAR_EXPANDED_WIDTH
+function isTouchPointer(event: Event): boolean {
+  return 'pointerType' in event && event.pointerType === 'touch'
 }
 
-function toggleSidebarCompact() {
-  sidebarCompact.value = !sidebarCompact.value
-  localStorage.setItem(SIDEBAR_COMPACT_KEY, sidebarCompact.value ? '1' : '0')
-  window.clearTimeout(sidebarHoverTimer)
-  sidebarHovering.value = false
-  if (!sidebarOpen.value) {
-    animateBrandSpan()
-    return
-  }
-  animateSideSpan(sidebarRestWidth())
-  animateBrandSpan()
+function onSidebarPointerEnter(event: Event) {
+  if (isTouchPointer(event)) return
+  clearSidebarCollapseTimer()
+  pointerInside.value = true
 }
 
-function cancelSidebarHover() {
-  window.clearTimeout(sidebarHoverTimer)
-  sidebarHoverTimer = window.setTimeout(() => {
-    sidebarHovering.value = false
-    animateBrandSpan(200)
-  }, SIDEBAR_HOVER_DELAY)
+function onSidebarPointerLeave(event: Event) {
+  if (isTouchPointer(event)) return
+  clearSidebarCollapseTimer()
+  sidebarCollapseTimer = window.setTimeout(() => {
+    sidebarCollapseTimer = 0
+    pointerInside.value = false
+  }, SIDEBAR_LEAVE_MS)
 }
 
-function onSidebarPointerEnter() {
-  if (!sidebarCompact.value || !isDesktopSidebar()) return
-  window.clearTimeout(sidebarHoverTimer)
-  sidebarHovering.value = true
-  animateBrandSpan(200)
+function onDocumentPointerDown(event: Event) {
+  if (!isTouchPointer(event)) return
+  const target = event.target
+  pointerInside.value = target instanceof Node && !!sidebarTrackRef.value?.contains(target)
 }
 
-function onSidebarPointerLeave() {
-  if (!sidebarCompact.value) return
-  cancelSidebarHover()
-}
-
-function onSidebarFocusIn() {
-  if (!sidebarCompact.value || !isDesktopSidebar()) return
-  window.clearTimeout(sidebarHoverTimer)
-  sidebarHovering.value = true
-  animateBrandSpan(200)
-}
-
-function onSidebarFocusOut(event: FocusEvent) {
-  const current = event.currentTarget
-  const next = event.relatedTarget
-  if (current instanceof Node && next instanceof Node && current.contains(next)) return
-  onSidebarPointerLeave()
+function toggleSidebarPinned() {
+  sidebarPinned.value = !sidebarPinned.value
 }
 
 function toggleGroup(id: number) {
@@ -315,102 +300,6 @@ function onLogout() {
   })
 }
 
-function measureBrand() {
-  const link = brandRegionRef.value?.querySelector<HTMLElement>('.app-brand')
-  if (!link) return
-  collapsedBrandWidth.value = Math.ceil(link.offsetWidth) + BRAND_PADDING
-  if (!sidebarOpen.value) animateBrandSpan(0)
-}
-
-function isDesktopSidebar() {
-  return window.matchMedia('(min-width: 768px)').matches
-}
-
-function prefersReducedMotion() {
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches
-}
-
-function finishSidebarCollapse() {
-  cancelAnimationFrame(sidebarFrame)
-  sidebarMoving = false
-  if (sidebarOpen.value) return
-  sideSpan.value = 0
-  sidebarPresent.value = false
-}
-
-function animateSideSpan(to: number, onDone?: () => void) {
-  cancelAnimationFrame(sidebarFrame)
-  const from = sideSpan.value
-  const instant = prefersReducedMotion() || !isDesktopSidebar() || Math.abs(from - to) < 1
-  if (instant) {
-    sidebarMoving = false
-    sideSpan.value = to
-    onDone?.()
-    return
-  }
-
-  sidebarMoving = true
-  const start = window.performance.now()
-  const step = (now: number) => {
-    const progress = Math.min(1, (now - start) / SIDEBAR_MOTION_MS)
-    const eased = 1 - (1 - progress) ** 3
-    sideSpan.value = from + (to - from) * eased
-    if (progress < 1) {
-      sidebarFrame = requestAnimationFrame(step)
-      return
-    }
-    sidebarMoving = false
-    sideSpan.value = to
-    onDone?.()
-  }
-  sidebarFrame = requestAnimationFrame(step)
-}
-
-async function syncSidebar(open: boolean) {
-  const generation = ++sidebarGeneration
-  if (open) {
-    if (sidebarOpen.value && Math.abs(sideSpan.value - sidebarRestWidth()) < 2) return
-    sidebarPresent.value = true
-    sidebarOpen.value = true
-    await nextTick()
-    if (generation !== sidebarGeneration) return
-    animateSideSpan(sidebarRestWidth())
-    animateBrandSpan()
-    return
-  }
-
-  if (!sidebarPresent.value && sideSpan.value <= 1) return
-  sidebarOpen.value = false
-  if (!isDesktopSidebar() || prefersReducedMotion()) {
-    finishSidebarCollapse()
-    animateBrandSpan(0)
-    return
-  }
-  animateSideSpan(0, () => {
-    if (generation !== sidebarGeneration) return
-    finishSidebarCollapse()
-    animateBrandSpan()
-  })
-  animateBrandSpan()
-}
-
-watch(secondaryNodes, (nodes) => {
-  if (nodes.length === 0) return
-  displayedNodes.value = nodes
-  displayedTitle.value = activeModule.value?.title ?? ''
-}, { immediate: true })
-
-watch(wantsSidebar, (open) => {
-  void syncSidebar(open)
-})
-
-watch(
-  () => appStore.themeConfig.sidebarCollapsedWidth,
-  () => {
-    if (sidebarOpen.value && !sidebarMoving && sidebarCompact.value) sideSpan.value = sidebarRestWidth()
-  }
-)
-
 watch(
   activeAncestors,
   (ancestors) => {
@@ -422,15 +311,13 @@ watch(
 watch(() => route.fullPath, closeMobileNav)
 
 onMounted(() => {
-  measureBrand()
-  window.addEventListener('resize', measureBrand)
+  document.addEventListener('pointerdown', onDocumentPointerDown)
 })
 
 onBeforeUnmount(() => {
-  window.removeEventListener('resize', measureBrand)
-  cancelAnimationFrame(sidebarFrame)
-  cancelAnimationFrame(brandFrame)
-  window.clearTimeout(sidebarHoverTimer)
+  document.removeEventListener('pointerdown', onDocumentPointerDown)
+  clearSidebarCollapseTimer()
+  window.clearTimeout(sidebarReleaseTimer)
 })
 
 watch(
@@ -454,7 +341,11 @@ watch(
 <style scoped lang="scss">
 .app-shell {
   --app-header-block: var(--header-height);
-  --side-span: 0px;
+  --app-sidebar-width: var(--sidebar-width, 200px);
+  --app-sidebar-rail: var(--sidebar-collapsed-width, 64px);
+  --app-sidebar-inset: 8px;
+  --app-nav-icon: calc(var(--app-sidebar-rail) - 2 * var(--app-sidebar-inset));
+  --app-sidebar-motion: 200ms cubic-bezier(0.2, 0, 0, 1);
   --nav-sidebar-bg: var(--bg-color-container);
   --nav-sidebar-fg: var(--text-color-primary);
   --nav-sidebar-muted: var(--text-color-secondary);
@@ -546,6 +437,10 @@ watch(
   font-weight: 700;
 }
 
+.brand-name {
+  min-width: 0;
+}
+
 .brand-subtitle {
   color: var(--text-color-secondary);
   font-size: 12px;
@@ -575,10 +470,19 @@ watch(
   min-height: 0;
 }
 
+.sidebar-track {
+  position: relative;
+  z-index: 15;
+  min-width: 0;
+  min-height: 0;
+  background: var(--nav-sidebar-bg);
+  color: var(--nav-sidebar-fg);
+}
+
 .app-sidebar {
   display: flex;
-  flex-direction: column;
   min-width: 0;
+  flex-direction: column;
   background: var(--nav-sidebar-bg);
   color: var(--nav-sidebar-fg);
   border-bottom: 1px solid var(--nav-sidebar-border);
@@ -632,10 +536,15 @@ watch(
 
 @media (min-width: 768px) {
   .app-header {
-    grid-template-columns: var(--brand-span, var(--brand-min, 168px)) minmax(0, 1fr) auto;
+    grid-template-columns: var(--app-sidebar-width) minmax(0, 1fr) auto;
     gap: 0;
     padding-left: 0;
     padding-right: 16px;
+    transition: grid-template-columns var(--app-sidebar-motion);
+  }
+
+  .app-shell.has-sidebar:not(.is-pinned) .app-header {
+    grid-template-columns: var(--app-sidebar-rail) minmax(0, 1fr) auto;
   }
 
   .brand-region {
@@ -644,22 +553,35 @@ watch(
     align-self: stretch;
     width: 100%;
     min-width: 0;
-    padding-left: 24px;
     overflow: hidden;
-    background: transparent;
+    background: var(--nav-sidebar-bg);
+    box-shadow: inset -1px 0 0 var(--nav-sidebar-border);
   }
 
-  .has-sidebar .brand-region {
-    padding-right: 24px;
+  .app-brand {
+    display: grid;
+    grid-template-columns: var(--app-sidebar-rail) max-content;
+    align-items: center;
+    gap: 0;
+    height: 100%;
+    color: var(--nav-sidebar-fg);
+  }
+
+  .brand-mark {
+    margin-inline: auto;
+  }
+
+  .brand-name {
+    padding-right: 16px;
+    transition: opacity 120ms ease;
+  }
+
+  .app-shell.has-sidebar:not(.is-pinned) .brand-name {
+    opacity: 0;
   }
 
   .app-top-nav {
-    margin-left: 24px;
-    transition: margin-left 0.32s cubic-bezier(0.22, 1, 0.36, 1);
-  }
-
-  .has-sidebar .app-top-nav {
-    margin-left: 8px;
+    margin-left: 16px;
   }
 
   .app-user {
@@ -667,94 +589,97 @@ watch(
   }
 
   .app-body {
-    display: flex;
-    flex-direction: row;
-    align-items: stretch;
-    min-height: 0;
+    display: grid;
+    grid-template-columns: 0px minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+    transition: grid-template-columns var(--app-sidebar-motion);
   }
 
-  .app-content {
-    flex: 1;
-    min-width: 0;
+  .app-shell.has-sidebar .app-body {
+    grid-template-columns: var(--app-sidebar-rail) minmax(0, 1fr);
   }
 
-  .app-sidebar {
-    width: var(--side-span);
-    flex: none;
-    min-width: 0;
+  .app-shell.has-sidebar.is-pinned .app-body {
+    grid-template-columns: var(--app-sidebar-width) minmax(0, 1fr);
+  }
+
+  .sidebar-track {
     overflow: hidden;
-    border-right: 0;
-    border-bottom: 0;
-    pointer-events: none;
   }
 
-  .has-sidebar .app-sidebar {
-    pointer-events: auto;
-  }
-
-  .sidebar-panel {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    height: 100%;
-    min-height: 0;
-    border-right: 1px solid var(--nav-sidebar-border);
-  }
-
-  .app-sidebar.is-compact {
-    position: relative;
-    z-index: 30;
+  .app-shell.has-sidebar .sidebar-track {
     overflow: visible;
   }
 
-  .app-sidebar.is-compact .sidebar-panel {
+  .app-sidebar {
     position: absolute;
     top: 0;
     bottom: 0;
     left: 0;
-    width: 100%;
+    width: 0;
+    height: auto;
     overflow: hidden;
-    background: var(--nav-sidebar-bg);
-    transition: width 0.2s ease;
+    border-right: 1px solid var(--nav-sidebar-border);
+    border-bottom: 0;
+    opacity: 0;
+    transition:
+      width var(--app-sidebar-motion),
+      opacity 160ms ease,
+      box-shadow var(--app-sidebar-motion);
   }
 
-  .app-sidebar.is-compact.is-hovering .sidebar-panel {
-    width: 200px;
+  .app-shell.has-sidebar .app-sidebar {
+    width: var(--app-sidebar-rail);
+    opacity: 1;
+  }
+
+  .app-shell.has-sidebar .app-sidebar.is-revealed,
+  .app-shell.has-sidebar .app-sidebar:has(:focus-visible) {
+    width: var(--app-sidebar-width);
+  }
+
+  .app-shell.has-sidebar:not(.is-pinned) .app-sidebar.is-revealed,
+  .app-shell.has-sidebar:not(.is-pinned) .app-sidebar:has(:focus-visible) {
     box-shadow: var(--box-shadow-md);
   }
 
-  .sidebar-foot {
-    display: flex;
-    flex: none;
-    justify-content: flex-end;
-    padding: 8px 12px 12px;
-    border-top: 1px solid var(--nav-sidebar-border);
+  .app-sidebar:not(.is-revealed):not(:has(:focus-visible)) :deep(.nav-label),
+  .app-sidebar:not(.is-revealed):not(:has(:focus-visible)) :deep(.nav-chevron) {
+    opacity: 0;
   }
 
-  .app-sidebar.is-compact:not(.is-hovering) .sidebar-foot {
-    justify-content: center;
-    padding-inline: 0;
-  }
-
-  .sidebar-mode.is-icon {
-    width: 34px;
-    padding-inline: 0;
-  }
-
-  .sidebar-mobile-bar {
-    display: none;
+  .app-sidebar:not(.is-revealed):not(:has(:focus-visible)) :deep(.nav-group) {
+    grid-template-rows: 0fr;
+    opacity: 0;
   }
 
   .secondary-nav,
   .secondary-nav.is-open {
     display: block;
-    flex: 1;
+    flex: 1 1 auto;
     max-height: none;
     min-height: 0;
   }
 
   .nav-tree-root {
-    padding-top: 16px;
+    padding-top: 12px;
+  }
+
+  .sidebar-foot {
+    display: flex;
+    flex: none;
+    padding: 8px var(--app-sidebar-inset) 12px;
+    border-top: 1px solid var(--nav-sidebar-border);
+  }
+
+  .sidebar-mode {
+    width: var(--app-nav-icon);
+    min-width: var(--app-nav-icon);
+    padding-inline: 0;
+  }
+
+  .sidebar-mobile-bar {
+    display: none;
   }
 }
 
@@ -785,6 +710,18 @@ watch(
     justify-self: start;
   }
 
+  .app-brand {
+    display: flex;
+    width: auto;
+    height: auto;
+    gap: 12px;
+    color: var(--text-color-primary);
+  }
+
+  .brand-mark {
+    margin-inline: 0;
+  }
+
   .app-user {
     grid-column: 2;
     grid-row: 1;
@@ -795,14 +732,23 @@ watch(
     grid-row: 2;
     align-self: stretch;
   }
+
+  .app-shell:not(.has-sidebar) .sidebar-track {
+    display: none;
+  }
 }
+
 @media (prefers-reduced-motion: reduce) {
-  .app-shell,
-  .brand-region,
-  .app-brand,
-  .brand-subtitle,
-  .app-top-nav,
-  .sidebar-panel {
+  .app-header,
+  .app-body,
+  .app-sidebar,
+  .brand-name {
+    transition: none;
+  }
+
+  .app-sidebar :deep(.nav-label),
+  .app-sidebar :deep(.nav-chevron),
+  .app-sidebar :deep(.nav-group) {
     transition: none;
   }
 }
