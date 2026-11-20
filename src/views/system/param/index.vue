@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import RaySearchForm from '@/components/common/RaySearchForm.vue'
-import { Plus, RotateCcw, Search, SlidersHorizontal, Trash2 } from '@lucide/vue'
+import { Pencil, Plus, RotateCcw, Search, SlidersHorizontal, Trash2 } from '@lucide/vue'
 import { onMounted, shallowRef } from 'vue'
 import { deleteParams, getParamPage, type SystemParam } from '@/api/param'
 import { ParamTypeOptions, type ParamType } from '@/types/enums'
@@ -244,7 +244,7 @@ onMounted(() => {
     </template>
 
     <template #cell-actions="{ row }">
-      <div class="flex min-w-24 flex-nowrap gap-1">
+      <div class="flex min-w-20 flex-nowrap gap-1">
         <Button
           v-if="can('system:param:query') && can('system:param:edit')"
           type="button"
@@ -252,6 +252,7 @@ onMounted(() => {
           size="sm"
           @click="openEdit(row)"
         >
+          <Pencil data-icon="inline-start" />
           编辑
         </Button>
       </div>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import RaySearchForm from '@/components/common/RaySearchForm.vue'
-import { RotateCcw, Search, Trash2, UserRoundPlus, UsersRound } from '@lucide/vue'
+import { KeyRound, Pencil, RotateCcw, Search, Trash2, UserRoundPlus, UsersRound } from '@lucide/vue'
 import { onMounted, shallowRef } from 'vue'
 import { deleteUsers, updateUserStatus, type SysUser } from '@/api/user'
 import { EnabledFilterOptions, PAGE_KEYS } from '@/types/enums'
@@ -252,7 +252,7 @@ onMounted(() => {
     </template>
 
     <template #cell-actions="{ row }">
-      <div class="flex min-w-32 flex-nowrap gap-1">
+      <div class="flex min-w-36 flex-nowrap gap-1">
         <Button
           v-if="can('system:user:query')"
           type="button"
@@ -260,6 +260,7 @@ onMounted(() => {
           size="sm"
           @click="openEdit(row)"
         >
+          <Pencil data-icon="inline-start" />
           编辑
         </Button>
         <Button
@@ -269,6 +270,7 @@ onMounted(() => {
           size="sm"
           @click="openPassword(row)"
         >
+          <KeyRound data-icon="inline-start" />
           密码
         </Button>
       </div>

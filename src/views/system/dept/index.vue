@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import RaySearchForm from '@/components/common/RaySearchForm.vue'
-import { Building, Plus, RefreshCw, RotateCcw, Trash2 } from '@lucide/vue'
+import { Building, Pencil, Plus, RefreshCw, RotateCcw, Trash2 } from '@lucide/vue'
 import { computed, onMounted, shallowRef, watch } from 'vue'
 import { deleteDepts, getDeptTree, updateDept } from '@/api/dept'
 import { useSessionStore } from '@/stores/session'
@@ -234,7 +234,7 @@ onMounted(() => {
     </template>
 
     <template #cell-actions="{ row }">
-      <div class="flex min-w-16 flex-nowrap gap-1">
+      <div class="flex min-w-20 flex-nowrap gap-1">
         <Button
           v-if="can('system:dept:query')"
           type="button"
@@ -242,6 +242,7 @@ onMounted(() => {
           size="sm"
           @click="openEdit(row)"
         >
+          <Pencil data-icon="inline-start" />
           编辑
         </Button>
       </div>

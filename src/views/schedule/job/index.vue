@@ -1,6 +1,16 @@
 <script setup lang="ts">
 import RaySearchForm from '@/components/common/RaySearchForm.vue'
-import { CalendarClock, Plus, RotateCcw, Search, ScrollText, Trash2 } from '@lucide/vue'
+import {
+  CalendarClock,
+  Eye,
+  Pencil,
+  Play,
+  Plus,
+  RotateCcw,
+  Search,
+  ScrollText,
+  Trash2,
+} from '@lucide/vue'
 import { onMounted, shallowRef, watch } from 'vue'
 import {
   cleanJobLogs,
@@ -577,7 +587,7 @@ onMounted(() => {
       </template>
 
       <template #cell-actions="{ row }">
-        <div class="flex min-w-40 flex-nowrap gap-1">
+        <div class="flex min-w-56 flex-nowrap gap-1">
           <Button
             v-if="can('schedule:job:edit')"
             type="button"
@@ -585,6 +595,7 @@ onMounted(() => {
             size="sm"
             @click="openEdit(row)"
           >
+            <Pencil data-icon="inline-start" />
             编辑
           </Button>
           <Button
@@ -595,6 +606,7 @@ onMounted(() => {
             :disabled="triggering"
             @click="openTrigger(row)"
           >
+            <Play data-icon="inline-start" />
             执行
           </Button>
           <Button
@@ -604,6 +616,7 @@ onMounted(() => {
             size="sm"
             @click="openLogs(row)"
           >
+            <ScrollText data-icon="inline-start" />
             日志
           </Button>
         </div>
@@ -728,7 +741,7 @@ onMounted(() => {
       </template>
 
       <template #cell-actions="{ row }">
-        <div class="flex min-w-16 flex-nowrap gap-1">
+        <div class="flex min-w-20 flex-nowrap gap-1">
           <Button
             v-if="can('schedule:job-log:query')"
             type="button"
@@ -736,6 +749,7 @@ onMounted(() => {
             size="sm"
             @click="openDetail(row)"
           >
+            <Eye data-icon="inline-start" />
             详情
           </Button>
         </div>

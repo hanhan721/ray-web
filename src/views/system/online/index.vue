@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import RaySearchForm from '@/components/common/RaySearchForm.vue'
-import { MonitorSmartphone, RotateCcw, Search } from '@lucide/vue'
+import { LogOut, MonitorSmartphone, RotateCcw, Search, UserRoundX } from '@lucide/vue'
 import { computed, onMounted, shallowRef } from 'vue'
 import { getOnlineSessionPage, kickBySessionId, kickByUserId, type OnlineUser } from '@/api/online'
 import { useSessionStore } from '@/stores/session'
@@ -264,7 +264,7 @@ onMounted(() => {
     </template>
 
     <template #cell-actions="{ row }">
-      <div v-if="can('system:online:kick')" class="flex min-w-40 flex-nowrap gap-1">
+      <div v-if="can('system:online:kick')" class="flex min-w-52 flex-nowrap gap-1">
         <Button
           type="button"
           variant="ghost"
@@ -272,6 +272,7 @@ onMounted(() => {
           :disabled="kicking"
           @click="openKick(row, 'session')"
         >
+          <LogOut data-icon="inline-start" />
           下线会话
         </Button>
         <Button
@@ -281,6 +282,7 @@ onMounted(() => {
           :disabled="kicking"
           @click="openKick(row, 'user')"
         >
+          <UserRoundX data-icon="inline-start" />
           下线用户
         </Button>
       </div>

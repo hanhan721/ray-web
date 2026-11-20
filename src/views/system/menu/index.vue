@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import RaySearchForm from '@/components/common/RaySearchForm.vue'
-import { ListTree, Plus, RefreshCw, RotateCcw, Trash2 } from '@lucide/vue'
+import { ListTree, Pencil, Plus, RefreshCw, RotateCcw, Trash2 } from '@lucide/vue'
 import { computed, onMounted, shallowRef, watch } from 'vue'
 import { deletePermissions, getPermissionTree, updatePermission } from '@/api/permission'
 import { PermissionTypeLabel, PermissionTypeOptions, type PermissionType } from '@/types/enums'
@@ -268,7 +268,7 @@ onMounted(() => {
     </template>
 
     <template #cell-actions="{ row }">
-      <div class="flex min-w-16 flex-nowrap gap-1">
+      <div class="flex min-w-20 flex-nowrap gap-1">
         <Button
           v-if="can('system:permission:query')"
           type="button"
@@ -276,6 +276,7 @@ onMounted(() => {
           size="sm"
           @click="openEdit(row)"
         >
+          <Pencil data-icon="inline-start" />
           编辑
         </Button>
       </div>

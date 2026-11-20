@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { FileText, OctagonX, Trash2, Upload } from '@lucide/vue'
+import { ExternalLink, FileText, OctagonX, Trash2, Upload } from '@lucide/vue'
 import { shallowRef, useTemplateRef } from 'vue'
 import { deleteFiles, uploadFile, uploadFiles, type FileUpload } from '@/api/file'
 import { useSessionStore } from '@/stores/session'
@@ -230,9 +230,12 @@ async function confirmDelete() {
     </template>
 
     <template #cell-actions="{ row }">
-      <div class="flex min-w-16 flex-nowrap gap-1">
+      <div class="flex min-w-20 flex-nowrap gap-1">
         <Button as-child variant="ghost" size="sm">
-          <a :href="row.url" target="_blank" rel="noopener noreferrer">打开</a>
+          <a :href="row.url" target="_blank" rel="noopener noreferrer">
+            <ExternalLink data-icon="inline-start" />
+            打开
+          </a>
         </Button>
       </div>
     </template>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import RaySearchForm from '@/components/common/RaySearchForm.vue'
-import { Database, Library, Plus, RotateCcw, Search, Trash2 } from '@lucide/vue'
+import { Database, Library, List, Pencil, Plus, RotateCcw, Search, Trash2 } from '@lucide/vue'
 import { onMounted, shallowRef, watch } from 'vue'
 import {
   deleteDictData,
@@ -436,28 +436,34 @@ onMounted(() => {
         }}</Badge>
       </template>
       <template #cell-actions="{ row }">
-        <div class="flex min-w-48 flex-nowrap items-center gap-1">
+        <div class="flex min-w-60 flex-nowrap items-center gap-1">
           <Button
             v-if="can('system:dict-data:list')"
-            variant="outline"
+            variant="ghost"
             size="sm"
             @click="selectType(row)"
-            >字段数据</Button
           >
+            <List data-icon="inline-start" />
+            字典值
+          </Button>
           <Button
             v-if="can('system:dict-type:query')"
             variant="ghost"
             size="sm"
             @click="openTypeEdit(row)"
-            >编辑</Button
           >
+            <Pencil data-icon="inline-start" />
+            编辑
+          </Button>
           <Button
             v-if="can('system:dict-type:remove')"
             variant="ghost"
             size="sm"
             @click="requestTypeDelete(row)"
-            >删除</Button
           >
+            <Trash2 data-icon="inline-start" />
+            删除
+          </Button>
         </div>
       </template>
     </RayTable>
@@ -607,8 +613,10 @@ onMounted(() => {
               variant="ghost"
               size="sm"
               @click="openDataEdit(row)"
-              >编辑</Button
             >
+              <Pencil data-icon="inline-start" />
+              编辑
+            </Button>
           </template>
         </RayTable>
       </div>
