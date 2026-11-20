@@ -1,24 +1,27 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
-import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import { ChevronRight } from '@lucide/vue'
 import type { NavNode } from '@/router/menu-routes'
 
-const props = defineProps<{
+defineProps<{
   nodes: NavNode[]
   open: Set<number>
   activeAncestors: Set<number>
   icons: Record<string, Component>
   depth: number
 }>()
-const hasIcons = computed(() => props.nodes.some((node) => node.icon && props.icons[node.icon]))
 const emit = defineEmits<{ toggle: [id: number]; navigate: [] }>()
 
 function onNavigate(event: MouseEvent) {
   if (event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) {
     emit('navigate')
   }
+}
+
+function monogram(title: string): string {
+  const char = title.trim().charAt(0)
+  return char || '·'
 }
 </script>
 
@@ -30,14 +33,15 @@ function onNavigate(event: MouseEvent) {
         :to="node.to"
         :title="node.title"
         class="nav-link"
-        :style="{ paddingLeft: `${0.75 + depth * 0.625}rem` }"
+        :style="{ '--nav-depth': depth }"
         exact-active-class="nav-link-active"
         @click="onNavigate"
       >
-        <span v-if="hasIcons" class="size-4 shrink-0" aria-hidden="true">
+        <span class="nav-icon" aria-hidden="true">
           <component :is="icons[node.icon]" v-if="node.icon && icons[node.icon]" class="size-4" />
+          <span v-else class="nav-monogram">{{ monogram(node.title) }}</span>
         </span>
-        <span class="flex-1 whitespace-nowrap">{{ node.title }}</span>
+        <span class="nav-label">{{ node.title }}</span>
       </RouterLink>
       <template v-else>
         <button
@@ -45,7 +49,7 @@ function onNavigate(event: MouseEvent) {
           class="nav-link nav-directory"
           :class="{ 'nav-ancestor': activeAncestors.has(node.id) }"
           :style="{
-            paddingLeft: `${0.75 + depth * 0.625}rem`,
+            '--nav-depth': depth,
             '--ancestor-strength': `${Math.min(30 + depth * 20, 80)}%`,
           }"
           :title="node.title"
@@ -53,13 +57,15 @@ function onNavigate(event: MouseEvent) {
           :aria-controls="`nav-group-${node.id}`"
           @click="emit('toggle', node.id)"
         >
-          <span v-if="hasIcons" class="size-4 shrink-0" aria-hidden="true">
+          <span class="nav-icon" aria-hidden="true">
             <component :is="icons[node.icon]" v-if="node.icon && icons[node.icon]" class="size-4" />
+            <span v-else class="nav-monogram">{{ monogram(node.title) }}</span>
           </span>
-          <span class="flex-1 whitespace-nowrap">{{ node.title }}</span>
+          <span class="nav-label">{{ node.title }}</span>
           <ChevronRight
-            class="size-4 shrink-0 transition-transform"
-            :class="{ 'rotate-90': open.has(node.id) }"
+            class="nav-chevron size-4"
+            :class="{ 'is-open': open.has(node.id) }"
+            aria-hidden="true"
           />
         </button>
         <Transition name="nav-expand">
@@ -87,23 +93,66 @@ function onNavigate(event: MouseEvent) {
   display: flex;
   flex-direction: column;
   gap: 0.125rem;
-  width: max-content;
-  min-width: 100%;
+  width: 100%;
+  min-width: 0;
+  padding-inline: var(--app-sidebar-inset, 0.5rem);
+}
+.nav-tree > li {
+  min-width: 0;
 }
 .nav-link {
-  display: flex;
+  display: grid;
+  grid-template-columns: var(--app-nav-icon, 3rem) minmax(0, 1fr) auto;
   align-items: center;
-  gap: 0.75rem;
+  width: 100%;
+  min-width: 0;
   min-height: 2.5rem;
-  padding: 0.5rem 0.75rem;
+  padding: 0;
+  border: 0;
   border-radius: 0.5rem;
+  background: transparent;
   color: var(--sidebar-foreground);
+  font: inherit;
   font-size: 0.875rem;
+  text-align: left;
+  text-decoration: none;
   outline: none;
+}
+.nav-icon {
+  display: grid;
+  height: 2.5rem;
+  place-items: center;
+}
+.nav-monogram {
+  display: grid;
+  width: 1.25rem;
+  height: 1.25rem;
+  place-items: center;
+  border-radius: 0.25rem;
+  background: var(--sidebar-accent);
+  color: var(--sidebar-primary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+}
+.nav-label {
+  min-width: 0;
+  padding-right: 0.75rem;
+  padding-left: calc(var(--nav-depth, 0) * 0.75rem);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nav-chevron {
+  margin-right: 0.625rem;
+  transition: transform 200ms ease;
+}
+.nav-chevron.is-open {
+  transform: rotate(90deg);
 }
 .nav-directory {
   width: 100%;
-  text-align: left;
+  cursor: pointer;
 }
 .nav-link:hover {
   background: var(--muted);
