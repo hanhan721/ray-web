@@ -46,6 +46,8 @@ src/types/auto-imports.d.ts
 src/types/components.d.ts
 .eslintrc-auto-import.json
 
+**/test/
+
 # Claude Code
 .claude/settings.local.json
 /.playwright-mcp/
