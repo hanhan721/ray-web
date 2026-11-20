@@ -71,11 +71,11 @@ export interface TabItem {
 // 默认主题配置
 export const defaultThemeConfig: ThemeConfig = {
   darkMode: false,
-  primaryColor: '#1890ff',
+  primaryColor: '#00817c',
   successColor: '#52c41a',
   warningColor: '#faad14',
-  errorColor: '#ff4d4f',
-  infoColor: '#1890ff',
+  errorColor: '#e7000b',
+  infoColor: '#00817c',
   sidebarWidth: 200,
   sidebarCollapsedWidth: 64,
   headerHeight: 56,
@@ -89,14 +89,14 @@ export const defaultThemeConfig: ThemeConfig = {
   colorWeak: false,
 }
 
-// 预设主题色
+// 预设主题色（对齐 master 的 teal 青色系配色方案）
 export const presetColors: PresetColor[] = [
-  { name: '拂晓蓝', color: '#1890ff' },
-  { name: '薄暮红', color: '#f5222d' },
-  { name: '火山橙', color: '#fa541c' },
-  { name: '日暮黄', color: '#faad14' },
-  { name: '极光绿', color: '#52c41a' },
-  { name: '青青蓝', color: '#13c2c2' },
-  { name: '极客蓝', color: '#2f54eb' },
-  { name: '酱紫色', color: '#722ed1' },
+  { name: '薄荷青', color: '#46ecd5' },
+  { name: '亮青', color: '#65dbca' },
+  { name: '明青', color: '#00bba7' },
+  { name: '碧青', color: '#009689' },
+  { name: '深青', color: '#00817c' },
+  { name: '墨青', color: '#00786f' },
+  { name: '暗青', color: '#005f5a' },
+  { name: '潭青', color: '#005b57' },
 ]

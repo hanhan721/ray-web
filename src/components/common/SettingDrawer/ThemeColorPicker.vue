@@ -16,7 +16,7 @@
     <div class="custom-color">
       <NInput
         v-model:value="customColor"
-        placeholder="#1890ff"
+        placeholder="#00817c"
         size="small"
         @blur="handleCustomColor"
         @keyup.enter="handleCustomColor"

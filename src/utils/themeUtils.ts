@@ -104,21 +104,21 @@ export function generateThemeOverrides(config: ThemeConfig): GlobalThemeOverride
   const errorPalette = generateColorPalette(errorColor, darkMode)
   const infoPalette = generateColorPalette(infoColor, darkMode)
 
-  // 暗色模式颜色配置
+  // 暗色模式颜色配置（对齐 master 的深色配色方案）
   const darkColors = {
-    bodyColor: '#141414',
-    cardColor: '#1f1f1f',
-    modalColor: '#1f1f1f',
-    popoverColor: '#262626',
-    tableColor: '#1f1f1f',
-    inputColor: '#262626',
-    hoverColor: '#262626',
-    borderColor: '#333',
-    dividerColor: '#333',
-    textColorBase: 'rgba(255, 255, 255, 0.9)',
-    textColor1: 'rgba(255, 255, 255, 0.9)',
-    textColor2: 'rgba(255, 255, 255, 0.7)',
-    textColor3: 'rgba(255, 255, 255, 0.45)',
+    bodyColor: '#090b0c',
+    cardColor: '#161b1d',
+    modalColor: '#161b1d',
+    popoverColor: '#161b1d',
+    tableColor: '#161b1d',
+    inputColor: '#22292b',
+    hoverColor: '#22292b',
+    borderColor: '#2d3234',
+    dividerColor: '#2d3234',
+    textColorBase: '#f9fbfb',
+    textColor1: '#f9fbfb',
+    textColor2: '#9ca8ab',
+    textColor3: '#67787c',
   }
 
   const baseOverrides: GlobalThemeOverrides = {

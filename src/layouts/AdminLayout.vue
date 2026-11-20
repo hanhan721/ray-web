@@ -361,12 +361,12 @@ watch(
   color: var(--text-color-primary);
 
   &.sidebar-inverted {
-    --nav-sidebar-bg: #001529;
-    --nav-sidebar-fg: rgba(255, 255, 255, 0.85);
-    --nav-sidebar-muted: rgba(255, 255, 255, 0.65);
-    --nav-sidebar-hover: rgba(255, 255, 255, 0.08);
-    --nav-sidebar-active: rgba(24, 144, 255, 0.22);
-    --nav-sidebar-border: rgba(255, 255, 255, 0.12);
+    --nav-sidebar-bg: #161b1d;
+    --nav-sidebar-fg: #f9fbfb;
+    --nav-sidebar-muted: #9ca8ab;
+    --nav-sidebar-hover: rgba(249, 251, 251, 0.08);
+    --nav-sidebar-active: rgba(70, 236, 213, 0.18);
+    --nav-sidebar-border: rgba(249, 251, 251, 0.1);
   }
 }
 

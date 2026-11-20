@@ -62,7 +62,7 @@
                 <span class="color-label">错误色</span>
                 <NColorPicker
                   v-model:value="errorColor"
-                  :swatches="['#ff4d4f', '#ff7875', '#ffa39e', '#ef4444', '#dc2626']"
+                  :swatches="['#e7000b', '#ff6467', '#ff7875', '#ef4444', '#dc2626']"
                   size="small"
                 />
               </div>

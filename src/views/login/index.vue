@@ -166,7 +166,7 @@ const rules: FormRules = {
 }
 
 // 粒子颜色跟随主题
-const particleColor = computed(() => (appStore.isDarkMode ? 'rgba(255, 255, 255, 0.6)' : '#1890ff'))
+const particleColor = computed(() => (appStore.isDarkMode ? 'rgba(255, 255, 255, 0.6)' : '#00817c'))
 const particleLinkOpacity = computed(() => (appStore.isDarkMode ? 0.15 : 0.3))
 
 // 粒子配置
@@ -282,13 +282,13 @@ if (rememberedUsername) {
   justify-content: center;
   min-height: 100vh;
   padding: 24px;
-  background: linear-gradient(135deg, #f0f4f8 0%, #e8eef5 100%);
+  background: linear-gradient(135deg, #f2f6f9 0%, #e3e7e8 100%);
   position: relative;
   overflow: hidden;
   transition: background var(--transition-duration) var(--transition-timing);
 
   [data-theme='dark'] & {
-    background: linear-gradient(135deg, #0a0a0f 0%, #111827 100%);
+    background: linear-gradient(135deg, #090b0c 0%, #161b1d 100%);
   }
 }
 
@@ -313,7 +313,7 @@ if (rememberedUsername) {
     box-shadow var(--transition-duration) var(--transition-timing);
 
   [data-theme='dark'] & {
-    background: rgba(31, 31, 31, 0.9) !important;
+    background: rgba(22, 27, 29, 0.9) !important;
   }
 
   :deep(.n-card__content) {
@@ -334,10 +334,10 @@ if (rememberedUsername) {
   justify-content: center;
   width: 64px;
   height: 64px;
-  background: linear-gradient(135deg, var(--primary-color) 0%, #36cfc9 100%);
+  background: linear-gradient(135deg, var(--primary-color) 0%, #00bba7 100%);
   border-radius: 16px;
   color: white;
-  box-shadow: 0 8px 20px rgba(24, 144, 255, 0.3);
+  box-shadow: 0 8px 20px rgba(0, 129, 124, 0.3);
 
   svg {
     width: 36px;
@@ -408,13 +408,13 @@ if (rememberedUsername) {
   border-radius: 10px !important;
   font-size: 16px !important;
   font-weight: 500 !important;
-  background: linear-gradient(135deg, var(--primary-color) 0%, #36cfc9 100%) !important;
+  background: linear-gradient(135deg, var(--primary-color) 0%, #00bba7 100%) !important;
   border: none !important;
   transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s !important;
 
   &:hover:not(:disabled) {
     transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(24, 144, 255, 0.35);
+    box-shadow: 0 8px 20px rgba(0, 129, 124, 0.35);
   }
 
   &:active:not(:disabled) {

@@ -105,6 +105,16 @@ export const useAppStore = defineStore('app', () => {
       if (storedConfig.sidebarWidth === 256) {
         delete storedConfig.sidebarWidth
       }
+      // 默认配色已对齐 master 的 teal 青色系，旧配置里仍是 Ant Design 默认值时回落到新默认值
+      if (storedConfig.primaryColor === '#1890ff') {
+        delete storedConfig.primaryColor
+      }
+      if (storedConfig.infoColor === '#1890ff') {
+        delete storedConfig.infoColor
+      }
+      if (storedConfig.errorColor === '#ff4d4f') {
+        delete storedConfig.errorColor
+      }
       themeConfig.value = { ...defaultThemeConfig, ...storedConfig }
     }
     applyTheme()

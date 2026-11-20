@@ -2,33 +2,33 @@
 // CSS 自定义属性（由 JS 动态设置）
 // ============================================
 :root {
-  // 主题色
-  --primary-color: #1890ff;
-  --primary-color-hover: #40a9ff;
-  --primary-color-pressed: #096dd9;
-  --primary-color-suppl: rgba(24, 144, 255, 0.1);
+  // 主题色（对齐 master 的 teal 青色系配色方案）
+  --primary-color: #00817c;
+  --primary-color-hover: #269490;
+  --primary-color-pressed: #006e69;
+  --primary-color-suppl: rgba(0, 129, 124, 0.1);
 
   // 功能色
   --success-color: #52c41a;
   --warning-color: #faad14;
-  --error-color: #ff4d4f;
-  --info-color: #1890ff;
+  --error-color: #e7000b;
+  --info-color: #00817c;
 
   // 文字颜色
-  --text-color-primary: #333;
-  --text-color-secondary: #666;
-  --text-color-disabled: #999;
-  --text-color-inverse: #fff;
+  --text-color-primary: #090b0c;
+  --text-color-secondary: #4c5b5f;
+  --text-color-disabled: #9ca8ab;
+  --text-color-inverse: #f0fdfa;
 
   // 背景颜色
-  --bg-color: #f5f5f5;
-  --bg-color-container: #fff;
-  --bg-color-hover: rgba(0, 0, 0, 0.04);
-  --bg-color-active: rgba(0, 0, 0, 0.08);
+  --bg-color: #f2f6f9;
+  --bg-color-container: #ffffff;
+  --bg-color-hover: rgba(9, 11, 12, 0.04);
+  --bg-color-active: rgba(9, 11, 12, 0.08);
 
   // 边框颜色
-  --border-color: #e8e8e8;
-  --border-color-light: #f0f0f0;
+  --border-color: #e3e7e8;
+  --border-color-light: #f1f3f3;
 
   // 布局
   --header-height: 56px;
@@ -56,20 +56,20 @@
 // ============================================
 [data-theme='dark'] {
   // 文字颜色
-  --text-color-primary: rgba(255, 255, 255, 0.85);
-  --text-color-secondary: rgba(255, 255, 255, 0.65);
-  --text-color-disabled: rgba(255, 255, 255, 0.45);
-  --text-color-inverse: #333;
+  --text-color-primary: #f9fbfb;
+  --text-color-secondary: #9ca8ab;
+  --text-color-disabled: #67787c;
+  --text-color-inverse: #f0fdfa;
 
   // 背景颜色
-  --bg-color: #141414;
-  --bg-color-container: #1f1f1f;
-  --bg-color-hover: rgba(255, 255, 255, 0.08);
-  --bg-color-active: rgba(255, 255, 255, 0.12);
+  --bg-color: #090b0c;
+  --bg-color-container: #161b1d;
+  --bg-color-hover: rgba(249, 251, 251, 0.08);
+  --bg-color-active: rgba(249, 251, 251, 0.12);
 
   // 边框颜色
-  --border-color: #424242;
-  --border-color-light: #303030;
+  --border-color: rgba(255, 255, 255, 0.1);
+  --border-color-light: rgba(255, 255, 255, 0.06);
 
   // 阴影（深色模式下更深）
   --box-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 20%), 0 1px 6px -1px rgb(0 0 0 / 15%), 0 2px 4px 0 rgb(0 0 0 / 15%);
@@ -82,24 +82,24 @@
 // ============================================
 
 // 颜色变量
-$primary-color: #1890ff;
+$primary-color: #00817c;
 $success-color: #52c41a;
 $warning-color: #faad14;
-$error-color: #ff4d4f;
-$info-color: #1890ff;
+$error-color: #e7000b;
+$info-color: #00817c;
 
 // 文字颜色
-$text-color-primary: #333;
-$text-color-secondary: #666;
-$text-color-disabled: #999;
+$text-color-primary: #090b0c;
+$text-color-secondary: #4c5b5f;
+$text-color-disabled: #9ca8ab;
 
 // 背景颜色
-$bg-color: #f5f5f5;
-$bg-color-container: #fff;
+$bg-color: #f2f6f9;
+$bg-color-container: #ffffff;
 
 // 边框颜色
-$border-color: #e8e8e8;
-$border-color-light: #f0f0f0;
+$border-color: #e3e7e8;
+$border-color-light: #f1f3f3;
 
 // 间距
 $spacing-xs: 4px;
