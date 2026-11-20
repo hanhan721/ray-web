@@ -31,6 +31,10 @@ const { cachedViews } = storeToRefs(tabsStore)
   overflow: auto;
   background: var(--bg-color);
   outline: none;
+
+  @media (min-width: 768px) {
+    padding: $spacing-lg;
+  }
 }
 
 .fade-enter-active,

@@ -240,9 +240,3 @@ function handleFormSuccess() {
   tableRef.value?.refresh()
 }
 </script>
-
-<style scoped lang="scss">
-.param-page {
-  padding: $spacing-lg;
-}
-</style>

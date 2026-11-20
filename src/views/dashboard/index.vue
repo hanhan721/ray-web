@@ -247,7 +247,6 @@ onUnmounted(() => {
 
 <style scoped lang="scss">
 .dashboard-page {
-  padding: $spacing-lg;
   display: flex;
   flex-direction: column;
   gap: $spacing-lg;

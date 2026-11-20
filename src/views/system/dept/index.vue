@@ -269,7 +269,6 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .dept-page {
-  padding: $spacing-lg;
   display: flex;
   flex-direction: column;
   gap: $spacing-md;

@@ -295,7 +295,6 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .menu-page {
-  padding: $spacing-lg;
   display: flex;
   flex-direction: column;
   gap: $spacing-md;

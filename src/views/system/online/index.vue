@@ -137,9 +137,3 @@ async function handleKickUser(row: OnlineRow) {
   tableRef.value?.refresh()
 }
 </script>
-
-<style scoped lang="scss">
-.online-page {
-  padding: $spacing-lg;
-}
-</style>

@@ -218,9 +218,3 @@ function handleFormSuccess() {
   tableRef.value?.refresh()
 }
 </script>
-
-<style scoped lang="scss">
-.dict-page {
-  padding: $spacing-lg;
-}
-</style>

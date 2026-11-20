@@ -225,9 +225,3 @@ function handleFormSuccess() {
   tableRef.value?.refresh()
 }
 </script>
-
-<style scoped lang="scss">
-.role-page {
-  padding: $spacing-lg;
-}
-</style>
