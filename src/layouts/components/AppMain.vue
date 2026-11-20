@@ -3,7 +3,7 @@
     <RouterView v-slot="{ Component }">
       <Transition name="fade" mode="out-in">
         <KeepAlive :include="cachedViews">
-          <component :is="Component" :key="route.fullPath" />
+          <component :is="Component" :key="viewKey" />
         </KeepAlive>
       </Transition>
     </RouterView>
@@ -19,7 +19,9 @@ defineOptions({
 
 const route = useRoute()
 const tabsStore = useTabsStore()
-const { cachedViews } = storeToRefs(tabsStore)
+const { cachedViews, refreshKeys } = storeToRefs(tabsStore)
+
+const viewKey = computed(() => `${route.fullPath}#${refreshKeys.value[route.path] ?? 0}`)
 </script>
 
 <style scoped lang="scss">

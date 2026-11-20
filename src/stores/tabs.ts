@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 import { defineStore } from 'pinia'
 import type { TabItem } from '@/types/theme'
 
@@ -19,6 +19,8 @@ export const useTabsStore = defineStore('tabs', () => {
   const tabs = ref<TabItem[]>([HOME_TAB])
   const activeTab = ref<string>(HOME_TAB.path)
   const cachedViews = ref<string[]>([])
+  // 每个路径的刷新计数，参与页面组件的 key，用于强制重新挂载
+  const refreshKeys = ref<Record<string, number>>({})
 
   // Getters
   const tabList = computed(() => tabs.value)
@@ -27,19 +29,38 @@ export const useTabsStore = defineStore('tabs', () => {
   // Actions
 
   /**
+   * 根据标签的 keepAlive 同步缓存名单
+   */
+  function syncCachedView(tab: TabItem) {
+    if (!tab.name) return
+    const index = cachedViews.value.indexOf(tab.name)
+    if (tab.keepAlive) {
+      if (index === -1) {
+        cachedViews.value.push(tab.name)
+      }
+    } else if (index > -1) {
+      cachedViews.value.splice(index, 1)
+    }
+  }
+
+  /**
    * 添加标签
    */
   function addTab(tab: TabItem) {
     const exists = tabs.value.find((t: TabItem) => t.path === tab.path)
-    if (!exists) {
-      tabs.value.push({
+    if (exists) {
+      // 再次进入同一路由时，用最新的路由 meta 校准标签（例如后台修改了缓存配置）
+      exists.title = tab.title
+      exists.icon = tab.icon
+      exists.keepAlive = tab.keepAlive
+      syncCachedView(exists)
+    } else {
+      const next: TabItem = {
         ...tab,
         closable: tab.closable !== false && !tab.affix,
-      })
-      // 添加到缓存列表（仅 keepAlive 为 true 的页面）
-      if (tab.keepAlive && tab.name && !cachedViews.value.includes(tab.name)) {
-        cachedViews.value.push(tab.name)
       }
+      tabs.value.push(next)
+      syncCachedView(next)
     }
     activeTab.value = tab.path
     saveToStorage()
@@ -177,23 +198,42 @@ export const useTabsStore = defineStore('tabs', () => {
   }
 
   /**
+   * 递增刷新计数，驱动页面组件重新挂载
+   */
+  function bumpRefreshKey(path: string) {
+    refreshKeys.value = {
+      ...refreshKeys.value,
+      [path]: (refreshKeys.value[path] ?? 0) + 1,
+    }
+  }
+
+  /**
    * 刷新标签（重新加载页面内容）
    */
   function refreshTab(path: string) {
     const tab = tabs.value.find((t: TabItem) => t.path === path)
-    if (tab?.name) {
-      // 临时移除缓存，然后重新添加
-      const index = cachedViews.value.indexOf(tab.name)
-      if (index > -1) {
-        cachedViews.value.splice(index, 1)
-        // 下一个 tick 重新添加（仅 keepAlive 的页面需要重新缓存）
-        if (tab.keepAlive) {
-          setTimeout(() => {
-            cachedViews.value.push(tab.name!)
-          }, 100)
-        }
-      }
+    if (!tab) return
+
+    // 未开启缓存的页面没有 KeepAlive 实例，直接换 key 强制重新挂载
+    if (!tab.keepAlive || !tab.name) {
+      bumpRefreshKey(path)
+      return
     }
+
+    // 先移出缓存名单，等 KeepAlive 丢弃旧实例后再恢复缓存并换 key
+    const index = cachedViews.value.indexOf(tab.name)
+    if (index > -1) {
+      cachedViews.value.splice(index, 1)
+    }
+
+    nextTick(() => {
+      // 标签可能已被关闭，此时不再恢复缓存
+      if (!tabs.value.some((t) => t.path === path)) return
+      if (!cachedViews.value.includes(tab.name)) {
+        cachedViews.value.push(tab.name)
+      }
+      bumpRefreshKey(path)
+    })
   }
 
   /**
@@ -229,9 +269,9 @@ export const useTabsStore = defineStore('tabs', () => {
             tabs.value = [HOME_TAB]
           }
           activeTab.value = activePath
-          // 重建缓存列表
+          // 重建缓存列表（仅保留开启了 KeepAlive 的页面）
           cachedViews.value = tabs.value
-            .filter((t: TabItem) => t.name)
+            .filter((t: TabItem) => t.keepAlive && t.name)
             .map((t: TabItem) => t.name!)
           saveToStorage()
         }
@@ -248,6 +288,7 @@ export const useTabsStore = defineStore('tabs', () => {
     tabs.value = [HOME_TAB]
     activeTab.value = HOME_TAB.path
     cachedViews.value = []
+    refreshKeys.value = {}
     localStorage.removeItem(STORAGE_KEY)
   }
 
@@ -256,6 +297,7 @@ export const useTabsStore = defineStore('tabs', () => {
     tabs,
     activeTab,
     cachedViews,
+    refreshKeys,
 
     // Getters
     tabList,
