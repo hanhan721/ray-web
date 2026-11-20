@@ -23,14 +23,17 @@ import { Button } from '@/components/ui/button'
 import ThemeToggle from '@/components/ThemeToggle.vue'
 import ErrorHistory from './components/ErrorHistory.vue'
 import NavTree from './components/NavTree.vue'
+import PageTabs from './components/PageTabs.vue'
 import TopNav from './components/TopNav.vue'
 import { findNavigationTrail } from './navigation'
 import type { NavNode } from '@/router/menu-routes'
 import { removeRouteNames } from '@/router/menu-install'
 import { useSessionStore } from '@/stores/session'
+import { useTabsStore } from '@/stores/tabs'
 
 const SIDEBAR_PIN_KEY = 'ray.sidebar-pinned'
 const SIDEBAR_LEAVE_MS = 120
+const TAB_EXCLUDED_ROUTES = new Set(['home', 'forbidden', 'denied', 'not-found'])
 
 function readSidebarPinned(): boolean {
   if (typeof localStorage === 'undefined') return true
@@ -68,6 +71,7 @@ const icons: Record<string, Component> = {
 const router = useRouter()
 const route = useRoute()
 const session = useSessionStore()
+const tabs = useTabsStore()
 const { displayName, navigation } = storeToRefs(session)
 const navOpen = shallowRef(false)
 const sidebarPinned = shallowRef(readSidebarPinned())
@@ -75,6 +79,23 @@ const pointerInside = shallowRef(false)
 const openGroups = shallowRef<Set<number>>(new Set())
 const activeTrail = computed(() => findNavigationTrail(navigation.value, route.path))
 const activeModule = computed(() => activeTrail.value[0])
+
+watch(
+  () => route.fullPath,
+  () => {
+    const name = typeof route.name === 'string' ? route.name : ''
+    const title = route.meta.title
+    if (!name || !title || TAB_EXCLUDED_ROUTES.has(name)) return
+    tabs.openTab({
+      path: route.path,
+      fullPath: route.fullPath,
+      name,
+      title,
+      keepAlive: route.meta.keepAlive === true,
+    })
+  },
+  { immediate: true },
+)
 const secondaryNodes = computed(() =>
   activeModule.value?.kind === 'group' ? activeModule.value.items : [],
 )
@@ -83,9 +104,22 @@ const sidebarRevealed = computed(() => sidebarPinned.value || pointerInside.valu
 const sidebarPinLabel = computed(() => (sidebarPinned.value ? '收起侧栏' : '展开侧栏'))
 const displayedNodes = shallowRef<NavNode[]>([])
 const displayedTitle = shallowRef('')
+const viewRefreshKeys = shallowRef<Record<string, number>>({})
 const sidebarTrack = useTemplateRef<HTMLElement>('sidebarTrack')
 let sidebarReleaseTimer = 0
 let sidebarCollapseTimer = 0
+
+function refreshView(name: string) {
+  viewRefreshKeys.value = {
+    ...viewRefreshKeys.value,
+    [name]: (viewRefreshKeys.value[name] ?? 0) + 1,
+  }
+}
+
+function viewKey(name: unknown): string {
+  const key = String(name)
+  return `${key}:${viewRefreshKeys.value[key] ?? 0}`
+}
 
 watch(
   secondaryNodes,
@@ -163,6 +197,7 @@ onUnmounted(() => {
   document.removeEventListener('pointerdown', onDocumentPointerDown)
   clearSidebarCollapseTimer()
   window.clearTimeout(sidebarReleaseTimer)
+  tabs.reset()
 })
 
 const activeAncestors = computed(
@@ -294,14 +329,17 @@ async function onLogout() {
           </div>
         </aside>
       </div>
-      <main id="main" tabindex="-1" class="min-w-0 flex-1 p-4 outline-none md:p-6">
-        <RouterView v-slot="{ Component: view, route: matched }">
-          <KeepAlive>
-            <component :is="view" v-if="matched.meta.keepAlive" :key="String(matched.name)" />
-          </KeepAlive>
-          <component :is="view" v-if="!matched.meta.keepAlive" :key="String(matched.name)" />
-        </RouterView>
-      </main>
+      <div class="app-content">
+        <PageTabs @refresh="refreshView" />
+        <main id="main" tabindex="-1" class="min-w-0 flex-1 p-4 outline-none md:p-6">
+          <RouterView v-slot="{ Component: view, route: matched }">
+            <KeepAlive>
+              <component :is="view" v-if="matched.meta.keepAlive" :key="viewKey(matched.name)" />
+            </KeepAlive>
+            <component :is="view" v-if="!matched.meta.keepAlive" :key="viewKey(matched.name)" />
+          </RouterView>
+        </main>
+      </div>
     </div>
   </div>
 </template>
@@ -340,6 +378,11 @@ async function onLogout() {
 }
 .app-body {
   min-height: calc(100svh - var(--app-header-height));
+}
+.app-content {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
 }
 .sidebar-track {
   position: relative;
