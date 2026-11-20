@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
-import { computed, nextTick, shallowRef, watch } from 'vue'
+import { computed, nextTick, onUnmounted, shallowRef, useTemplateRef, watch } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import {
@@ -23,6 +23,7 @@ import ErrorHistory from './components/ErrorHistory.vue'
 import NavTree from './components/NavTree.vue'
 import TopNav from './components/TopNav.vue'
 import { findNavigationTrail } from './navigation'
+import type { NavNode } from '@/router/menu-routes'
 import { removeRouteNames } from '@/router/menu-install'
 import { useSessionStore } from '@/stores/session'
 
@@ -52,6 +53,49 @@ const activeModule = computed(() => activeTrail.value[0])
 const secondaryNodes = computed(() =>
   activeModule.value?.kind === 'group' ? activeModule.value.items : [],
 )
+const sidebarOpen = computed(() => secondaryNodes.value.length > 0)
+const displayedNodes = shallowRef<NavNode[]>([])
+const displayedTitle = shallowRef('')
+const sidebarTrack = useTemplateRef<HTMLElement>('sidebarTrack')
+let sidebarReleaseTimer = 0
+
+watch(
+  secondaryNodes,
+  (nodes) => {
+    if (nodes.length === 0) return
+    displayedNodes.value = nodes
+    displayedTitle.value = activeModule.value?.title ?? ''
+  },
+  { immediate: true },
+)
+
+function releaseClosedSidebar() {
+  window.clearTimeout(sidebarReleaseTimer)
+  sidebarReleaseTimer = 0
+  if (sidebarOpen.value) return
+  displayedNodes.value = []
+  displayedTitle.value = ''
+}
+
+function onSidebarTransitionEnd(event: TransitionEvent) {
+  if (event.target !== event.currentTarget) return
+  if (event.propertyName !== 'grid-template-columns') return
+  releaseClosedSidebar()
+}
+
+watch(sidebarOpen, (open) => {
+  window.clearTimeout(sidebarReleaseTimer)
+  if (open) return
+  if (sidebarTrack.value?.contains(document.activeElement)) {
+    document.getElementById('main')?.focus()
+  }
+  sidebarReleaseTimer = window.setTimeout(releaseClosedSidebar, 560)
+})
+
+onUnmounted(() => {
+  window.clearTimeout(sidebarReleaseTimer)
+})
+
 const activeAncestors = computed(
   () => new Set(activeTrail.value.filter((node) => node.kind === 'group').map((node) => node.id)),
 )
@@ -121,41 +165,52 @@ async function onLogout() {
         <Button type="button" variant="outline" size="sm" @click="onLogout">退出</Button>
       </div>
     </header>
-    <div class="app-body" :class="{ 'has-sidebar': secondaryNodes.length > 0 }">
-      <aside v-if="secondaryNodes.length" class="app-sidebar" aria-label="子菜单">
-        <div class="flex items-center justify-between gap-3 px-4 py-3 md:hidden">
-          <span class="truncate text-sm font-medium">{{ activeModule?.title }}</span>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            :aria-expanded="navOpen"
-            aria-controls="app-nav"
-            @click="navOpen = !navOpen"
+    <div
+      class="app-body"
+      :class="{ 'has-sidebar': sidebarOpen }"
+      @transitionend="onSidebarTransitionEnd"
+    >
+      <div
+        ref="sidebarTrack"
+        class="sidebar-track"
+        :inert="!sidebarOpen"
+        :aria-hidden="sidebarOpen ? undefined : 'true'"
+      >
+        <aside class="app-sidebar" aria-label="子菜单">
+          <div class="flex items-center justify-between gap-3 px-4 py-3 md:hidden">
+            <span class="truncate text-sm font-medium">{{ displayedTitle }}</span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              :aria-expanded="navOpen"
+              aria-controls="app-nav"
+              @click="navOpen = !navOpen"
+            >
+              <Menu aria-hidden="true" />
+              {{ navOpen ? '收起子菜单' : '展开子菜单' }}
+            </Button>
+          </div>
+          <nav
+            id="app-nav"
+            class="secondary-nav"
+            :class="navOpen ? 'block' : 'hidden md:block'"
+            :aria-label="displayedTitle ? `${displayedTitle}子菜单` : '子菜单'"
+            @keydown.esc="closeMobileNav"
           >
-            <Menu aria-hidden="true" />
-            {{ navOpen ? '收起子菜单' : '展开子菜单' }}
-          </Button>
-        </div>
-        <nav
-          id="app-nav"
-          class="secondary-nav"
-          :class="navOpen ? 'block' : 'hidden md:block'"
-          :aria-label="`${activeModule?.title}子菜单`"
-          @keydown.esc="closeMobileNav"
-        >
-          <NavTree
-            class="px-3 pb-4 md:pt-4"
-            :nodes="secondaryNodes"
-            :open="openGroups"
-            :active-ancestors="activeAncestors"
-            :icons="icons"
-            :depth="0"
-            @toggle="toggleGroup"
-            @navigate="closeMobileNav"
-          />
-        </nav>
-      </aside>
+            <NavTree
+              class="px-3 pb-4 md:pt-4"
+              :nodes="displayedNodes"
+              :open="openGroups"
+              :active-ancestors="activeAncestors"
+              :icons="icons"
+              :depth="0"
+              @toggle="toggleGroup"
+              @navigate="closeMobileNav"
+            />
+          </nav>
+        </aside>
+      </div>
       <main id="main" tabindex="-1" class="min-w-0 flex-1 p-4 outline-none md:p-6">
         <RouterView v-slot="{ Component: view, route: matched }">
           <KeepAlive>
@@ -171,6 +226,7 @@ async function onLogout() {
 <style scoped>
 .app-shell {
   --app-header-height: 4rem;
+  --app-sidebar-width: 13rem;
 }
 .app-header {
   position: sticky;
@@ -194,6 +250,11 @@ async function onLogout() {
 }
 .app-body {
   min-height: calc(100svh - var(--app-header-height));
+}
+.sidebar-track {
+  min-width: 0;
+  background: var(--sidebar);
+  color: var(--sidebar-foreground);
 }
 .app-sidebar {
   min-width: 0;
@@ -226,18 +287,16 @@ async function onLogout() {
 
 @media (min-width: 768px) {
   .app-header {
-    grid-template-columns: 13rem minmax(0, 1fr) auto;
+    grid-template-columns: var(--app-sidebar-width) minmax(0, 1fr) auto;
     gap: 0;
     padding-left: 0;
   }
   .brand-region {
-    position: relative;
     display: flex;
-    height: calc(100% + 1px);
+    align-self: stretch;
     align-items: center;
     padding-inline: 1.5rem;
     background: var(--sidebar);
-    border-right: 1px solid var(--sidebar-border);
   }
   .app-top-nav {
     margin-left: 1rem;
@@ -247,18 +306,30 @@ async function onLogout() {
   }
   .app-body {
     display: grid;
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: 0rem minmax(0, 1fr);
+    transition: grid-template-columns 380ms cubic-bezier(0.4, 0, 0.2, 1);
   }
   .app-body.has-sidebar {
-    grid-template-columns: 13rem minmax(0, 1fr);
+    grid-template-columns: var(--app-sidebar-width) minmax(0, 1fr);
   }
-  .app-sidebar {
+  .sidebar-track {
     position: sticky;
     top: var(--app-header-height);
     height: calc(100svh - var(--app-header-height));
     align-self: start;
-    border-right: 1px solid var(--sidebar-border);
+    overflow: hidden;
+    box-shadow: inset -1px 0 0 var(--sidebar-border);
+  }
+  .app-sidebar {
+    width: var(--app-sidebar-width);
+    height: 100%;
     border-bottom: 0;
+    opacity: 0;
+    transition: opacity 160ms ease;
+  }
+  .app-body.has-sidebar .app-sidebar {
+    opacity: 1;
+    transition: opacity 180ms ease 100ms;
   }
   .secondary-nav {
     max-height: 100%;
@@ -282,6 +353,9 @@ async function onLogout() {
   .app-shell {
     --app-header-height: 7rem;
   }
+  .app-body:not(.has-sidebar) .sidebar-track {
+    display: none;
+  }
   .app-header {
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-rows: 4rem minmax(0, 1fr);
@@ -299,6 +373,14 @@ async function onLogout() {
     grid-column: 1 / -1;
     grid-row: 2;
     align-self: stretch;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-body,
+  .app-body.has-sidebar .app-sidebar,
+  .app-sidebar {
+    transition: none;
   }
 }
 </style>
