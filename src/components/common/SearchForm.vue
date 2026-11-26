@@ -5,7 +5,7 @@
   - 根据 schema 配置渲染表单项
   - 支持展开/收起（超过 N 个时）
   - 搜索/重置按钮
-  - 响应式布局（栅格）
+  - 响应式布局（24 栅格，按控件语义分配宽度）
   - 支持 DictSelect 类型
   - 回车触发搜索
 
@@ -25,11 +25,12 @@
     :label-width="labelWidth"
     @keyup.enter="handleSearch"
   >
-    <NGrid :cols="24" :x-gap="16" :y-gap="0">
+    <NGrid :cols="24" :x-gap="16" :y-gap="16" responsive="screen" item-responsive>
       <NGridItem
-        v-for="(item, index) in visibleSchema"
+        v-for="item in visibleSchema"
         :key="item.field"
-        :span="item.span || defaultSpan"
+        :span="item.span || componentSpan(item.component)"
+        class="search-form__item"
       >
         <NFormItem :label="item.label" :path="item.field">
           <!-- 输入框 -->
@@ -92,7 +93,7 @@
       </NGridItem>
 
       <!-- 操作按钮 -->
-      <NGridItem :span="buttonSpan" class="search-form__buttons">
+      <NGridItem suffix :span="ACTION_SPAN" class="search-form__buttons">
         <NSpace justify="end">
           <NButton @click="handleReset">
             <template #icon>
@@ -149,8 +150,11 @@ export interface SearchFormItem {
   dictType?: string
   /** 默认值 */
   defaultValue?: unknown
-  /** 栅格占比，默认 6 */
-  span?: number
+  /**
+   * 栅格占比，默认按控件类型分配
+   * 支持断点写法，如 `24 s:12 m:8 l:6 xl:6 xxl:4`
+   */
+  span?: number | string
 }
 
 const props = withDefaults(
@@ -161,7 +165,7 @@ const props = withDefaults(
     model: Record<string, unknown>
     /** 标签宽度 */
     labelWidth?: number | string
-    /** 默认栅格占比 */
+    /** 未知控件类型的兜底栅格占比 */
     defaultSpan?: number
     /** 超过多少个收起 */
     collapseCount?: number
@@ -181,19 +185,34 @@ const emit = defineEmits<{
 const formRef = ref<FormInst | null>(null)
 const collapsed = ref(true)
 
+/**
+ * 不同控件的语义化栅格占比：
+ * - 文本类控件保持常规输入宽度
+ * - 下拉类控件收窄，避免状态/分类选择框过长
+ * - 日期范围需要完整展示起止日期，占用更宽
+ */
+const COMPONENT_SPANS: Record<SearchFormItem['component'], string> = {
+  input: '24 s:12 m:8 l:6 xl:6 xxl:5',
+  select: '24 s:12 m:8 l:6 xl:5 xxl:4',
+  'dict-select': '24 s:12 m:8 l:6 xl:5 xxl:4',
+  'tree-select': '24 s:12 m:8 l:6 xl:6 xxl:5',
+  'date-picker': '24 s:12 m:8 l:6 xl:6 xxl:5',
+  'date-range': '24 s:24 m:12 l:8 xl:8 xxl:6',
+}
+
+/** 操作区固定到行尾；当前行放不下时自动换行到下一行右侧 */
+const ACTION_SPAN = '24 s:24 m:8 l:6 xl:6 xxl:5'
+
+function componentSpan(component: SearchFormItem['component']) {
+  return COMPONENT_SPANS[component] || String(props.defaultSpan)
+}
+
 // 可见的表单项
 const visibleSchema = computed(() => {
   if (collapsed.value && props.schema.length > props.collapseCount) {
     return props.schema.slice(0, props.collapseCount)
   }
   return props.schema
-})
-
-// 按钮占用的栅格
-const buttonSpan = computed(() => {
-  const usedSpan = visibleSchema.value.reduce((sum, item) => sum + (item.span || props.defaultSpan), 0)
-  const remaining = 24 - (usedSpan % 24)
-  return remaining === 0 ? 24 : remaining
 })
 
 // 搜索
@@ -220,9 +239,21 @@ defineExpose({
 </script>
 
 <style scoped lang="scss">
+.search-form__item {
+  min-width: 0;
+}
+
+// 桌面端限制输入控件宽度，避免超宽屏下输入框被拉得过长
+@media (min-width: 1280px) {
+  .search-form__item :deep(.n-form-item-blank) {
+    max-width: 320px;
+  }
+}
+
 .search-form__buttons {
   display: flex;
   align-items: flex-start;
+  justify-content: flex-end;
   padding-top: 4px;
 }
 </style>
